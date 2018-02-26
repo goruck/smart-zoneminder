@@ -237,11 +237,3 @@ function getFrames() {
 
     return;
 } // end getFrames()
-
-/*
- * Logger using Template Literals.
- * See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals.
- */
-function log(title, msg) {
-    console.log(`[${title}] ${msg}`);
-}
