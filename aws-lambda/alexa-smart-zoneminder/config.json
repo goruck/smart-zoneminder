@@ -1,0 +1,71 @@
+{
+  "cameras":[
+    {
+      "endpointId": "1",
+      "manufacturerName": "Axis",
+      "modelName": "P1425-LE",
+      "zoneminderName": "FrontPorch",
+      "friendlyNames": ["front porch", "front", "porch",
+          "front porch camera"],
+      "description": "Front Porch Camera",
+      "resolutions": [{"width":1920, "height":1080}],
+      "uri": "rtsp://cam.lsacam.com:443/proxyStream-1"
+    },
+    {
+      "endpointId": "2",
+      "manufacturerName": "Axis",
+      "modelName": "P1425-LE",
+      "zoneminderName": "EastSide",
+      "friendlyNames": ["east side", "east", "east side camera"],
+      "description": "East Side Camera",
+      "resolutions": [{"width":1080, "height":1920}],
+      "uri": "rtsp://cam.lsacam.com:443/proxyStream-2"
+    },
+    {
+      "endpointId": "3",
+      "manufacturerName": "Axis",
+      "modelName": "P1435-LE",
+      "zoneminderName": "BackYard",
+      "friendlyNames": ["back yard", "backyard", "back yard camera"],
+      "description": "Back Yard Camera",
+      "resolutions": [{"width":1920, "height":1080}],
+      "uri": "rtsp://cam.lsacam.com:443/proxyStream-3"
+    },
+    {
+      "endpointId": "4",
+      "manufacturerName": "Axis",
+      "modelName": "P1425-LE",
+      "zoneminderName": "BackGarage",
+      "friendlyNames": ["back garage", "back garage camera"],
+      "description": "Back Garage Camera",
+      "resolutions": [{"width":1920, "height":1080}],
+      "uri": "rtsp://cam.lsacam.com:443/proxyStream-4"
+    },
+    {
+      "endpointId": "5",
+      "manufacturerName": "Axis",
+      "modelName": "P1425-LE",
+      "zoneminderName": "PlayroomDoor",
+      "friendlyNames": ["play room door", "play room", "playroom",
+          "playroom door", "play room door camera", "playroom door camera"],
+      "description": "Playroom Door Camera",
+      "resolutions": [{"width":1920, "height":1080}],
+      "uri": "rtsp://cam.lsacam.com:443/proxyStream-5"
+    },
+    {
+      "endpointId": "6",
+      "manufacturerName": "Axis",
+      "modelName": "P1425-LE",
+      "zoneminderName": "FrontGate",
+      "friendlyNames": ["front gate camera", "front gate", "gate",
+          "front gate camera"],
+      "description": "Front Gate Camera",
+      "resolutions": [{"width":1080, "height":1920}],
+      "uri": "rtsp://cam.lsacam.com:443/proxyStream-6"
+    }
+  ],
+  "alexaAppId": "amzn1.ask.skill.26967fa9-e516-4916-b040-2f6781951e6b",
+  "awsRegion": "us-west-2",
+  "zmS3Bucket": "zm-alarm-frames",
+  "zmDdbTable": "ZmAlarmFrames"
+}

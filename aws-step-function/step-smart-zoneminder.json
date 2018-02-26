@@ -1,0 +1,98 @@
+{
+    "Comment": "Process incoming image files to determine true alarms vs false positives.",
+    "StartAt": "rekognition-image-assessment",
+    "States": {
+        "error-handler": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:232513044594:function:error-handler",
+            "End": true
+        },
+        "rekognition-image-assessment": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:232513044594:function:rekognition-image-assessment",
+            "TimeoutSeconds": 10,
+            "Comment": "Deal with random timeouts and errors from service.",
+            "Retry" : [{
+                "ErrorEquals": [ "States.Timeout", "States.TaskFailed"],
+                "IntervalSeconds": 3,
+                "MaxAttempts": 2,
+                "BackoffRate": 1.5
+            }],
+            "Catch": [{
+                "ErrorEquals": ["States.ALL"],
+                "Next": "error-handler"
+            }],
+            "Next": "rekognition-evaluate-labels"
+        },
+        "rekognition-evaluate-labels": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:232513044594:function:rekognition-evaluate-labels",
+            "TimeoutSeconds": 10,
+            "Comment": "Deal with random timeouts and errors from service.",
+            "Retry" : [{
+                "ErrorEquals": [ "States.Timeout", "States.TaskFailed"],
+                "IntervalSeconds": 3,
+                "MaxAttempts": 2,
+                "BackoffRate": 1.5
+            }],
+            "Catch": [{
+                "ErrorEquals": ["States.ALL"],
+                "Next": "error-handler"
+            }],
+            "Next": "s3-archive-image"
+        },
+        "s3-archive-image": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:232513044594:function:s3-archive-image",
+            "TimeoutSeconds": 10,
+            "Comment": "Deal with random timeouts and errors from service.",
+            "Retry" : [{
+                "ErrorEquals": [ "States.Timeout", "States.TaskFailed"],
+                "IntervalSeconds": 3,
+                "MaxAttempts": 2,
+                "BackoffRate": 1.5
+            }],
+            "Catch": [{
+                "ErrorEquals": ["States.ALL"],
+                "Next": "error-handler"
+            }],
+            "Next": "make-alert-decision"
+        },
+        "make-alert-decision": {
+            "Type": "Choice",
+            "Choices": [{
+                    "Variable": "$.Alert",
+                    "StringEquals": "true",
+                    "Next": "ddb-store-metadata"
+                },
+                {
+                    "Variable": "$.Alert",
+                    "StringEquals": "false",
+                    "Next": "No-Op"
+                }
+            ],
+            "Default": "No-Op"
+        },
+        "No-Op": {
+            "Type": "Pass",
+            "End" : true
+        },
+        "ddb-store-metadata": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:232513044594:function:ddb-store-metadata",
+            "TimeoutSeconds": 10,
+            "Comment": "Deal with random timeouts and errors from service.",
+            "Retry" : [{
+                "ErrorEquals": [ "States.Timeout", "States.TaskFailed"],
+                "IntervalSeconds": 3,
+                "MaxAttempts": 2,
+                "BackoffRate": 1.5
+            }],
+            "Catch": [{
+                "ErrorEquals": ["States.ALL"],
+                "Next": "error-handler"
+            }],
+            "End": true
+        }
+    }
+}

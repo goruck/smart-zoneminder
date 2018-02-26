@@ -1,0 +1,139 @@
+{
+  "languageModel": {
+    "types": [
+      {
+        "name": "Location",
+        "values": [
+          {
+            "id": null,
+            "name": {
+              "value": "play room door",
+              "synonyms": [
+                "play room"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "front gate",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "east side",
+              "synonyms": [
+                "east"
+              ]
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "back garage",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "back yard",
+              "synonyms": []
+            }
+          },
+          {
+            "id": null,
+            "name": {
+              "value": "front porch",
+              "synonyms": [
+                "porch"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "intents": [
+      {
+        "name": "AMAZON.CancelIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.HelpIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.MoreIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.NavigateHomeIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.NavigateSettingsIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.NextIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.PageDownIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.PageUpIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.PreviousIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.ScrollDownIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.ScrollLeftIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.ScrollRightIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.ScrollUpIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.StopIntent",
+        "samples": []
+      },
+      {
+        "name": "LastAlarm",
+        "samples": [
+          "last alarm from {Location}",
+          "alarm from {Location}",
+          "for alarm from {Location}",
+          "for last alarm from {Location}",
+          "for last alarm {Location}",
+          "for latest alarm {Location}",
+          "for latest alarm from {Location}",
+          "for recent alarm from {Location}",
+          "for recent alarm {Location}",
+          "alarm {Location}"
+        ],
+        "slots": [
+          {
+            "name": "Location",
+            "type": "Location"
+          }
+        ]
+      }
+    ],
+    "invocationName": "zone minder"
+  }
+}

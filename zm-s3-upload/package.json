@@ -1,0 +1,26 @@
+{
+    "name": "zm-s3-upload",
+    "version": "0.1.0",
+    "author": "Lindo St. Angel <lindostangel@gmai.com>",
+    "description": "uploads zoneminder alarm frames to aws s3",
+    "license": "MIT",
+    "engines": {
+        "node": ">=6.12.2"
+    },
+    "dependencies": {
+        "mysql": ">=2.15.0",
+        "aws-sdk": ">=2.202.0",
+        "winston": ">=2.4.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/goruck/smart-zoneminder/zm-s3-upload"
+    },
+    "bugs": {
+        "url": "https://github.com/goruck/smart-zoneminder/issues"
+    },
+    "keywords": [
+        "zoneminder",
+        "s3"
+    ]
+}
