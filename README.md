@@ -15,7 +15,8 @@ My high level goals and associated requirements for this project are shown below
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.** This lead to the requirement to use a higher-level object and person detection algorithm based on AWS Rekognition.
 3. **Make it much easier to access ZoneMinder information.** This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example because an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search. 
 4. **Have low implementation and operating costs.*** This lead to the requirement to leverage existing components where possible and make economical use of the AWS service. An operating cost of less than $10 per year is the goal.
-5. **Learn about, and show others how to use, ZoneMinder, Alexa and the AWS Services.***
+5. ***Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa.***
+6. **Learn about, and show others how to use, ZoneMinder, Alexa and the AWS Services.**
 
 # System Architecture
 The figure below shows the smart-zoneminder system architecture.
