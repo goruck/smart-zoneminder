@@ -19,8 +19,8 @@ exports.handler = (event, context, callback) => {
     var params = {
         Image: {
             S3Object: {Bucket: bucket, Name: filename }},
-        MaxLabels: 100,
-        MinConfidence: 0.0
+        MaxLabels: 10,
+        MinConfidence: 90.0
     };
     
     // Call detectLabels
