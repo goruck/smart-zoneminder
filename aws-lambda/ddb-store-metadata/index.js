@@ -44,7 +44,8 @@ exports.handler = (event, context, callback) => {
         var zmFrameId    = alarmInfoArr[2].replace(/\D/g, '');
         var zmEventHour  = alarmInfoArr[3];
         var zmEventMin   = alarmInfoArr[4];
-        var zmEventSec   = alarmInfoArr[5].replace('.jpg', '');
+        var zmEventSec   = alarmInfoArr[5];
+        var zmEventmSec  = alarmInfoArr[6].replace('.jpg', '');
     }
     catch(err) {
         var errorMessage =  'Error in [ddb-store-metadata S3Key parse].\r' + 
@@ -55,7 +56,7 @@ exports.handler = (event, context, callback) => {
     }
     
     var tempDateTime = new Date(zmEventYear, (zmEventMonth - 1), zmEventDay,
-                                zmEventHour, zmEventMin, zmEventSec);
+                                zmEventHour, zmEventMin, zmEventSec, zmEventmSec);
                                 
     //console.log('temp ts: '+tempDateTime);
                         
@@ -75,8 +76,8 @@ exports.handler = (event, context, callback) => {
             'ZmCameraName'    : zmCameraName,
             'ZmEventDateTime' : zmEventDateTime.toISOString(),
             'ZmEventName'     : zmEventName,
-            'ZmEventId'       : zmEventId,
-            'ZmFrameId '      : zmFrameId,
+            'ZmEventId'       : parseInt(zmEventId, 10),
+            'ZmFrameId'       : parseInt(zmFrameId, 10),
             'S3Key'           : S3Key,
             'S3DateTime'      : S3DateTime,
             //'Alert'           : alert, // Step saves only Alert = true.

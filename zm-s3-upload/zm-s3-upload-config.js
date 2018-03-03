@@ -52,6 +52,7 @@ var zms3Config = function() {
     * 2) REALLY know what you are doing.
      */
     this.zmQuery = "select f.frameid, f.timestamp as frame_timestamp, f.score, " +
+        "f.delta as frame_delta," +
         "e.name as event_name, e.starttime, m.name as monitor_name, " +
         "au.upload_timestamp, f.eventid " +
         "from Frames f " +

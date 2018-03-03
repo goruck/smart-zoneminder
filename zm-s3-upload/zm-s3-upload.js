@@ -116,7 +116,7 @@ function getFrames() {
                 var imgData = aryRows[cntr];
 
                 // Check for bad image file.
-                if (typeof(imgData) == 'undefined' || typeof(imgData.frame_timestamp) == 'undefined') {
+                if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
                     tLog.writeLogMsg("This Image is bad:", "warning");
                     tLog.writeLogMsg(imgData, "warning");
                     return;
@@ -178,9 +178,16 @@ function getFrames() {
 
         // Build S3 path and key.
         function buildS3PathKey(imgData) {
-            var dtFrame = new Date(imgData.frame_timestamp);
+            const dtFrame = new Date(imgData.frame_timestamp);
 
-            var S3Path = imgData.monitor_name + '/' + dtFrame.getFullYear() +
+            // Fractional part of frame delta is the number of milliseconds into a ZoneMinder Section Length.
+            // See http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html#monitor-tab.
+            // Required since frame_timestamp does not have ms resolution which is needed for unique timestamps.
+            // NB: this assumes all ZoneMinder monitors are in Record’ or ‘Mocord’ mode.
+            // NB: resolution is limited to 10 ms due to default definition of ZM mysql delta field (decimal(8,2)). 
+            const timestampMilliseconds = (imgData.frame_delta % 1).toFixed(3).substring(2);
+
+            const S3Path = imgData.monitor_name + '/' + dtFrame.getFullYear() +
                 '-' + (dtFrame.getMonth() + 1) + '-' + dtFrame.getDate() + '/hour-' + dtFrame.getHours();
 
             if (imgData.event_name === 'New Event') {
@@ -189,10 +196,10 @@ function getFrames() {
                 imgData.event_name = imgData.event_name.replace('-', '_');
             }
 
-            var S3Key = imgData.event_name + '-' + 'ID_' + imgData.eventid + '-' +
+            const S3Key = imgData.event_name + '-' + 'ID_' + imgData.eventid + '-' +
                 'Frame_' + imgData.frameid + '-' +
                 dtFrame.getHours() + '-' + dtFrame.getMinutes() + '-' +
-                dtFrame.getSeconds() + '.jpg';
+                dtFrame.getSeconds() + '-' + timestampMilliseconds + '.jpg';
 
             return S3Path + '/' + S3Key;
         }
