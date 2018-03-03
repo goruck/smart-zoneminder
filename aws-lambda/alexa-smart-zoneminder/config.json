@@ -15,7 +15,7 @@
       "endpointId": "2",
       "manufacturerName": "Axis",
       "modelName": "P1425-LE",
-      "zoneminderName": "EastSide",
+      "zoneminderName": "East",
       "friendlyNames": ["east side", "east", "east side camera"],
       "description": "East Side Camera",
       "resolutions": [{"width":1080, "height":1920}],
