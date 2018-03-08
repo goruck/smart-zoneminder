@@ -28,6 +28,9 @@ let welcomeReprompt = 'Please ask zone minder something.';
 If you set it to true, you will need an image for each item in your data.*/
 const USE_IMAGES_FLAG = true;
 
+// Holds json for items to be displayed on screen, used by several handlers. 
+let listItems = [];
+
 //==============================================================================
 //========================== Event Handlers  ===================================
 //==============================================================================
@@ -225,6 +228,168 @@ var handlers = {
             });
         }
     },
+    // Show a list of recent alarms on the screen for user selection.
+    'Alarms': function() {
+        log('INFO', `Alarm Events: ${JSON.stringify(this.event)}`);
+
+        // Check if user has a display.
+        if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
+            speechOutput = 'Sorry, I need a display to do that.';
+            this.response.speak(speechOutput);
+            this.emit(':responseReady');
+            return;
+        }
+
+        const cameraName = this.event.request.intent.slots.Location.value;
+        log('INFO', `User supplied camera name: ${cameraName}`);
+
+        // Check if user supplied a valid camera name and if so map to zoneminder name.
+        const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
+        log('INFO', `ZM camera name: ${zoneminderCameraName}`);
+        if (zoneminderCameraName === '') {
+            log('ERROR', `Bad camera name: ${cameraName}`);
+            this.response.speak('Sorry, I cannot find that camera name.');
+            this.emit(':responseReady');
+            return;
+        }
+
+        const docClient = new AWS.DynamoDB.DocumentClient(
+            {apiVersion: '2012-10-08', region: configObj.awsRegion}
+        );
+            
+        const params = {
+            TableName : configObj.zmDdbTable,
+            ScanIndexForward : false, // Descending sort order.
+            Limit : 10, // Get at most 10 alarms.
+            ProjectionExpression: 'S3Key, ZmEventDateTime',
+            KeyConditionExpression: 'ZmCameraName = :name',
+            ExpressionAttributeValues: {
+                ':name' : zoneminderCameraName
+            }
+        };
+
+        docClient.query(params, (err, data) => {
+            if (err) {
+                log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
+                this.response.speak('Sorry, I cannot complete the request.');
+                this.emit(':responseReady');
+                return;
+            }
+
+            if (typeof (data.Items[0]) === 'undefined') {
+                this.response.speak('No alarms were found.');
+                this.emit(':responseReady');
+                return;
+            }
+
+            let jsonData = {};
+            let token = 1;
+            listItems = [];
+            const S3Path = 'https://s3-' + configObj.awsRegion +
+                '.amazonaws.com/' + configObj.zmS3Bucket + '/';
+            data.Items.forEach((item) => {
+              if (typeof item.S3Key === 'undefined') return;
+
+              //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
+              const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
+              const imageUrl = S3Path + item.S3Key;
+              
+              jsonData = {
+                "token": token.toString(),
+                "image": {
+                    "contentDescription": cameraName,
+                    "sources": [
+                         {
+                             "url": imageUrl
+                         }
+                     ]
+                },
+                "textContent": {
+                    "primaryText": {
+                        "text": datetime,
+                        "type": "PlainText"
+                    },
+                    "secondaryText": {
+                        "text": "",
+                        "type": "PlainText"
+                    },
+                        "tertiaryText": {
+                        "text": "",
+                        "type": "PlainText"
+                    }
+                }
+              }
+
+              listItems.push(jsonData);
+
+              token++;
+            });
+
+            const content = {
+                hasDisplaySpeechOutput: 'Showing most recent alarms from '+cameraName,
+                templateToken: 'ShowImageList',
+                askOrTell: ':ask',
+                listItems: listItems,
+                hint: 'select number 1',
+                title: 'Most recent alarms from '+cameraName+'.',
+                sessionAttributes: this.attributes
+            };
+
+            /*if (USE_IMAGES_FLAG) {
+                content['backgroundImageUrl'] = S3Path + S3Key;
+            }*/
+
+            renderTemplate.call(this, content);
+        });
+    },
+    // Handle user selecting an item on the screen by touch.
+    'ElementSelected': function() {
+        log('INFO', `ElementSelected: ${JSON.stringify(this.event)}`);
+
+        const item = parseInt(this.event.request.token, 10);
+        const itemUrl = listItems[item - 1].image.sources[0].url;
+        const itemDateTime = listItems[item - 1].textContent.primaryText.text;
+
+        const content = {
+            hasDisplaySpeechOutput: 'Showing selected alarm.',
+            bodyTemplateContent: itemDateTime,
+            backgroundImageUrl: itemUrl,
+            templateToken: 'ShowImage',
+            askOrTell: ':tell',
+            sessionAttributes: this.attributes
+        };
+
+        renderTemplate.call(this, content);
+    },
+    // Handle user selecting an item on the screen by voice.
+    'SelectItem': function() {
+        log('INFO', `SelectItem: ${JSON.stringify(this.event)}`);
+
+        let item = undefined;
+
+        if (isNaN(this.event.request.intent.slots.number.value)) {
+            log('ERROR', `Bad value. ${this.event.request.intent.slots.number.value}`);
+            this.response.speak('Sorry, I cannot complete the request.');
+            this.emit(':responseReady');
+            return;
+        } else {
+            item = parseInt(this.event.request.intent.slots.number.value, 10);
+        }
+
+        const itemUrl = listItems[item - 1].image.sources[0].url;
+        const itemDateTime = listItems[item - 1].textContent.primaryText.text;
+
+        const content = {
+            hasDisplaySpeechOutput: 'Showing selected alarm.',
+            bodyTemplateContent: itemDateTime,
+            backgroundImageUrl: itemUrl,
+            templateToken: 'ShowImage',
+            askOrTell: ':tell',
+            sessionAttributes: this.attributes
+        };
+
+        renderTemplate.call(this, content);
+    },
     'AMAZON.HelpIntent': function () {
         console.log("Help event: " + JSON.stringify(this.event));
         if (supportsDisplay.call(this) || isSimulator.call(this)) {
@@ -255,7 +420,12 @@ var handlers = {
         console.log("Session ended event: " + JSON.stringify(this.event));
         speechOutput = "goodbye";
         this.emit(':tell', speechOutput);
-    }
+    },
+    'Unhandled': function() {
+        console.log('Unhandled event: ' + JSON.stringify(this.event));
+        speechOutput = 'goodbye';
+        this.emit(':tell', speechOutput);
+    },
 };
 
 exports.handler = (event, context) => {
@@ -386,17 +556,105 @@ function isSimulator() {
   return false;
 }
 
-
 function renderTemplate (content) {
    console.log("renderTemplate" + content.templateToken);
-   //learn about the various templates
-   //https://developer.amazon.com/public/solutions/alexa/alexa-skills-kit/docs/display-interface-reference#display-template-reference
-   //
+
+    let response = {};
+   
    switch(content.templateToken) {
-       case "WelcomeScreenView":
-         //Send the response to Alexa
-         this.context.succeed(response);
-         break;
+        case 'ShowImageList':
+            /*let jsonData = {};
+            let listItemArr = [];
+            content.listItems.forEach((item) => {
+              jsonData = {
+                "token": item.token,
+                "image": {
+                    "contentDescription": item.description,
+                    "sources": [
+                         {
+                             "url": item.url
+                         }
+                     ]
+                },
+                "textContent": {
+                    "primaryText": {
+                        "text": item.primaryText,
+                        "type": "PlainText"
+                    },
+                    "secondaryText": {
+                        "text": item.secondaryText,
+                        "type": "PlainText"
+                    },
+                        "tertiaryText": {
+                        "text": item.tertiaryText,
+                        "type": "PlainText"
+                    }
+                }
+              }
+
+              listItemArr.push(jsonData);
+            });*/
+
+            response = {
+                "version": "1.0",
+                "response": {
+                    "directives": [
+                        {
+                            "type": "Display.RenderTemplate",
+                            "backButton": "HIDDEN",
+                            "template": {
+                                "type": "ListTemplate2",
+                                "title": content.title,
+                                "token": content.templateToken,
+                                "listItems": content.listItems
+                            }
+                        },
+                        {
+                            "type": "Hint",
+                            "hint": {
+                                "type": "PlainText",
+                                "text": content.hint
+                            }
+                        }
+                    ],
+                    "outputSpeech": {
+                        "type": "SSML",
+                        "ssml": "<speak>"+content.hasDisplaySpeechOutput+"</speak>"
+                    },
+                    "reprompt": {
+                        "outputSpeech": {
+                            "type": "SSML",
+                            "ssml": ""
+                        }
+                    },
+                    "shouldEndSession": content.askOrTell === ":tell"
+                },
+                "sessionAttributes": content.sessionAttributes
+            }
+
+            if(content.backgroundImageUrl) {
+                // When we have images, create a sources object.
+
+                let sources = [
+                    {
+                        "size": "SMALL",
+                        "url": content.backgroundImageUrl
+                    },
+                    {
+                        "size": "LARGE",
+                        "url": content.backgroundImageUrl
+                    }
+                ];
+
+                // Add the image sources object to the response.
+                response["response"]["directives"][0]["template"]["backgroundImage"] = {};
+                response["response"]["directives"][0]["template"]["backgroundImage"]["sources"] = sources;
+            }
+
+            // Send the response to Alexa.
+            this.context.succeed(response);
+            break;
+
        case "ShowImage":
         //  "hasDisplaySpeechOutput" : response + " " + EXIT_SKILL_MESSAGE,
         //  "bodyTemplateContent" : getFinalScore(this.attributes["quizscore"], this.attributes["counter"]),
@@ -405,7 +663,7 @@ function renderTemplate (content) {
         //  "hint":"start a quiz",
         //  "sessionAttributes" : this.attributes
         //  "backgroundImageUrl"
-        var response = {
+        response = {
           "version": "1.0",
           "response": {
             "directives": [
@@ -473,7 +731,7 @@ function renderTemplate (content) {
          break;
 
        case "ItemDetailsView":
-           var response = {
+           response = {
              "version": "1.0",
              "response": {
                "directives": [
@@ -537,7 +795,7 @@ function renderTemplate (content) {
            break;
        case "MultipleChoiceListView":
        console.log ("listItems "+JSON.stringify(content.listItems));
-           var response = {
+           response = {
               "version": "1.0",
               "response": {
                 "directives": [
@@ -606,7 +864,7 @@ function renderTemplate (content) {
            this.context.succeed(response);
            break;
        case "SingleItemView":
-           var response = {
+           response = {
               "version": "1.0",
               "response": {
                 "directives": [
