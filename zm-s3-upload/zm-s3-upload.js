@@ -39,11 +39,9 @@ console.log('Waiting for first alarm frames...');
 restartProcessing();
 
 function restartProcessing() {
-    var countNotReady = 0;
-
     if(isComplete) {
         //tLog.writeLogMsg("Getting more frames to process.", "info");
-        countNotReady = 0;
+        var countNotReady = 0;
         isComplete = false;
         getFrames();
         setTimeout(restartProcessing, 500);
@@ -132,8 +130,11 @@ function getFrames() {
 
                 // Read image from filesystem, upload to S3 and mark it as uploaded in ZM's database. 
                 fs.readFile(fileName, (error, data) => {
-                    if (error) {
-                        tLog.writeErrMsg('S3 read error: '+error, 'error');
+                    // Handle error - try to get alarm frame again by triggering isComplete flag.
+                    if (error) { 
+                        tLog.writeErrMsg('readFile error: '+error, 'error');
+                        tLog.writeLogMsg('Retry to get alarm frame...', 'info');
+                        isComplete = true;
                         return;
                     }
 
@@ -143,8 +144,11 @@ function getFrames() {
                         Body:   data
                     };
                     s3.putObject(params, (error, data) => {
+                        // Handle error - try to get alarm frame again by triggering isComplete flag. 
                         if (error) {
                             tLog.writeErrMsg('S3 upload error: '+error, 'error');
+                            tLog.writeLogMsg('Retrying to get alarm frame...', 'info');
+                            isComplete = true;
                             return;
                         }
 
