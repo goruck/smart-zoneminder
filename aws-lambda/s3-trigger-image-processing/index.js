@@ -12,7 +12,7 @@ exports.handler = (event, context) => {
     var key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, ' '));
     var params = {
         Bucket: bucket,
-        Key: key,
+        Key: key
     };
  
     // Get the image (validate that an object is there)
@@ -23,11 +23,17 @@ exports.handler = (event, context) => {
             console.log(message);
         } else {
             console.log('New file uploaded:', {bucket: bucket, key : key});
+
+            const jsonData = {
+                "bucket": bucket.toString(),
+                "key": key.toString(),
+                "metadata": data.Metadata
+            };
      
             // Setup the parameters for triggering the step function
             var params = {
-                stateMachineArn: process.env.STEP_MACHINE_ARN, 
-                input: '{"bucket":"'+bucket+'", "key":"'+key+'"}'
+                stateMachineArn: process.env.STEP_MACHINE_ARN,
+                input: JSON.stringify(jsonData)
             };
   
             // Instansiate and run the step function

@@ -17,10 +17,16 @@ exports.handler = (event, context, callback) => {
     //var filename = event.key;
     var S3Key = event.newFilename;
     var S3DateTime = event.newFilenameDate;
-    var alert = event.Alert;
+    //var alert = event.Alert;
     var labels = event.Labels;
+    const zmCameraName = event.metadata.zmmonitorname;
+    const zmEventDateTime = event.metadata.zmframedatetime;
+    const zmEventName = event.metadata.zmeventname;
+    const zmEventId = event.metadata.zmeventid;
+    const zmFrameId = event.metadata.zmframeid;
+    const zmScore = event.metadata.zmscore;
     
-    try {
+    /*try {
         // Make an array of strings from S3Key...
         var split1 = S3Key.split('/');
         // 1st element contains 'archive' (not used).
@@ -53,19 +59,19 @@ exports.handler = (event, context, callback) => {
                             '   Error ['+err+'].';
         console.log(errorMessage);
         callback(err, null);
-    }
+    }*/
     
-    var tempDateTime = new Date(zmEventYear, (zmEventMonth - 1), zmEventDay,
-                                zmEventHour, zmEventMin, zmEventSec, zmEventmSec);
+    /*var tempDateTime = new Date(zmEventYear, (zmEventMonth - 1), zmEventDay,
+                                zmEventHour, zmEventMin, zmEventSec, zmEventmSec);*/
                                 
     //console.log('temp ts: '+tempDateTime);
                         
     // tzOffset = 8 * 60 * 60 * 1000.
     // Assumes daylight savings time.
     // TODO: make this conversion more robust.
-    var tzOffset = 28800000;
+    //var tzOffset = 28800000;
     
-    var zmEventDateTime = new Date(tempDateTime.getTime() + tzOffset);
+    //var zmEventDateTime = new Date(tempDateTime.getTime() + tzOffset);
                                     
     //console.log('TS: '+zmEventDateTime);
     
@@ -74,10 +80,11 @@ exports.handler = (event, context, callback) => {
         TableName: 'ZmAlarmFrames',
         Item: {
             'ZmCameraName'    : zmCameraName,
-            'ZmEventDateTime' : zmEventDateTime.toISOString(),
+            'ZmEventDateTime' : zmEventDateTime,
             'ZmEventName'     : zmEventName,
             'ZmEventId'       : parseInt(zmEventId, 10),
             'ZmFrameId'       : parseInt(zmFrameId, 10),
+            'ZmScore'         : parseInt(zmScore, 10),
             'S3Key'           : S3Key,
             'S3DateTime'      : S3DateTime,
             //'Alert'           : alert, // Step saves only Alert = true.
