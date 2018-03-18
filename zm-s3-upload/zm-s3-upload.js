@@ -18,6 +18,7 @@ var zmConfig = require('./zm-s3-upload-config.js').zms3Config();
 // Globals.
 const fs = require('fs');
 const AWS = require('./node_modules/aws-sdk');
+const uuid = require('./node_modules/uuid4');
 var s3 = new AWS.S3();
 var isComplete = true;
 
@@ -100,6 +101,89 @@ function getFrames() {
 
         var uploadCount = 0;
 
+        // Generate some metadata to assist Rekognition analysis.
+        // Alarm frames typically come in "groups" (sequential frames) within a particular event.
+        // Its likely all alarm frames in a group will be from the same cause.
+        // This can be used to limit Rekognition cloud costs (perhaps at the expense of accuracy).
+        // First check if image array has already been processed due to upload size > MAXCONCURRENTUPLOAD.
+        
+        //let sequenceCounter = 0;
+        //let currentFrameId = aryRows[0].frameid;
+        /*let currentScore = 0;
+        let rowIndex = 0;
+        aryRows.forEach((row) => {*/
+            /*if (row.frameid > currentFrameId + 2) {
+                sequenceCounter = 0;
+            } else {
+                sequenceCounter++;
+            }*/
+
+            /*if (row.score > currentScore) {
+                currentScore = row.score;
+                rowMax = rowIndex;
+                rowIndex++;
+            }
+
+            row.highestScoreInGroup = 'false';*/
+
+            /*if (sequenceCounter === 1) {
+                row.runrek = 'true';
+            } else {
+                row.runrek = 'false';
+            }*/
+
+            //currentFrameId = row.frameid;
+
+            //console.log('seq cntr: '+sequenceCounter);
+            //console.log('currentFrameId: '+currentFrameId);
+            //console.log(row);
+        //});
+
+        /*let markedEventId = 0;
+        let currentFrameId = 0;
+        let rowNumber = 0;
+        aryRows.forEach((row) => {
+            if (row.eventid !== markedEventId) {
+                if (row.frameid <= currentFrameId + 1) {
+                    row.runrek = true;
+                    currentFrameId = row.frameId;
+                    markedEventId = row.eventid;
+                }
+            }
+
+
+            if (typeof row.runRek === 'undefined') {
+                row.runRek = true;
+                return;
+            }
+
+            } else {
+                row.runRek = true;
+                last
+
+        });*/
+
+        /*if (typeof aryRows[0].groupId === 'undefined') {
+            let currentScore = 0;
+            let sequenceNumberInGroup = 0;
+
+            aryRows.forEach((image) => {
+                image.sequenceNumberInGroup = sequenceNumberInGroup;
+                sequenceNumberInGroup++;
+
+                image.groupId = uuid();
+                
+                image.groupSize = aryRows.length;
+
+                if (image.score >= currentScore) {
+                    currentScore = image.score;
+                    image.highestScoreInGroup = true;
+                } else {
+                    image.highestScoreInGroup = false;
+                }
+            });
+        }*/
+
         //tLog.writeLogMsg('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete, 'info');
 
         // Asynchronous Process inside a javascript for loop.
@@ -126,7 +210,7 @@ function getFrames() {
                 // Build path to image file name. 
                 var fileName = buildFilePath(imgData);
 
-                tLog.writeLogMsg("The file: " + fileName + " will be saved to: " + S3PathKey, "info");
+                tLog.writeLogMsg('The file: ' + fileName + ' will be saved to: ' + S3PathKey, 'info');
 
                 // Read image from filesystem, upload to S3 and mark it as uploaded in ZM's database. 
                 fs.readFile(fileName, (error, data) => {
@@ -138,10 +222,31 @@ function getFrames() {
                         return;
                     }
 
+                    // Calculate frame datetime with ms resolution and convert to Zulu time.
+                    const dtFrame = new Date(imgData.frame_timestamp);
+                    const timestampMs = (imgData.frame_delta % 1).toFixed(3).substring(2);
+                    const dtFrameMsLocal = new Date(dtFrame.getFullYear(), (dtFrame.getMonth() + 1),
+                        dtFrame.getDate(), dtFrame.getHours(), dtFrame.getMinutes(),
+                        dtFrame.getSeconds(), timestampMs);
+                    // ms offset between local time and UTC.
+                    // tzOffset = 8 * 60 * 60 * 1000. // daylight savings
+                    // tzOffset = 7 * 60 * 60 * 1000. // standard time
+                    // TODO: make this conversion more robust.
+                    const tzOffset = 25200000;
+                    const dtFrameMsZulu = new Date(dtFrameMsLocal.getTime() + tzOffset);
+                    
                     const params = {
                         Bucket: 'zm-alarm-frames',
-                        Key:    'upload/' + S3PathKey,
-                        Body:   data
+                        Key: 'upload/' + S3PathKey,
+                        Body: data,
+                        Metadata: {
+                            'zmMonitorName': imgData.monitor_name,
+                            'zmEventName': imgData.event_name,
+                            'zmEventId': imgData.eventid.toString(),
+                            'zmFrameId': imgData.frameid.toString(),
+                            'zmFrameDatetime': dtFrameMsZulu.toISOString(),
+                            'zmScore': imgData.score.toString()
+                        }
                     };
                     s3.putObject(params, (error, data) => {
                         // Handle error - try to get alarm frame again by triggering isComplete flag. 
