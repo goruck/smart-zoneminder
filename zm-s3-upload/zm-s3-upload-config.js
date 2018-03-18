@@ -60,7 +60,7 @@ var zms3Config = function() {
         "join Monitors m on e.monitorid = m.id " +
         "left join alarm_uploaded au on (au.frameid = f.frameid and au.eventid = f.eventid) " +
         "where f.type = ? " +
-        "and f.timestamp > '2018-02-04 06:30:00' and upload_timestamp is null limit 0,?";
+        "and f.timestamp > '2018-03-16 20:05:00' and upload_timestamp is null limit 0,?";
 
     return this;
 }
