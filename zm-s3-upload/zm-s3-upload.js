@@ -222,18 +222,12 @@ function getFrames() {
                         return;
                     }
 
-                    // Calculate frame datetime with ms resolution and convert to Zulu time.
+                    // Calculate frame datetime with ms resolution.
                     const dtFrame = new Date(imgData.frame_timestamp);
                     const timestampMs = (imgData.frame_delta % 1).toFixed(3).substring(2);
-                    const dtFrameMsLocal = new Date(dtFrame.getFullYear(), (dtFrame.getMonth() + 1),
+                    const dtFrameMs = new Date(dtFrame.getFullYear(), dtFrame.getMonth(),
                         dtFrame.getDate(), dtFrame.getHours(), dtFrame.getMinutes(),
                         dtFrame.getSeconds(), timestampMs);
-                    // ms offset between local time and UTC.
-                    // tzOffset = 8 * 60 * 60 * 1000. // daylight savings
-                    // tzOffset = 7 * 60 * 60 * 1000. // standard time
-                    // TODO: make this conversion more robust.
-                    const tzOffset = 25200000;
-                    const dtFrameMsZulu = new Date(dtFrameMsLocal.getTime() + tzOffset);
                     
                     const params = {
                         Bucket: 'zm-alarm-frames',
@@ -244,7 +238,7 @@ function getFrames() {
                             'zmEventName': imgData.event_name,
                             'zmEventId': imgData.eventid.toString(),
                             'zmFrameId': imgData.frameid.toString(),
-                            'zmFrameDatetime': dtFrameMsZulu.toISOString(),
+                            'zmFrameDatetime': dtFrameMs.toISOString(),
                             'zmScore': imgData.score.toString()
                         }
                     };
