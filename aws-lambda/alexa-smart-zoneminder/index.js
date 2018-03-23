@@ -41,10 +41,6 @@ var handlers = {
     'LastAlarm': function() {
         log('INFO', `LastAlarm Event: ${JSON.stringify(this.event)}`);
 
-        const docClient = new AWS.DynamoDB.DocumentClient(
-            {apiVersion: '2012-10-08', region: configObj.awsRegion}
-        );
-
         const cameraName = this.event.request.intent.slots.Location.value;
 
         log('INFO', `User supplied camera name: ${cameraName}`);
@@ -54,22 +50,11 @@ var handlers = {
             const cameraConfigArray = configObj.cameras;
             let queryResultArray = [];
             let queryCount = 0;
-    
+
             // Use .forEach() to iterate since it creates its own function closure.
             // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
             cameraConfigArray.forEach((element) => {
-                const params = {
-                    TableName : "ZmAlarmFrames",
-                    ScanIndexForward : false, // Descending sort order.
-                    Limit : 1,  // First item returned will be the image w/latest datetime.
-                    ProjectionExpression:"ZmEventDateTime, S3Key",
-                    KeyConditionExpression: "ZmCameraName = :name",
-                    ExpressionAttributeValues: {
-                        ":name" : element.zoneminderName
-                    }
-                };                    
-
-                docClient.query(params, (err, data) => {
+                findLatestAlarm(element.zoneminderName, (err, data) => {
                     if (err) {
                         log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                         this.response.speak('Sorry, I cannot complete the request.');
@@ -77,79 +62,82 @@ var handlers = {
                         return;
                     }
 
-                    if (data.Items[0]) {
-                        const S3Key = data.Items[0].S3Key;
-                        const ZmEventDateTime = data.Items[0].ZmEventDateTime;
+                    if (data !== null) {
+                        // Get latest alarm from this camera.
+                        const S3Key = data.S3Key;
+                        const ZmEventDateTime = data.ZmEventDateTime;
                         queryResultArray.push({'S3Key': S3Key, 'ZmEventDateTime': ZmEventDateTime,
                             'zoneminderName': element.zoneminderName});
                     }
 
                     queryCount++;
 
-                    if (queryCount === cameraConfigArray.length) {
-                        // All queries finished, check if any alarms were found.
-                        if (queryResultArray.length === 0) {
-                            this.response.speak('No alarms were found.');
-                            this.emit(':responseReady');
-                            return;
-                        }
+                    if (queryCount < cameraConfigArray.length) { return; }
 
-                        // Sort alarms by datetime in decending order.
-                        queryResultArray.sort((a, b) => {
-                            const dateTimeA = new Date(a.ZmEventDateTime);
-                            const dateTimeB = new Date(b.ZmEventDateTime);
-                            
-                            if (dateTimeA < dateTimeB) { return -1; }
-
-                            if (dateTimeA > dateTimeB) { return 1; }
-
-                            // datetimes must be equal
-                            return 0;
-                        });
-
-                        // Get alarm with latest datetime.
-                        const maxArrElem = queryResultArray.length - 1;
-                        const S3Key = queryResultArray[maxArrElem].S3Key;
-                        const ZmEventDateTime = queryResultArray[maxArrElem].ZmEventDateTime;
-                        const ZmCameraName = queryResultArray[maxArrElem].zoneminderName;
-                             
-                        // Check if user has a display and if not just return alarm info w/o image.
-                        if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-                            speechOutput = 'Last alarm was from '+ZmCameraName+' on '+
-                                timeConverter(Date.parse(ZmEventDateTime));
-                            this.response.speak(speechOutput);
-                            this.emit(':responseReady');
-                            return;
-                        }
-
-                        log('INFO', `S3 Key of latest alarm image: ${S3Key} from ${ZmEventDateTime}`);
-
-                        // Check for valid image.
-                        if (typeof S3Key === 'undefined') {
-                            log('ERROR', `Bad image file`);
-                            this.response.speak('Sorry, I cannot complete the request.');
-                            this.emit(':responseReady');
-                            return;
-                        }
-
-                        const S3Path = 'https://s3-' + configObj.awsRegion +
-                            '.amazonaws.com/' + configObj.zmS3Bucket + '/';
-
-                        const content = {
-                            hasDisplaySpeechOutput: 'Showing most recent alarm from '+ZmCameraName+' camera.',
-                            bodyTemplateContent: timeConverter(Date.parse(ZmEventDateTime)),
-                            templateToken: 'ShowImage',
-                            askOrTell: ':tell',
-                            sessionAttributes: this.attributes
-                        };
-
-                        if (USE_IMAGES_FLAG) {
-                            content['backgroundImageUrl'] = S3Path + S3Key;
-                        }
-
-                        renderTemplate.call(this, content);
+                    // All queries finished, check if any alarms were found.
+                    if (queryResultArray.length === 0) {
+                        this.response.speak('No alarms were found.');
+                        this.emit(':responseReady');
+                        return;
                     }
-                });       
+
+                    // Sort all alarms by datetime in decending order.
+                    queryResultArray.sort((a, b) => {
+                        const dateTimeA = new Date(a.ZmEventDateTime);
+                        const dateTimeB = new Date(b.ZmEventDateTime);
+                            
+                        if (dateTimeA < dateTimeB) { return -1; }
+
+                        if (dateTimeA > dateTimeB) { return 1; }
+
+                        // datetimes must be equal
+                        return 0;
+                    });
+
+                    // Get alarm with latest datetime.
+                    const maxArrElem = queryResultArray.length - 1;
+                    const S3Key = queryResultArray[maxArrElem].S3Key;
+                    const ZmEventDateTime = queryResultArray[maxArrElem].ZmEventDateTime;
+                    const ZmCameraName = queryResultArray[maxArrElem].zoneminderName;
+                             
+                    // Check if user has a display and if not just return alarm info w/o image.
+                    if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
+                        speechOutput = 'Last alarm was from '+ZmCameraName+' on '+
+                            timeConverter(Date.parse(ZmEventDateTime));
+                        this.response.speak(speechOutput);
+                        this.emit(':responseReady');
+                        return;
+                    }
+
+                    log('INFO', `S3 Key of latest alarm image: ${S3Key} from ${ZmEventDateTime}`);
+
+                    // Check for valid image.
+                    if (typeof S3Key === 'undefined') {
+                        log('ERROR', `Bad image file`);
+                        this.response.speak('Sorry, I cannot complete the request.');
+                        this.emit(':responseReady');
+                        return;
+                    }
+
+                    const S3Path = 'https://s3-' + configObj.awsRegion +
+                        '.amazonaws.com/' + configObj.zmS3Bucket + '/';
+
+                    const content = {
+                        hasDisplaySpeechOutput: 'Showing most recent alarm from '+ZmCameraName+' camera.',
+                        bodyTemplateContent: timeConverter(Date.parse(ZmEventDateTime)),
+                        templateToken: 'ShowImage',
+                        askOrTell: ':tell',
+                        sessionAttributes: this.attributes
+                    };
+
+                    if (USE_IMAGES_FLAG) {
+                        content['backgroundImageUrl'] = S3Path + S3Key;
+                    }
+
+                    renderTemplate.call(this, content);
+
+                    return;
+                });
             });
         } else {
             // Check if user supplied a valid camera name and if so map to zoneminder name.
@@ -161,19 +149,8 @@ var handlers = {
                 this.emit(':responseReady');
                 return;
             }
-            
-            const params = {
-                TableName : configObj.zmDdbTable,
-                ScanIndexForward : false, // Descending sort order.
-                Limit : 1, // First item returned will be the image w/latest datetime. 
-                ProjectionExpression: 'S3Key, ZmEventDateTime',
-                KeyConditionExpression: 'ZmCameraName = :name',
-                ExpressionAttributeValues: {
-                    ':name'  : zoneminderCameraName
-                }
-            };
 
-            docClient.query(params, (err, data) => {
+            findLatestAlarm(zoneminderCameraName, (err, data) => {
                 if (err) {
                     log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                     this.response.speak('Sorry, I cannot complete the request.');
@@ -181,14 +158,14 @@ var handlers = {
                     return;
                 }
 
-                if (typeof data.Items[0] === 'undefined') {
+                if (data === null) {
                     this.response.speak('No alarms were found.');
                     this.emit(':responseReady');
                     return;
                 }
 
-                const S3Key = data.Items[0].S3Key;
-                const ZmEventDateTime = data.Items[0].ZmEventDateTime;
+                const S3Key = data.S3Key;
+                const ZmEventDateTime = data.ZmEventDateTime;
 
                 // Check if user has a display and if not just return alarm info w/o image.
                 if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
@@ -225,6 +202,8 @@ var handlers = {
                 }
 
                 renderTemplate.call(this, content);
+
+                return;
             });
         }
     },
@@ -458,6 +437,51 @@ function alexaCameraToZoneminderCamera(alexaCameraName) {
     });
 
     return zoneminderCameraName;
+}
+
+/*
+ * Find most recent alarm frame from a given camera name.
+ */
+function findLatestAlarm(cameraName, callback) {
+    const docClient = new AWS.DynamoDB.DocumentClient(
+        {apiVersion: '2012-10-08', region: configObj.awsRegion}
+    );
+
+    let params = {
+        TableName: "ZmAlarmFrames",
+        ScanIndexForward: false, // Descending sort order.
+        ProjectionExpression: "ZmEventDateTime, S3Key",
+        KeyConditionExpression: "ZmCameraName = :name",
+        FilterExpression: "Alert = :state",
+        ExpressionAttributeValues: {
+            ":name": cameraName,
+            ":state": "true"
+            }
+        };
+                    
+    function queryExecute() {
+        docClient.query(params, (err, data) => {
+            if (err) {
+                return callback(err, null);
+            }
+                            
+            // Found a true positive (Alert = true).
+            if (data.Items[0]) {
+                return callback(null, data.Items[0]);
+            }
+
+            // No true positives found yet but there are more records to query.
+            if (data.LastEvaluatedKey) {
+                params.ExclusiveStartKey = data.LastEvaluatedKey;
+                queryExecute();
+            }
+
+            // No true positives were found.    
+            return callback(null, null);
+        });
+    }    
+                    
+    queryExecute();
 }
 
 //==============================================================================
@@ -912,12 +936,15 @@ function renderTemplate (content) {
 //======================== Misc Helper Functions  ==============================
 //==============================================================================
 /*
- * Converts Unix timestamp in ms to human understandable date and time of day.
+ * Converts Unix timestamp (in Zulu) in ms to human understandable date and time of day.
  */
 function timeConverter(unix_timestamp) {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     // tzDiff = 8 * 60 * 60 * 1000 - Pacific time is 8 hours behind UTC (daylight savings).
-    const tzDiff = 28800000;
+    //const tzDiff = 28800000;
+    // tzOiff = 7 * 60 * 60 * 1000. // standard time.
+    // TODO: make this conversion more robust.
+    const tzDiff = 25200000;
     // Create a new JavaScript Date object based on the timestamp.
     // Multiplied by 1000 so that the argument is in milliseconds, not seconds.
     let date = new Date(unix_timestamp - tzDiff);
