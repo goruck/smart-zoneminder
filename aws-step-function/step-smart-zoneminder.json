@@ -56,26 +56,7 @@
                 "ErrorEquals": ["States.ALL"],
                 "Next": "error-handler"
             }],
-            "Next": "make-alert-decision"
-        },
-        "make-alert-decision": {
-            "Type": "Choice",
-            "Choices": [{
-                    "Variable": "$.Alert",
-                    "StringEquals": "true",
-                    "Next": "ddb-store-metadata"
-                },
-                {
-                    "Variable": "$.Alert",
-                    "StringEquals": "false",
-                    "Next": "No-Op"
-                }
-            ],
-            "Default": "No-Op"
-        },
-        "No-Op": {
-            "Type": "Pass",
-            "End" : true
+            "Next": "ddb-store-metadata"
         },
         "ddb-store-metadata": {
             "Type": "Task",
