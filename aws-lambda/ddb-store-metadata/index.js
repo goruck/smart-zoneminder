@@ -5,20 +5,20 @@ exports.handler = (event, context, callback) => {
     // Normally the last processing step. 
     //
 
-    var AWS = require('aws-sdk');
+    const AWS = require('aws-sdk');
 
     // Create the DynamoDB service object
-    var documentClient = new AWS.DynamoDB.DocumentClient(
-                             {apiVersion: '2012-10-08',
-                             region: process.env.AWS_REGION});
+    const documentClient = new AWS.DynamoDB.DocumentClient(
+                               {apiVersion: '2012-10-08',
+                               region: process.env.AWS_REGION});
     
     // Retrieve parameters from export handler event
     //var bucket = event.bucket;
     //var filename = event.key;
-    var S3Key = event.newFilename;
-    var S3DateTime = event.newFilenameDate;
-    //var alert = event.Alert;
-    var labels = event.Labels;
+    const S3Key = event.newFilename;
+    const S3DateTime = event.newFilenameDate;
+    const alertState = event.Alert;
+    const labels = event.Labels;
     const zmCameraName = event.metadata.zmmonitorname;
     const zmEventDateTime = event.metadata.zmframedatetime;
     const zmEventName = event.metadata.zmeventname;
@@ -75,8 +75,8 @@ exports.handler = (event, context, callback) => {
                                     
     //console.log('TS: '+zmEventDateTime);
     
-    // Paramaters for DynamoDB.
-    var params = {
+    // Parameters for DynamoDB.
+    const params = {
         TableName: 'ZmAlarmFrames',
         Item: {
             'ZmCameraName'    : zmCameraName,
@@ -87,7 +87,7 @@ exports.handler = (event, context, callback) => {
             'ZmScore'         : parseInt(zmScore, 10),
             'S3Key'           : S3Key,
             'S3DateTime'      : S3DateTime,
-            //'Alert'           : alert, // Step saves only Alert = true.
+            'Alert'           : alertState,
             'Labels'          : labels
         }
     };
