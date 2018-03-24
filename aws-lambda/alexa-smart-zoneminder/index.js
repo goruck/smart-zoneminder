@@ -113,7 +113,7 @@ var handlers = {
 
                     // Check for valid image.
                     if (typeof S3Key === 'undefined') {
-                        log('ERROR', `Bad image file`);
+                        log('ERROR', 'Bad image file');
                         this.response.speak('Sorry, I cannot complete the request.');
                         this.emit(':responseReady');
                         return;
@@ -180,7 +180,7 @@ var handlers = {
 
                 // Check for valid image.
                 if (typeof S3Key === 'undefined') {
-                    log('ERROR', `Bad image file`);
+                    log('ERROR', 'Bad image file');
                     this.response.speak('Sorry, I cannot complete the request.');
                     this.emit(':responseReady');
                     return;
@@ -267,41 +267,41 @@ var handlers = {
             const S3Path = 'https://s3-' + configObj.awsRegion +
                 '.amazonaws.com/' + configObj.zmS3Bucket + '/';
             data.Items.forEach((item) => {
-              if (typeof item.S3Key === 'undefined') return;
+                if (typeof item.S3Key === 'undefined') return;
 
-              //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
-              const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
-              const imageUrl = S3Path + item.S3Key;
+                //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
+                const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
+                const imageUrl = S3Path + item.S3Key;
               
-              jsonData = {
-                "token": token.toString(),
-                "image": {
-                    "contentDescription": cameraName,
-                    "sources": [
-                         {
-                             "url": imageUrl
-                         }
-                     ]
-                },
-                "textContent": {
-                    "primaryText": {
-                        "text": datetime,
-                        "type": "PlainText"
+                jsonData = {
+                    'token': token.toString(),
+                    'image': {
+                        'contentDescription': cameraName,
+                        'sources': [
+                            {
+                                'url': imageUrl
+                            }
+                        ]
                     },
-                    "secondaryText": {
-                        "text": "",
-                        "type": "PlainText"
-                    },
-                        "tertiaryText": {
-                        "text": "",
-                        "type": "PlainText"
+                    'textContent': {
+                        'primaryText': {
+                            'text': datetime,
+                            'type': 'PlainText'
+                        },
+                        'secondaryText': {
+                            'text': '',
+                            'type': 'PlainText'
+                        },
+                        'tertiaryText': {
+                            'text': '',
+                            'type': 'PlainText'
+                        }
                     }
-                }
-              }
+                };
 
-              listItems.push(jsonData);
+                listItems.push(jsonData);
 
-              token++;
+                token++;
             });
 
             const content = {
@@ -370,34 +370,34 @@ var handlers = {
         renderTemplate.call(this, content);
     },
     'AMAZON.HelpIntent': function () {
-        console.log("Help event: " + JSON.stringify(this.event));
+        console.log('Help event: ' + JSON.stringify(this.event));
         if (supportsDisplay.call(this) || isSimulator.call(this)) {
             let content = {
-                "hasDisplaySpeechOutput" : welcomeReprompt,
-                "title" : "Help Information.",
-                "textContent" : welcomeReprompt,
-                "templateToken" : "SingleItemView",
-                "askOrTell": ":ask",
-                "sessionAttributes" : this.attributes
+                'hasDisplaySpeechOutput' : welcomeReprompt,
+                'title' : 'Help Information.',
+                'textContent' : welcomeReprompt,
+                'templateToken' : 'SingleItemView',
+                'askOrTell': ':ask',
+                'sessionAttributes' : this.attributes
             };
             renderTemplate.call(this, content);
         } else {
-            this.emit(":ask", welcomeReprompt);
+            this.emit(':ask', welcomeReprompt);
         }
     },
     'AMAZON.CancelIntent': function () {
-        console.log("Cancel event: " + JSON.stringify(this.event));
-        speechOutput = "goodbye";
+        console.log('Cancel event: ' + JSON.stringify(this.event));
+        speechOutput = 'goodbye';
         this.emit(':tell', speechOutput);
     },
     'AMAZON.StopIntent': function () {
-        console.log("Stop event: " + JSON.stringify(this.event));
-        speechOutput = "goodbye";
+        console.log('Stop event: ' + JSON.stringify(this.event));
+        speechOutput = 'goodbye';
         this.emit(':tell', speechOutput);
     },
     'SessionEndedRequest': function () {
-        console.log("Session ended event: " + JSON.stringify(this.event));
-        speechOutput = "goodbye";
+        console.log('Session ended event: ' + JSON.stringify(this.event));
+        speechOutput = 'goodbye';
         this.emit(':tell', speechOutput);
     },
     'Unhandled': function() {
@@ -448,16 +448,16 @@ function findLatestAlarm(cameraName, callback) {
     );
 
     let params = {
-        TableName: "ZmAlarmFrames",
+        TableName: 'ZmAlarmFrames',
         ScanIndexForward: false, // Descending sort order.
-        ProjectionExpression: "ZmEventDateTime, S3Key",
-        KeyConditionExpression: "ZmCameraName = :name",
-        FilterExpression: "Alert = :state",
+        ProjectionExpression: 'ZmEventDateTime, S3Key',
+        KeyConditionExpression: 'ZmCameraName = :name',
+        FilterExpression: 'Alert = :state',
         ExpressionAttributeValues: {
-            ":name": cameraName,
-            ":state": "true"
-            }
-        };
+            ':name': cameraName,
+            ':state': 'true'
+        }
+    };
                     
     function queryExecute() {
         docClient.query(params, (err, data) => {
@@ -491,17 +491,17 @@ function delegateToAlexa() {
     //console.log("in delegateToAlexa");
     //console.log("current dialogState: "+ this.event.request.dialogState);
 
-    if (this.event.request.dialogState === "STARTED") {
+    if (this.event.request.dialogState === 'STARTED') {
         //console.log("in dialog state STARTED");
         var updatedIntent = this.event.request.intent;
         //optionally pre-fill slots: update the intent object with slot values for which
         //you have defaults, then return Dialog.Delegate with this updated intent
         // in the updatedIntent property
-        this.emit(":delegate", updatedIntent);
-    } else if (this.event.request.dialogState !== "COMPLETED") {
+        this.emit(':delegate', updatedIntent);
+    } else if (this.event.request.dialogState !== 'COMPLETED') {
         //console.log("in dialog state COMPLETED");
         // Return a Dialog.Delegate directive with no updatedIntent property
-        this.emit(":delegate");
+        this.emit(':delegate');
     } else {
         //console.log("dialog finished");
         //console.log("returning: "+ JSON.stringify(this.event.request.intent));
@@ -514,7 +514,7 @@ function delegateToAlexa() {
 //==============================================================================
 //============================ S3 Helper Functions  ============================
 //==============================================================================
-var AWS = require("aws-sdk");
+var AWS = require('aws-sdk');
 var s3 = new AWS.S3();
 
 // Get file from S3
@@ -540,7 +540,7 @@ function putS3File(bucketName, fileName, data, callback) {
         Bucket: bucketName,
         Key: fileName,
         Body: data,
-        ACL: "public-read", // TODO: find way to restrict access to this lambda function
+        ACL: 'public-read', // TODO: find way to restrict access to this lambda function
         Expires: expirationDate
     };
     s3.putObject(params, function (err, data) {
@@ -554,7 +554,7 @@ function uploadS3File(bucketName, fileName, data, callback) {
         Bucket: bucketName,
         Key: fileName,
         Body: data,
-        ACL: "public-read", // TODO: find way to restrict access to this lambda function
+        ACL: 'public-read', // TODO: find way to restrict access to this lambda function
     };
     s3.upload(params, function(err, data) {
         callback(err, data);
@@ -565,29 +565,29 @@ function uploadS3File(bucketName, fileName, data, callback) {
 //===================== Echo Show Helper Functions  ============================
 //==============================================================================
 function supportsDisplay() {
-  var hasDisplay =
+    var hasDisplay =
     this.event.context &&
     this.event.context.System &&
     this.event.context.System.device &&
     this.event.context.System.device.supportedInterfaces &&
-    this.event.context.System.device.supportedInterfaces.Display
+    this.event.context.System.device.supportedInterfaces.Display;
 
-  return hasDisplay;
+    return hasDisplay;
 }
 
 function isSimulator() {
-  var isSimulator = !this.event.context; //simulator doesn't send context
-  return false;
+    var isSimulator = !this.event.context; //simulator doesn't send context
+    return false;
 }
 
 function renderTemplate (content) {
-   console.log("renderTemplate" + content.templateToken);
+    console.log('renderTemplate' + content.templateToken);
 
     let response = {};
    
-   switch(content.templateToken) {
-        case 'ShowImageList':
-            /*let jsonData = {};
+    switch(content.templateToken) {
+    case 'ShowImageList':
+        /*let jsonData = {};
             let listItemArr = [];
             content.listItems.forEach((item) => {
               jsonData = {
@@ -619,67 +619,67 @@ function renderTemplate (content) {
               listItemArr.push(jsonData);
             });*/
 
-            response = {
-                "version": "1.0",
-                "response": {
-                    "directives": [
-                        {
-                            "type": "Display.RenderTemplate",
-                            "backButton": "HIDDEN",
-                            "template": {
-                                "type": "ListTemplate2",
-                                "title": content.title,
-                                "token": content.templateToken,
-                                "listItems": content.listItems
-                            }
-                        },
-                        {
-                            "type": "Hint",
-                            "hint": {
-                                "type": "PlainText",
-                                "text": content.hint
-                            }
-                        }
-                    ],
-                    "outputSpeech": {
-                        "type": "SSML",
-                        "ssml": "<speak>"+content.hasDisplaySpeechOutput+"</speak>"
-                    },
-                    "reprompt": {
-                        "outputSpeech": {
-                            "type": "SSML",
-                            "ssml": ""
+        response = {
+            'version': '1.0',
+            'response': {
+                'directives': [
+                    {
+                        'type': 'Display.RenderTemplate',
+                        'backButton': 'HIDDEN',
+                        'template': {
+                            'type': 'ListTemplate2',
+                            'title': content.title,
+                            'token': content.templateToken,
+                            'listItems': content.listItems
                         }
                     },
-                    "shouldEndSession": content.askOrTell === ":tell"
-                },
-                "sessionAttributes": content.sessionAttributes
-            }
-
-            if(content.backgroundImageUrl) {
-                // When we have images, create a sources object.
-
-                let sources = [
                     {
-                        "size": "SMALL",
-                        "url": content.backgroundImageUrl
-                    },
-                    {
-                        "size": "LARGE",
-                        "url": content.backgroundImageUrl
+                        'type': 'Hint',
+                        'hint': {
+                            'type': 'PlainText',
+                            'text': content.hint
+                        }
                     }
-                ];
+                ],
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
+                },
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': ''
+                    }
+                },
+                'shouldEndSession': content.askOrTell === ':tell'
+            },
+            'sessionAttributes': content.sessionAttributes
+        };
+
+        if(content.backgroundImageUrl) {
+            // When we have images, create a sources object.
+
+            let sources = [
+                {
+                    'size': 'SMALL',
+                    'url': content.backgroundImageUrl
+                },
+                {
+                    'size': 'LARGE',
+                    'url': content.backgroundImageUrl
+                }
+            ];
 
                 // Add the image sources object to the response.
-                response["response"]["directives"][0]["template"]["backgroundImage"] = {};
-                response["response"]["directives"][0]["template"]["backgroundImage"]["sources"] = sources;
-            }
+            response['response']['directives'][0]['template']['backgroundImage'] = {};
+            response['response']['directives'][0]['template']['backgroundImage']['sources'] = sources;
+        }
 
-            // Send the response to Alexa.
-            this.context.succeed(response);
-            break;
+        // Send the response to Alexa.
+        this.context.succeed(response);
+        break;
 
-       case "ShowImage":
+    case 'ShowImage':
         //  "hasDisplaySpeechOutput" : response + " " + EXIT_SKILL_MESSAGE,
         //  "bodyTemplateContent" : getFinalScore(this.attributes["quizscore"], this.attributes["counter"]),
         //  "templateToken" : "FinalScoreView",
@@ -688,247 +688,247 @@ function renderTemplate (content) {
         //  "sessionAttributes" : this.attributes
         //  "backgroundImageUrl"
         response = {
-          "version": "1.0",
-          "response": {
-            "directives": [
-              {
-                "type": "Display.RenderTemplate",
-                "backButton": "HIDDEN",
-                "template": {
-                  "type": "BodyTemplate6",
-                  //"title": content.title,
-                  "token": content.templateToken,
-                  "textContent": {
-                    "primaryText": {
-                      "type": "RichText",
-                      "text": "<font size = '3'>"+content.bodyTemplateContent+"</font>"
+            'version': '1.0',
+            'response': {
+                'directives': [
+                    {
+                        'type': 'Display.RenderTemplate',
+                        'backButton': 'HIDDEN',
+                        'template': {
+                            'type': 'BodyTemplate6',
+                            //"title": content.title,
+                            'token': content.templateToken,
+                            'textContent': {
+                                'primaryText': {
+                                    'type': 'RichText',
+                                    'text': '<font size = \'3\'>'+content.bodyTemplateContent+'</font>'
+                                }
+                            }
+                        }
+                    },{
+                        'type': 'Hint',
+                        'hint': {
+                            'type': 'PlainText',
+                            'text': content.hint
+                        }
                     }
-                  }
-                }
-              },{
-                  "type": "Hint",
-                  "hint": {
-                    "type": "PlainText",
-                    "text": content.hint
-                  }
-                }
-            ],
-            "outputSpeech": {
-              "type": "SSML",
-              "ssml": "<speak>"+content.hasDisplaySpeechOutput+"</speak>"
-            },
-            "reprompt": {
-              "outputSpeech": {
-                "type": "SSML",
-                "ssml": ""
-              }
-            },
-            "shouldEndSession": content.askOrTell== ":tell",
+                ],
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
+                },
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': ''
+                    }
+                },
+                'shouldEndSession': content.askOrTell== ':tell',
 
-          },
-          "sessionAttributes": content.sessionAttributes
+            },
+            'sessionAttributes': content.sessionAttributes
 
-        }
+        };
 
         if(content.backgroundImageUrl) {
-          //when we have images, create a sources object
+            //when we have images, create a sources object
 
-          let sources = [
-            {
-              "size": "SMALL",
-              "url": content.backgroundImageUrl
-            },
-            {
-              "size": "LARGE",
-              "url": content.backgroundImageUrl
-            }
-          ];
-          //add the image sources object to the response
-          response["response"]["directives"][0]["template"]["backgroundImage"]={};
-          response["response"]["directives"][0]["template"]["backgroundImage"]["sources"]=sources;
+            let sources = [
+                {
+                    'size': 'SMALL',
+                    'url': content.backgroundImageUrl
+                },
+                {
+                    'size': 'LARGE',
+                    'url': content.backgroundImageUrl
+                }
+            ];
+            //add the image sources object to the response
+            response['response']['directives'][0]['template']['backgroundImage']={};
+            response['response']['directives'][0]['template']['backgroundImage']['sources']=sources;
         }
 
 
 
-         //Send the response to Alexa
-         this.context.succeed(response);
-         break;
+        //Send the response to Alexa
+        this.context.succeed(response);
+        break;
 
-       case "ItemDetailsView":
-           response = {
-             "version": "1.0",
-             "response": {
-               "directives": [
-                 {
-                   "type": "Display.RenderTemplate",
-                   "template": {
-                     "type": "BodyTemplate3",
-                     "title": content.bodyTemplateTitle,
-                     "token": content.templateToken,
-                     "textContent": {
-                       "primaryText": {
-                         "type": "RichText",
-                         "text": "<font size = '5'>"+content.bodyTemplateContent+"</font>"
-                       }
-                     },
-                     "backButton": "HIDDEN"
-                   }
-                 }
-               ],
-               "outputSpeech": {
-                 "type": "SSML",
-                 "ssml": "<speak>"+content.hasDisplaySpeechOutput+"</speak>"
-               },
-               "reprompt": {
-                 "outputSpeech": {
-                   "type": "SSML",
-                   "ssml": "<speak>"+content.hasDisplayRepromptText+"</speak>"
-                 }
-               },
-               "shouldEndSession": content.askOrTell== ":tell",
-               "card": {
-                 "type": "Simple",
-                 "title": content.simpleCardTitle,
-                 "content": content.simpleCardContent
-               }
-             },
-             "sessionAttributes": content.sessionAttributes
+    case 'ItemDetailsView':
+        response = {
+            'version': '1.0',
+            'response': {
+                'directives': [
+                    {
+                        'type': 'Display.RenderTemplate',
+                        'template': {
+                            'type': 'BodyTemplate3',
+                            'title': content.bodyTemplateTitle,
+                            'token': content.templateToken,
+                            'textContent': {
+                                'primaryText': {
+                                    'type': 'RichText',
+                                    'text': '<font size = \'5\'>'+content.bodyTemplateContent+'</font>'
+                                }
+                            },
+                            'backButton': 'HIDDEN'
+                        }
+                    }
+                ],
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
+                },
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
+                    }
+                },
+                'shouldEndSession': content.askOrTell== ':tell',
+                'card': {
+                    'type': 'Simple',
+                    'title': content.simpleCardTitle,
+                    'content': content.simpleCardContent
+                }
+            },
+            'sessionAttributes': content.sessionAttributes
 
-         }
+        };
 
-          if(content.imageSmallUrl && content.imageLargeUrl) {
+        if(content.imageSmallUrl && content.imageLargeUrl) {
             //when we have images, create a sources object
             //TODO switch template to one without picture?
             let sources = [
-              {
-                "size": "SMALL",
-                "url": content.imageSmallUrl
-              },
-              {
-                "size": "LARGE",
-                "url": content.imageLargeUrl
-              }
+                {
+                    'size': 'SMALL',
+                    'url': content.imageSmallUrl
+                },
+                {
+                    'size': 'LARGE',
+                    'url': content.imageLargeUrl
+                }
             ];
             //add the image sources object to the response
-            response["response"]["directives"][0]["template"]["image"]={};
-            response["response"]["directives"][0]["template"]["image"]["sources"]=sources;
-          }
-          //Send the response to Alexa
-          console.log("ready to respond (ItemDetailsView): "+JSON.stringify(response));
-           this.context.succeed(response);
-           break;
-       case "MultipleChoiceListView":
-       console.log ("listItems "+JSON.stringify(content.listItems));
-           response = {
-              "version": "1.0",
-              "response": {
-                "directives": [
-                  {
-                    "type": "Display.RenderTemplate",
-                    "template": {
-                      "type": "ListTemplate1",
-                      "title": content.listTemplateTitle,
-                      "token": content.templateToken,
-                      "listItems":content.listItems,
-                      "backgroundImage": {
-                        "sources": [
-                          {
-                            "size": "SMALL",
-                            "url": content.backgroundImageSmallUrl
-                          },
-                          {
-                            "size": "LARGE",
-                            "url": content.backgroundImageLargeUrl
-                          }
-                        ]
-                      },
-                      "backButton": "HIDDEN"
+            response['response']['directives'][0]['template']['image']={};
+            response['response']['directives'][0]['template']['image']['sources']=sources;
+        }
+        //Send the response to Alexa
+        console.log('ready to respond (ItemDetailsView): '+JSON.stringify(response));
+        this.context.succeed(response);
+        break;
+    case 'MultipleChoiceListView':
+        console.log ('listItems '+JSON.stringify(content.listItems));
+        response = {
+            'version': '1.0',
+            'response': {
+                'directives': [
+                    {
+                        'type': 'Display.RenderTemplate',
+                        'template': {
+                            'type': 'ListTemplate1',
+                            'title': content.listTemplateTitle,
+                            'token': content.templateToken,
+                            'listItems':content.listItems,
+                            'backgroundImage': {
+                                'sources': [
+                                    {
+                                        'size': 'SMALL',
+                                        'url': content.backgroundImageSmallUrl
+                                    },
+                                    {
+                                        'size': 'LARGE',
+                                        'url': content.backgroundImageLargeUrl
+                                    }
+                                ]
+                            },
+                            'backButton': 'HIDDEN'
+                        }
                     }
-                  }
                 ],
-                "outputSpeech": {
-                  "type": "SSML",
-                  "ssml": "<speak>"+content.hasDisplaySpeechOutput+"</speak>"
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
                 },
-                "reprompt": {
-                  "outputSpeech": {
-                    "type": "SSML",
-                    "ssml": "<speak>"+content.hasDisplayRepromptText+"</speak>"
-                  }
-                },
-                "shouldEndSession": content.askOrTell== ":tell",
-                "card": {
-                  "type": "Simple",
-                  "title": content.simpleCardTitle,
-                  "content": content.simpleCardContent
-                }
-              },
-                "sessionAttributes": content.sessionAttributes
-
-          }
-
-            if(content.backgroundImageLargeUrl) {
-              //when we have images, create a sources object
-              //TODO switch template to one without picture?
-              let sources = [
-                {
-                  "size": "SMALL",
-                  "url": content.backgroundImageLargeUrl
-                },
-                {
-                  "size": "LARGE",
-                  "url": content.backgroundImageLargeUrl
-                }
-              ];
-              //add the image sources object to the response
-              response["response"]["directives"][0]["template"]["backgroundImage"]={};
-              response["response"]["directives"][0]["template"]["backgroundImage"]["sources"]=sources;
-            }
-            console.log("ready to respond (MultipleChoiceList): "+JSON.stringify(response));
-           this.context.succeed(response);
-           break;
-       case "SingleItemView":
-           response = {
-              "version": "1.0",
-              "response": {
-                "directives": [
-                  {
-                    "type": "Display.RenderTemplate",
-                    "template": {
-                      "type": "BodyTemplate1",
-                      "title": content.title,
-                      "token": content.templateToken,
-                      "textContent": {
-                        "primaryText": {
-                        "type": "RichText",
-                        "text": "<font size = '7'>"+content.textContent+"</font>"
-                      }
-                    },
-                      "backButton": "HIDDEN"
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
                     }
-                  }
+                },
+                'shouldEndSession': content.askOrTell== ':tell',
+                'card': {
+                    'type': 'Simple',
+                    'title': content.simpleCardTitle,
+                    'content': content.simpleCardContent
+                }
+            },
+            'sessionAttributes': content.sessionAttributes
+
+        };
+
+        if(content.backgroundImageLargeUrl) {
+            //when we have images, create a sources object
+            //TODO switch template to one without picture?
+            let sources = [
+                {
+                    'size': 'SMALL',
+                    'url': content.backgroundImageLargeUrl
+                },
+                {
+                    'size': 'LARGE',
+                    'url': content.backgroundImageLargeUrl
+                }
+            ];
+            //add the image sources object to the response
+            response['response']['directives'][0]['template']['backgroundImage']={};
+            response['response']['directives'][0]['template']['backgroundImage']['sources']=sources;
+        }
+        console.log('ready to respond (MultipleChoiceList): '+JSON.stringify(response));
+        this.context.succeed(response);
+        break;
+    case 'SingleItemView':
+        response = {
+            'version': '1.0',
+            'response': {
+                'directives': [
+                    {
+                        'type': 'Display.RenderTemplate',
+                        'template': {
+                            'type': 'BodyTemplate1',
+                            'title': content.title,
+                            'token': content.templateToken,
+                            'textContent': {
+                                'primaryText': {
+                                    'type': 'RichText',
+                                    'text': '<font size = \'7\'>'+content.textContent+'</font>'
+                                }
+                            },
+                            'backButton': 'HIDDEN'
+                        }
+                    }
                 ],
-                "outputSpeech": {
-                  "type": "SSML",
-                  "ssml": "<speak>"+content.hasDisplaySpeechOutput+"</speak>"
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
                 },
-                "reprompt": {
-                  "outputSpeech": {
-                    "type": "SSML",
-                    "ssml": ""
-                  }
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': ''
+                    }
                 },
-                "shouldEndSession": content.askOrTell== ":tell",
-              },
-              "sessionAttributes": content.sessionAttributes
-          }
-           console.log("ready to respond (SingleItemView): "+JSON.stringify(response));
-           this.context.succeed(response);
-           break;
-       default:
-          this.response.speak("Thanks for playing, goodbye");
-          this.emit(':responseReady');
-   }
+                'shouldEndSession': content.askOrTell== ':tell',
+            },
+            'sessionAttributes': content.sessionAttributes
+        };
+        console.log('ready to respond (SingleItemView): '+JSON.stringify(response));
+        this.context.succeed(response);
+        break;
+    default:
+        this.response.speak('Thanks for playing, goodbye');
+        this.emit(':responseReady');
+    }
 
 }
 
@@ -939,7 +939,7 @@ function renderTemplate (content) {
  * Converts Unix timestamp (in Zulu) in ms to human understandable date and time of day.
  */
 function timeConverter(unix_timestamp) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    //const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     // tzDiff = 8 * 60 * 60 * 1000 - Pacific time is 8 hours behind UTC (daylight savings).
     //const tzDiff = 28800000;
     // tzOiff = 7 * 60 * 60 * 1000. // standard time.
@@ -994,7 +994,7 @@ function safelyParseJSON(json) {
     let parsed = '';
 
     try {
-        return parsed = JSON.parse(json)
+        return parsed = JSON.parse(json);
     } catch (e) {
         log('ERROR', `JSON parse error: ${e}`);
         return null;
@@ -1021,13 +1021,13 @@ function isSlotValid(request, slotName){
 
     //if we have a slot, get the text and store it into speechOutput
     if (slot && slot.value) {
-         //we have a value in the slot
-         slotValue = slot.value.toLowerCase();
+        //we have a value in the slot
+        slotValue = slot.value.toLowerCase();
         return slotValue;
-     } else {
-         //we didn't get a value in the slot.
-         return false;
-     }
+    } else {
+        //we didn't get a value in the slot.
+        return false;
+    }
 }
 
 /*
@@ -1043,7 +1043,7 @@ function log(title, msg) {
  *
  */
 function inspectLogObj(obj, depth = null) {
-    const util = require("util");
+    const util = require('util');
     console.log(util.inspect(obj, {depth: depth}));
 }
 
