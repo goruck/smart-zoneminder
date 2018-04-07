@@ -10,6 +10,12 @@ Copyright 2018 Lindo St. Angel
 import cgi, cgitb, os, MySQLdb, datetime, json
 from subprocess import check_call, CalledProcessError
 
+# Define where to save generated video clip.
+OUT_PATH = '/var/www/html/public/'
+
+# Define where Zoneminder keeps event images.
+IMAGE_BASE = '/media/lindo/NVR/zoneminder/events/'
+
 def print_json( success, message ):
    'This prints json to the requestor'
    print 'Content-Type: application/json\n\n'
@@ -63,7 +69,7 @@ if data:
     # time_stamp is a datetime object.
     time_stamp = data[1].strftime('%y %m %d %H %M %S')
     year, month, day, hour, minute, second = time_stamp.split(' ')
-    image_base = '/media/lindo/NVR/zoneminder/events/'
+    image_base = IMAGE_BASE
     image_path = (image_base + monitor_id + '/' + year + '/' + month + '/' + day +
                   '/' + hour + '/' + minute + '/' + second + '/%05d-capture.jpg')
 else:
@@ -72,10 +78,18 @@ else:
 
 FNULL = open(os.devnull, 'w')
 
+# ffmpeg command line to generate MP4.
+FFMPEG_MP4 = (['/usr/bin/ffmpeg', '-r', '10', '-s', '640x480', '-start_number', start_frame,
+               '-i', image_path, '-frames', total_frames, '-vcodec', 'libx264', '-preset', 'veryfast',
+               '-crf', '35', '-y', (OUT_PATH + 'alarm-video.mp4')])
+
+# ffmpeg command line to generate MJPEG.
+FFMPEG_MJPEG = (['/usr/bin/ffmpeg', '-f', 'image2', '-r', '10', '-s', '640x480',
+                 '-start_number', start_frame, '-i', image_path, '-frames', total_frames,
+                 '-y', (OUT_PATH + 'alarm-video.ts')])
+
 try:
-    check_call(['/usr/bin/ffmpeg', '-r', '10', '-s', '640x480', '-start_number', start_frame,
-                '-i', image_path, '-frames', total_frames, '-vcodec', 'libx264', '-crf', '35',
-                '-y', '/var/www/html/public/alarm-video.mp4'], stdout=FNULL, stderr=FNULL, shell=False)
+    check_call(FFMPEG_MP4, stdout=FNULL, stderr=FNULL, shell=False)
 except CalledProcessError as e:
     print_json(False, 'CalledPrcessError! %s' % e)
     quit()
