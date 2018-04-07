@@ -1,139 +1,176 @@
 {
-  "languageModel": {
-    "types": [
-      {
-        "name": "Location",
-        "values": [
-          {
-            "id": null,
-            "name": {
-              "value": "play room door",
-              "synonyms": [
-                "play room"
-              ]
-            }
-          },
-          {
-            "id": null,
-            "name": {
-              "value": "front gate",
-              "synonyms": []
-            }
-          },
-          {
-            "id": null,
-            "name": {
-              "value": "east side",
-              "synonyms": [
-                "east"
-              ]
-            }
-          },
-          {
-            "id": null,
-            "name": {
-              "value": "back garage",
-              "synonyms": []
-            }
-          },
-          {
-            "id": null,
-            "name": {
-              "value": "back yard",
-              "synonyms": []
-            }
-          },
-          {
-            "id": null,
-            "name": {
-              "value": "front porch",
-              "synonyms": [
-                "porch"
-              ]
-            }
-          }
-        ]
-      }
-    ],
-    "intents": [
-      {
-        "name": "AMAZON.CancelIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.HelpIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.MoreIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.NavigateHomeIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.NavigateSettingsIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.NextIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.PageDownIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.PageUpIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.PreviousIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.ScrollDownIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.ScrollLeftIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.ScrollRightIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.ScrollUpIntent",
-        "samples": []
-      },
-      {
-        "name": "AMAZON.StopIntent",
-        "samples": []
-      },
-      {
-        "name": "LastAlarm",
-        "samples": [
-          "last alarm from {Location}",
-          "alarm from {Location}",
-          "for alarm from {Location}",
-          "for last alarm from {Location}",
-          "for last alarm {Location}",
-          "for latest alarm {Location}",
-          "for latest alarm from {Location}",
-          "for recent alarm from {Location}",
-          "for recent alarm {Location}",
-          "alarm {Location}"
-        ],
-        "slots": [
-          {
-            "name": "Location",
-            "type": "Location"
-          }
-        ]
-      }
-    ],
-    "invocationName": "zone minder"
-  }
+    "interactionModel": {
+        "languageModel": {
+            "invocationName": "zone minder",
+            "intents": [
+                {
+                    "name": "Alarms",
+                    "slots": [
+                        {
+                            "name": "Location",
+                            "type": "Location"
+                        }
+                    ],
+                    "samples": [
+                        "for alarms from {Location}",
+                        "to show alarms from {Location}",
+                        "alarms from {Location}",
+                        "alarms {Location}"
+                    ]
+                },
+                {
+                    "name": "AMAZON.CancelIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.HelpIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.MoreIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.NavigateHomeIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.NavigateSettingsIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.NextIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.PageDownIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.PageUpIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.PreviousIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.ScrollDownIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.ScrollLeftIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.ScrollRightIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.ScrollUpIntent",
+                    "samples": []
+                },
+                {
+                    "name": "AMAZON.StopIntent",
+                    "samples": []
+                },
+                {
+                    "name": "LastAlarm",
+                    "slots": [
+                        {
+                            "name": "Location",
+                            "type": "Location"
+                        }
+                    ],
+                    "samples": [
+                        "last alarm from {Location}",
+                        "for alarm from {Location}",
+                        "for last alarm from {Location}",
+                        "for last alarm {Location}",
+                        "for latest alarm {Location}",
+                        "for latest alarm from {Location}",
+                        "for recent alarm from {Location}",
+                        "for recent alarm {Location}",
+                        "to show last alarm from {Location}"
+                    ]
+                },
+                {
+                    "name": "SelectItem",
+                    "slots": [
+                        {
+                            "name": "number",
+                            "type": "AMAZON.NUMBER"
+                        }
+                    ],
+                    "samples": [
+                        "select number {number}",
+                        "select {number}"
+                    ]
+                },
+                {
+                    "name": "AlarmClip",
+                    "slots": [
+                        {
+                            "name": "Location",
+                            "type": "Location"
+                        }
+                    ],
+                    "samples": [
+                        "to play clip for {Location}",
+                        "to show clip for {Location}",
+                        "to play clip from {Location}",
+                        "for clip from {Location}",
+                        "to show alarm clip from {Location}",
+                        "for alarm clip from {Location}"
+                    ]
+                }
+            ],
+            "types": [
+                {
+                    "name": "Location",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "play room door",
+                                "synonyms": [
+                                    "play room"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "front gate"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "east side",
+                                "synonyms": [
+                                    "east"
+                                ]
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "back garage"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "back yard"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "front porch",
+                                "synonyms": [
+                                    "porch"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    }
 }
