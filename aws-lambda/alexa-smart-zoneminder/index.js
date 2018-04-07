@@ -14,13 +14,20 @@ const fs = require('fs');
 const Alexa = require('alexa-sdk');
 
 // Get configuration. 
-const configJSON = fs.readFileSync('./config.json');
-const configObj = safelyParseJSON(configJSON);
+let file = fs.readFileSync('./config.json');
+const configObj = safelyParseJSON(file);
 if (configObj === null) {
     process.exit(1); // TODO: find a better way to exit. 
 }
 
-const APP_ID = configObj.alexaAppId;
+// Get credentials.
+file = fs.readFileSync('./creds.json');
+const credsObj = safelyParseJSON(file);
+if (credsObj === null) {
+    process.exit(1); // TODO: find a better way to exit. 
+}
+
+const APP_ID = credsObj.alexaAppId;
 let speechOutput = '';
 let welcomeOutput = 'Please ask zone minder something.';
 let welcomeReprompt = 'Please ask zone minder something.';
@@ -38,6 +45,7 @@ var handlers = {
     'LaunchRequest': function () {
         this.emit(':ask', welcomeOutput, welcomeReprompt);
     },
+    // Show last alarm from a camera or all cameras.
     'LastAlarm': function() {
         log('INFO', `LastAlarm Event: ${JSON.stringify(this.event)}`);
 
@@ -54,7 +62,7 @@ var handlers = {
             // Use .forEach() to iterate since it creates its own function closure.
             // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
             cameraConfigArray.forEach((element) => {
-                findLatestAlarm(element.zoneminderName, (err, data) => {
+                findLatestAlarms(element.zoneminderName, 1, (err, data) => {
                     if (err) {
                         log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                         this.response.speak('Sorry, I cannot complete the request.');
@@ -62,10 +70,10 @@ var handlers = {
                         return;
                     }
 
-                    if (data !== null) {
+                    if (data.length !== 0) {
                         // Get latest alarm from this camera.
-                        const S3Key = data.S3Key;
-                        const ZmEventDateTime = data.ZmEventDateTime;
+                        const S3Key = data[0].S3Key;
+                        const ZmEventDateTime = data[0].ZmEventDateTime;
                         queryResultArray.push({'S3Key': S3Key, 'ZmEventDateTime': ZmEventDateTime,
                             'zoneminderName': element.zoneminderName});
                     }
@@ -150,7 +158,7 @@ var handlers = {
                 return;
             }
 
-            findLatestAlarm(zoneminderCameraName, (err, data) => {
+            findLatestAlarms(zoneminderCameraName, 1, (err, data) => {
                 if (err) {
                     log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                     this.response.speak('Sorry, I cannot complete the request.');
@@ -158,14 +166,15 @@ var handlers = {
                     return;
                 }
 
-                if (data === null) {
+
+                if (data.length === 0) {
                     this.response.speak('No alarms were found.');
                     this.emit(':responseReady');
                     return;
                 }
 
-                const S3Key = data.S3Key;
-                const ZmEventDateTime = data.ZmEventDateTime;
+                const S3Key = data[0].S3Key;
+                const ZmEventDateTime = data[0].ZmEventDateTime;
 
                 // Check if user has a display and if not just return alarm info w/o image.
                 if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
@@ -232,22 +241,7 @@ var handlers = {
             return;
         }
 
-        const docClient = new AWS.DynamoDB.DocumentClient(
-            {apiVersion: '2012-10-08', region: configObj.awsRegion}
-        );
-            
-        const params = {
-            TableName : configObj.zmDdbTable,
-            ScanIndexForward : false, // Descending sort order.
-            Limit : 10, // Get at most 10 alarms.
-            ProjectionExpression: 'S3Key, ZmEventDateTime',
-            KeyConditionExpression: 'ZmCameraName = :name',
-            ExpressionAttributeValues: {
-                ':name' : zoneminderCameraName
-            }
-        };
-
-        docClient.query(params, (err, data) => {
+        findLatestAlarms(zoneminderCameraName, 10, (err, data) => {
             if (err) {
                 log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                 this.response.speak('Sorry, I cannot complete the request.');
@@ -255,7 +249,7 @@ var handlers = {
                 return;
             }
 
-            if (typeof (data.Items[0]) === 'undefined') {
+            if (data.length === 0) {
                 this.response.speak('No alarms were found.');
                 this.emit(':responseReady');
                 return;
@@ -266,9 +260,8 @@ var handlers = {
             listItems = [];
             const S3Path = 'https://s3-' + configObj.awsRegion +
                 '.amazonaws.com/' + configObj.zmS3Bucket + '/';
-            data.Items.forEach((item) => {
-                if (typeof item.S3Key === 'undefined') return;
 
+            data.forEach((item) => {
                 //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
                 const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
                 const imageUrl = S3Path + item.S3Key;
@@ -369,6 +362,115 @@ var handlers = {
 
         renderTemplate.call(this, content);
     },
+    // Show video of an alarm.
+    //'AMAZON.PlaybackAction<object@VideoCreativeWork>': function() {
+    'AlarmClip': function() {
+        log('INFO', `AMAZON.PlaybackAction: ${JSON.stringify(this.event)}`);
+
+        //let cameraName = this.event.request.intent.slots['object.name'].value;
+
+        const cameraName = this.event.request.intent.slots.Location.value;
+        console.log(cameraName);
+
+        // Check if user supplied a valid camera name and if so map to zoneminder name.
+        const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
+        log('INFO', `ZM camera name: ${zoneminderCameraName}`);
+        if (zoneminderCameraName === '') {
+            log('ERROR', `Bad camera name: ${cameraName}`);
+            this.response.speak('Sorry, I cannot find that camera name.');
+            this.emit(':responseReady');
+            return;
+        }
+
+        findLatestAlarms(zoneminderCameraName, 100, (err, data) => {
+            if (err) {
+                log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
+                this.response.speak('Sorry, I cannot complete the request.');
+                this.emit(':responseReady');
+                return;
+            }
+
+            if (data.length === 0) {
+                this.response.speak('No alarms were found.');
+                this.emit(':responseReady');
+                return;
+            }
+
+            // Check if user has a display and if not return error message.
+            if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
+                speechOutput = 'Sorry, I cannot play video on this device';
+                this.response.speak(speechOutput);
+                this.emit(':responseReady');
+                return;
+            }
+
+            // Get event id and last frame id of latest alarm.
+            const lastEvent = data[0].ZmEventId;
+            let endFrame = data[0].ZmFrameId;
+            
+            // Find the first frame id of the last event.
+            let startFrame = 0;
+            data.forEach((alarm) => {
+                if (alarm.ZmEventId === lastEvent) {
+                    startFrame = alarm.ZmFrameId;
+                }
+            });
+
+            // Pad clip.
+            if (startFrame < 20) {
+                startFrame-= startFrame;
+            } else {
+                startFrame-= 20;
+            }
+
+            if (endFrame < 20) {
+                endFrame+= endFrame;
+            } else {
+                endFrame+= 20;
+            }
+
+            const ZmEventDateTime = data[0].ZmEventDateTime;
+            log('INFO', `Event ID of latest alarm image: ${lastEvent} from ${ZmEventDateTime}`);
+            log('INFO', `Start Frame of latest alarm image: ${startFrame} from ${ZmEventDateTime}`);
+            log('INFO', `End Frame of latest alarm image: ${endFrame} from ${ZmEventDateTime}`);
+
+            const method   = 'GET';
+            const path     = '/cgi-bin/gen-vid.py?event='+lastEvent.toString()+
+                             '&start_frame='+startFrame.toString()+'&end_frame='+endFrame.toString();
+            const postData = '';
+            const text     = true;
+            const user     = credsObj.cgiUser;
+            const pass     = credsObj.cgiPass;
+
+            httpsReq (method, path, postData, text, user, pass, (err, resStr) => {
+                if (err) {
+                    console.log('ERROR PlayBack httpsReq: ' + err);
+                    this.response.speak('sorry, I can\'t complete the request');
+                    this.emit(':responseReady');
+                    return;
+                }
+
+                const result = safelyParseJSON(resStr);
+                if (result === null || result.success === false) {
+                    log('ERROR', `Playback result: ${JSON.stringify(result)}`);
+                    this.response.speak('sorry, I cannot complete the request');
+                    this.emit(':responseReady');
+                    return;
+                }
+
+                const content = {
+                    hasDisplaySpeechOutput: 'Showing clip of selected alarm.',
+                    uri: credsObj.alarmVideoPath,
+                    title: 'Alarm Video',
+                    templateToken: 'ShowVideo',
+                    sessionAttributes: this.attributes
+                };
+
+                renderTemplate.call(this, content);
+        
+            });
+        });
+    },
     'AMAZON.HelpIntent': function () {
         console.log('Help event: ' + JSON.stringify(this.event));
         if (supportsDisplay.call(this) || isSimulator.call(this)) {
@@ -420,7 +522,7 @@ exports.handler = (event, context) => {
 //===================== Zoneminder Helper Functions  ===========================
 //==============================================================================
 
-/*
+/**
  * Mapping from Alexa returned camera names to zoneminder camera names.
  */
 function alexaCameraToZoneminderCamera(alexaCameraName) {
@@ -439,10 +541,23 @@ function alexaCameraToZoneminderCamera(alexaCameraName) {
     return zoneminderCameraName;
 }
 
-/*
- * Find most recent alarm frame from a given camera name.
+/**
+ * Callback for latest alarms.
+ *
+ * @callback latestAlarmCallback
+ * @param {string} err - An error message.
+ * @param {array} truePositiveAlarms - An array holding true pos alarms.
+ * 
  */
-function findLatestAlarm(cameraName, callback) {
+
+/**
+ * Find most recent true positive alarm frames for a given camera name.
+ * 
+ * @param {string} cameraName - Zone minder monitor name.
+ * @param {int} nuberofAlarms - Number of alarm frames to find.
+ * @param {latestAlarmCallback} callback - A callback fn.
+ */
+function findLatestAlarms(cameraName, numberOfAlarams, callback) {
     const docClient = new AWS.DynamoDB.DocumentClient(
         {apiVersion: '2012-10-08', region: configObj.awsRegion}
     );
@@ -450,7 +565,7 @@ function findLatestAlarm(cameraName, callback) {
     let params = {
         TableName: 'ZmAlarmFrames',
         ScanIndexForward: false, // Descending sort order.
-        ProjectionExpression: 'ZmEventDateTime, S3Key',
+        ProjectionExpression: 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId',
         KeyConditionExpression: 'ZmCameraName = :name',
         FilterExpression: 'Alert = :state',
         ExpressionAttributeValues: {
@@ -458,26 +573,32 @@ function findLatestAlarm(cameraName, callback) {
             ':state': 'true'
         }
     };
+
+    let truePositiveAlarms = [];
+    let truePositiveAlarmCount = 0;
                     
     function queryExecute() {
         docClient.query(params, (err, data) => {
             if (err) {
                 return callback(err, null);
             }
-                            
-            // Found a true positive (Alert = true).
-            if (data.Items[0]) {
-                return callback(null, data.Items[0]);
+      
+            // Look for true positive alarms (Alert = true).
+            for (const item of data.Items) {
+                truePositiveAlarms.push(item);
+                truePositiveAlarmCount++;
+                if (truePositiveAlarmCount === numberOfAlarams) {
+                    return callback(null, truePositiveAlarms);
+                }
             }
 
-            // No true positives found yet but there are more records to query.
+            // Query again if there are more records else return what was found so far (if anything).
             if (data.LastEvaluatedKey) {
                 params.ExclusiveStartKey = data.LastEvaluatedKey;
                 queryExecute();
+            } else {
+                return callback(null, truePositiveAlarms);
             }
-
-            // No true positives were found.    
-            return callback(null, null);
         });
     }    
                     
@@ -586,39 +707,40 @@ function renderTemplate (content) {
     let response = {};
    
     switch(content.templateToken) {
-    case 'ShowImageList':
-        /*let jsonData = {};
-            let listItemArr = [];
-            content.listItems.forEach((item) => {
-              jsonData = {
-                "token": item.token,
-                "image": {
-                    "contentDescription": item.description,
-                    "sources": [
-                         {
-                             "url": item.url
-                         }
-                     ]
+    case 'ShowVideo':
+        response = {
+            'version': '1.0',
+            'sessionAttributes': content.sessionAttributes,
+            'response': {
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
                 },
-                "textContent": {
-                    "primaryText": {
-                        "text": item.primaryText,
-                        "type": "PlainText"
-                    },
-                    "secondaryText": {
-                        "text": item.secondaryText,
-                        "type": "PlainText"
-                    },
-                        "tertiaryText": {
-                        "text": item.tertiaryText,
-                        "type": "PlainText"
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': ''
                     }
-                }
-              }
-
-              listItemArr.push(jsonData);
-            });*/
-
+                },
+                'card': null,
+                'directives': [
+                    {
+                        'type': 'VideoApp.Launch',
+                        'videoItem': {
+                            'source': content.uri,
+                            'metadata': {
+                                'title': content.title,
+                                'subtitle': ''
+                            }
+                        }
+                    }
+                ]
+            }
+        };
+        // Send the response to Alexa.
+        this.context.succeed(response);
+        break;
+    case 'ShowImageList':
         response = {
             'version': '1.0',
             'response': {
@@ -678,7 +800,6 @@ function renderTemplate (content) {
         // Send the response to Alexa.
         this.context.succeed(response);
         break;
-
     case 'ShowImage':
         //  "hasDisplaySpeechOutput" : response + " " + EXIT_SKILL_MESSAGE,
         //  "bodyTemplateContent" : getFinalScore(this.attributes["quizscore"], this.attributes["counter"]),
@@ -936,6 +1057,102 @@ function renderTemplate (content) {
 //======================== Misc Helper Functions  ==============================
 //==============================================================================
 /*
+ *
+ */
+var httpsReq = (method, path, postData, text, user, pass, callback) => {
+    // If environment variables for host and port exist then override defaults
+    var HOST = '';
+    if (process.env.host) {
+        HOST = process.env.host;
+    } else {
+        HOST = fs.readFileSync('./host.txt').toString().replace(/\n$/, ''); // Ignore last newline character
+    }
+
+    var PORT = '';
+    if (process.env.port) {
+        PORT = process.env.port;
+    } else {
+        PORT = fs.readFileSync('./port.txt').toString().replace(/\n$/, '');
+    }
+
+    /*var CERT = fs.readFileSync('./certs/client.crt'),
+        KEY  = fs.readFileSync('./certs/client.key'),
+        CA   = fs.readFileSync('./certs/ca.crt');*/
+
+    var https = require('https'),
+        Stream = require('stream').Transform,
+        zlib = require('zlib');
+
+    var options = {
+        hostname: HOST,
+        port: PORT,
+        path: path,
+        method: method,
+        //rejectUnauthorized: true,
+        //rejectUnauthorized: false,
+        //key: KEY,
+        //cert: CERT,
+        //ca: CA,
+        headers: {
+            'Content-Type': (text ? 'application/json' : 'image/png'),
+            'Content-Length': postData.length,
+            'accept-encoding' : 'gzip,deflate'
+        }
+    };
+
+    if (user && pass) {
+        const auth = 'Basic ' + Buffer.from(user + ':' + pass).toString('base64');
+        options.headers.Authorization = auth;
+    }
+
+    var req = https.request(options, (result) => {
+        var data = new Stream();
+
+        result.on('data', (chunk) => {
+            data.push(chunk);
+            //console.log("chunk: " +chunk);
+        });
+
+        result.on('end', () => {
+            //console.log("STATUS: " + result.statusCode);
+            //console.log("HEADERS: " + JSON.stringify(result.headers));
+
+            var encoding = result.headers['content-encoding'];
+            if (encoding == 'gzip') {
+                zlib.gunzip(data.read(), function(err, decoded) {
+                    callback(null, decoded); // TODO: add error handling.
+                });
+            } else if (encoding == 'deflate') {
+                zlib.inflate(data.read(), function(err, decoded) {
+                    callback(null, decoded);
+                });
+            } else {
+                callback(null, data.read());
+            }
+
+            //callback(data.read());
+        });
+    });
+
+    // Set timeout on socket inactivity. 
+    req.on('socket', function (socket) {
+        socket.setTimeout(20000); // 20 sec timeout. 
+        socket.on('timeout', function() {
+            req.abort();
+        });
+    });
+
+    req.write(postData);
+
+    req.end();
+
+    req.on('error', (e) => {
+        console.log('ERROR https request: ' + e.message);
+        callback(e.message, null);
+    });
+};
+
+/*
  * Converts Unix timestamp (in Zulu) in ms to human understandable date and time of day.
  */
 function timeConverter(unix_timestamp) {
@@ -991,10 +1208,8 @@ function parseISO8601Duration(durationString) {
  * Checks for valid JSON and parses it. 
  */
 function safelyParseJSON(json) {
-    let parsed = '';
-
     try {
-        return parsed = JSON.parse(json);
+        return JSON.parse(json);
     } catch (e) {
         log('ERROR', `JSON parse error: ${e}`);
         return null;
