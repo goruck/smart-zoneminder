@@ -75,7 +75,6 @@
       "uri": "rtsp://cam.lsacam.com:443/proxyStream-7"
     }
   ],
-  "alexaAppId": "amzn1.ask.skill.26967fa9-e516-4916-b040-2f6781951e6b",
   "awsRegion": "us-west-2",
   "zmS3Bucket": "zm-alarm-frames",
   "zmDdbTable": "ZmAlarmFrames"
