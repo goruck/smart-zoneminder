@@ -1,12 +1,42 @@
-*Readme under construction*
+*This entire project including the Readme are under construction*
 
 # smart-zoneminder
 smart-zoneminder enables fast upload of ZoneMinder alarms to an S3 archive where they are analyzed by AWS Rekognition and made accessible by voice via Alexa. The use of Rekognition dramatically reduces the number of false alarms and provides for robust scene, object and face detection. Alexa allows a user to ask to see an image corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
 
-# Acknowledgements
-The alarm uploader was inspired by Brian Roy's [Zoneminder-Alert-Image-Upload-to-Amazon-S3](https://github.com/briantroy/Zoneminder-Alert-Image-Upload-to-Amazon-S3). The general approach of triggering an AWS Step function by an image uploaded to S3 to be analyzed by Rekognition was modeled after Mark West's [smart-security-camera](https://github.com/markwest1972/smart-security-camera).
+# Usage Examples
+Hera are a few of the things you can do with smart-zoneminder.
 
-Thank you Brian and Mark!
+**Ask Alexa to show the last alarm from from any camera.**
+
+User: "Alexa, ask zone minder to show alarm"
+
+Alexa: "Showing last alarm from play room door camera"
+
+![Alt text](/img/last-alarm-example.JPG?raw=true "last alarm example.")
+
+**Ask Alexa to show an alarm from a specific camera on a specific date.** Note that if the date is ommitted then the skill will return the last alarm from that camera. 
+
+User: "Alexa, ask zone minder to show alarm from front porch"
+
+Alexa: "Showing last alarm from front porch camera"
+
+![Alt text](/img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
+
+**Ask Alexa to show last N alarms from a specific camera on a specific date."** Note that if user does not give the number of alarms to show the skill will default to showing the last ten and if date is ommited the latest alarms will be returned.
+
+User: "Alexa, ask zone minder to show alarms from front porch"
+
+Alexa: "Showing last alarms from front porch camera"
+
+![Alt text](/img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
+
+**Ask Alexa to play a video of an alarm from a specific camera.** Note that if the user does not give a specific date then a video of the last alarm will be played. 
+
+User: "Alexa, ask zone minder to play clip from front porch"
+
+Alexa: "Showing last alarm clip from front porch camera"
+
+(video of last alarm clip from this camera will play on an Echo device with a screen)
 
 # Project Requirements
 My high level goals and associated requirements for this project are shown below.
@@ -51,5 +81,10 @@ Everything here is licensed under the [MIT license](https://choosealicense.com/l
 
 # Contact
 For questions or comments about this project please contact the author goruck (Lindo St. Angel) at {lindostangel} AT {gmail} DOT {com}.
+
+# Acknowledgements
+The alarm uploader was inspired by Brian Roy's [Zoneminder-Alert-Image-Upload-to-Amazon-S3](https://github.com/briantroy/Zoneminder-Alert-Image-Upload-to-Amazon-S3). The general approach of triggering an AWS Step function by an image uploaded to S3 to be analyzed by Rekognition was modeled after Mark West's [smart-security-camera](https://github.com/markwest1972/smart-security-camera).
+
+Thank you Brian and Mark!
 
 # Appendix
