@@ -22,7 +22,7 @@ Alexa: "Showing last alarm from front porch camera"
 
 ![Alt text](/img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
 
-**Ask Alexa to show last N alarms from a specific camera on a specific date."** Note that if user does not give the number of alarms to show the skill will default to showing the last ten and if date is ommited the latest alarms will be returned.
+**Ask Alexa to show last N alarms from a specific camera on a specific date."** Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is ommited the most recent alarms will be returned.
 
 User: "Alexa, ask zone minder to show alarms from front porch"
 
