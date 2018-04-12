@@ -67,19 +67,45 @@ The figure below shows the smart-zoneminder system architecture.
 
 ![Alt text](/img/sz-blk-dia.jpg?raw=true "smart-zoneminder system architecture diagram.")
 
-# ZoneMinder Configuration
+# System Components and Installation
+The information below details each major component in the architecture, the interconnects between the other componenets and how to install them both locally and in the cloud. 
 
-# Alarm Uploader
+## Prerequisites
 
-# AWS Step
+### ZoneMinder Configuration
+TBA - monitor mode
 
-# AWS Rekognition
+TBA - motion detect config
 
-# S3 Archiver
+TBA - directory assumptions
 
-# DynamoDB
+### Local Server Configuration
+TBA - Clone smart-zoneminder repo
 
-# Alexa Skill VUI and User Interaction Examples
+TBA - Apache config
+
+TBA - CGI config
+
+TBA - port and firewall config
+
+### AWS Service Configuration
+TBA - AWS account setup
+
+## Alarm Uploader
+
+## Alarm Clip Generator
+
+## AWS Step
+
+## AWS Rekognition
+
+## S3 Archiver
+
+## DynamoDB
+
+## Alexa Skill
+
+## Alexa Skill Handler
 
 # License
 Everything here is licensed under the [MIT license](https://choosealicense.com/licenses/mit/).
