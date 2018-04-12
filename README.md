@@ -6,7 +6,9 @@ smart-zoneminder enables fast upload of ZoneMinder alarms to an S3 archive where
 # Usage Examples
 Hera are a few of the things you can do with smart-zoneminder.
 
-**Ask Alexa to show the last alarm from from any camera.**
+**Note: smart-zoneminder currently does not support live streaming of camera feeds.** I recommend that you use [alexa-ip-cam](https://github.com/goruck/alexa-ip-cam) for streaming your cameras feeds live on Echo devices. 
+
+## Ask Alexa to show the last alarm from from any camera
 
 User: "Alexa, ask zone minder to show alarm"
 
@@ -14,7 +16,8 @@ Alexa: "Showing last alarm from play room door camera"
 
 ![Alt text](/img/last-alarm-example.JPG?raw=true "last alarm example.")
 
-**Ask Alexa to show an alarm from a specific camera on a specific date.** Note that if the date is ommitted then the skill will return the last alarm from that camera. 
+## Ask Alexa to show an alarm from a specific camera on a specific date
+Note that if the date is ommitted then the skill will return the last alarm from that camera. 
 
 User: "Alexa, ask zone minder to show alarm from front porch"
 
@@ -22,7 +25,8 @@ Alexa: "Showing last alarm from front porch camera"
 
 ![Alt text](/img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
 
-**Ask Alexa to show last N alarms from a specific camera on a specific date."** Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is ommited the most recent alarms will be returned.
+## Ask Alexa to show last N alarms from a specific camera on a specific date
+Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is ommited the most recent alarms will be returned.
 
 User: "Alexa, ask zone minder to show alarms from front porch"
 
@@ -30,7 +34,8 @@ Alexa: "Showing last alarms from front porch camera"
 
 ![Alt text](/img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
 
-**Ask Alexa to play a video of an alarm from a specific camera.** Note that if the user does not give a specific date then a video of the last alarm will be played. 
+## Ask Alexa to play a video of an alarm from a specific camera
+Note that if the user does not give a specific date then a video of the last alarm will be played. 
 
 User: "Alexa, ask zone minder to play clip from front porch"
 
