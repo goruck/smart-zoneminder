@@ -72,12 +72,17 @@ The information below details each major component in the architecture, the inte
 
 ## Prerequisites
 
-### ZoneMinder Configuration
-TBA - monitor mode
+### ZoneMinder
 
-TBA - motion detect config
+You need to have ZoneMinder installed on a local linux machine to use smart-zoneminder. I'm using version 1.29.0 which is installed on machine running Debian 8. I followed [Debian 8 64-bit with Zoneminder 1.29.0 the Easy Way](https://wiki.zoneminder.com/Debian_8_64-bit_with_Zoneminder_1.29.0_the_Easy_Way) to install ZoneMinder.
+
+I have the monitor function set to Mocord which means that the camera streams will be continuously recorded, with motion being marked as an alarm within an event (which is a 600 second block of continously recored video). ZoneMinder stores the camera streams as JPEGs for each video frame in the event. I chose this mode because I wanted to have a record of all the video as well as the alarms. ZoneMinder does provide for a means ("filters") to upload an event to an external server when certain conditions are met, such as an alarm occuring. Its possible to use such a filter instead of the uploader I created but I didn't want to upload 600 s worth of images everytime an alarm occured and the filter would have been slow, worse case being almost 600 s if an alarm happened at the start of an event.
+
+Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very helpful but it takes some trial and error to get it right given each situation is so different.  
 
 TBA - directory assumptions
+
+I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at a low 2 fps to also help limit Rekognition costs.
 
 ### Local Server Configuration
 TBA - Clone smart-zoneminder repo
