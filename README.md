@@ -26,13 +26,13 @@ Alexa: "Showing last alarms from front porch camera"
 
 ![Alt text](/img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
 
-## Ask Alexa to show the last alarm from from any camera
+## Ask Alexa to show the last alarm from all cameras
 
 User: "Alexa, ask zone minder to show alarm"
 
 Alexa: "Showing last alarm from play room door camera"
 
-Result: Image of last alarm frame from this camera will be displayed on an Echo device with a screen or user will hear about the alarm from Alexa on devices without a screen.
+Result: Image of last alarm frame from all cameras will be displayed on an Echo device with a screen or user will hear about the alarm from Alexa on devices without a screen.
 
 ## Ask Alexa to play a video of an alarm from a camera on a specific date and time.
 Note that if the user does not provide a date then a video of the last alarm will be played. 
