@@ -86,7 +86,7 @@ I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras 
 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependiencies out into configuration files where feasible but if you heavily customize ZoneMinder its likley some path in the component code will need to be modified that's not in a configuration file.
 
-### Local Server Configuration
+### Local Server
 TBA - Clone smart-zoneminder repo
 
 TBA - Apache config
@@ -95,8 +95,11 @@ TBA - CGI config
 
 TBA - port and firewall config
 
-### AWS Service Configuration
-TBA - AWS account setup
+### Amazon Developers Account
+You'll need an [Amazon Developers](https://developer.amazon.com/) account to use the Alexa skills I developed for this project since I haven't published them. 
+
+### AWS Account
+You'll also need an [Amazon AWS](https://aws.amazon.com/) account to run the skill's handler and the other lambda functions required for this project.
 
 ## Alarm Uploader
 
