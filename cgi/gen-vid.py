@@ -11,7 +11,7 @@ import cgi, cgitb, os, MySQLdb, datetime, json
 from subprocess import check_call, CalledProcessError
 
 # Define where to save generated video clip.
-OUT_PATH = '/var/www/html/public/'
+OUT_PATH = '/var/www/public/'
 
 # Define where Zoneminder keeps event images.
 IMAGE_BASE = '/media/lindo/NVR/zoneminder/events/'
