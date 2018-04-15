@@ -68,7 +68,9 @@ The figure below shows the smart-zoneminder system architecture.
 ![Alt text](/img/sz-blk-dia.jpg?raw=true "smart-zoneminder system architecture diagram.")
 
 # System Components and Installation
-The information below details each major component in the architecture, the interconnects between the other components and how to install them both locally and in the cloud. 
+The information below details each major component in the architecture, the interconnects between the other components and how to install them both locally and in the cloud.
+
+Note - at some point I will create means to automate the installation of smart-zoneminder but for now you'll have to manually perform these steps. 
 
 ## Prerequisites
 
