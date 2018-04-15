@@ -50,7 +50,7 @@ My high level goals and associated requirements for this project are shown below
 This lead to the requirement of a five second or less upload time to a secure AWS S3 bucket. Although ZoneMinder has a built-in ftp-based filter it was sub-optimal for this application as explained below.
 
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.**
-This lead to the requirement to use a higher-level object and person detection algorithm based on AWS Rekognition.
+This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition.
 
 3. **Make it much easier to access ZoneMinder information.**
 This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example because an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search.
@@ -86,22 +86,34 @@ I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras 
 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
-### Local Server
-ZoneMinder and the local components required for the project are running on an Intel Core i5‑7600K machine with 128 GB RAM and a 2 TB dedicated hard drive for ZoneMinder's image store. The OS is Debian 8 (Jessie).There's no restriction that requires ZoneMinder and the project's software to run on the same machine nor is a very high performance machine required. The highest system load tends to be from ZoneMinder's motion analysis but even with my seven cameras this takes less than one full core to run. 
+### Apache
+If you installed ZoneMinder successfully then apache should be up and running but a few modifications are required for this project. The Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that is used to display clips of alarm videos requires the video file to be hosted at an Internet-accessible HTTPS endpoint. HTTPS is required, and the domain hosting the files must present a valid, trusted SSL certificate. Self-signed certificates cannot be used. Since the video clip is generated on the local server Apache needs to serve the video file in this manner. This means that you need to setup a HTTPS virtual host with a publicly accessible directory on your local machine. Note that you can also leverage this to access the ZoneMinder web interface in a secure manner externally. Here are the steps I followed to configure Apache to use HTTPS and serve the alarm video clip.
 
-TBA - Clone smart-zoneminder repo
+1. Get a hostname via a DDNS or DNS provider. I used [noip](https://www.noip.com/).
+2. Get a SSL cert from a CA. I used [Let's Eencrypt](https://letsencrypt.org/) and the command at my local machine `certbot -d [hostname] --rsa-key-size 4096 --manual --preferred-challenges dns certonly`. It will ask you to verify domain ownership by creating a special DNS record at your provider.
+3. Follow [How To Create a SSL Certificate on Apache for Debian 8](https://www.digitalocean.com/community/tutorials/how-to-create-a-ssl-certificate-on-apache-for-debian-8) except instead of using self-signed certs use the certs generated above. 
+4. Create a directory to hold the generated alarm clip and make the permissions for u, g and o rwx. I created this directory at /var/www/public.
+5. Configure Apache to allow the public directory to be accessed by adding something like this to the configuration file in the sites-enabled directory:
+```xml
+<Directory "/var/www/public">
+    AuthType None
+    Require all granted
+    AddType video/mp4 .mp4
+</Directory>
+```
+6. Restart Apache.
+7. Allow external access to Apache by opening the right port on your firewall. 
 
-TBA - Apache config
-
-TBA - CGI config
-
-TBA - port and firewall config
+Also a CGI script is used to generate the clip so you also need to make sure Apache is configured to allow the CGI to be used. You should allow the CGI script only to be accessed externally via HTTPS and only with a password. I used [DIY: Enable CGI on your Apache server](https://www.techrepublic.com/blog/diy-it-guy/diy-enable-cgi-on-your-apache-server/) as a guide but only enabled the CGI to be used with the HTTPS virtual host. 
 
 ### Amazon Developers Account
 You'll need an [Amazon Developers](https://developer.amazon.com/) account to use the Alexa skills I developed for this project since I haven't published them. 
 
 ### AWS Account
 You'll also need an [Amazon AWS](https://aws.amazon.com/) account to run the skill's handler and the other lambda functions required for this project.
+
+### Clone smart-zoneminder
+To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running `git clone https://github.com/goruck/smart-zoneminder`.
 
 ## Alarm Uploader
 
