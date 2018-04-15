@@ -1,7 +1,7 @@
 *This entire project (including the Readme) is under construction.*
 
 # smart-zoneminder
-smart-zoneminder enables fast upload of [ZoneMinder](https://www.zoneminder.com/) alarm frame images to an S3 archive where they are analyzed by AWS Rekognition and made accessible by voice via Alexa. The use of Rekognition dramatically reduces the number of false alarms and provides for robust scene, object and face detection. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
+smart-zoneminder enables fast upload of [ZoneMinder](https://www.zoneminder.com/) alarm frame images to an S3 archive where they are analyzed by Amazon Rekognition and made accessible by voice via Alexa. The use of Rekognition dramatically reduces the number of false alarms and provides for robust scene, object and face detection. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
 
 # Usage Examples
 Hera are a few of the things you can do with smart-zoneminder.
@@ -18,7 +18,7 @@ Alexa: "Showing last alarm from front porch camera"
 ![Alt text](/img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
 
 ## Ask Alexa to show last N alarms from a specific camera on a specific date and time
-Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is ommited the most recent alarms will be returned.
+Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is omitted the most recent alarms will be returned.
 
 User: "Alexa, ask zone minder to show alarms from front porch"
 
@@ -47,7 +47,7 @@ Result: Video of last alarm clip from this camera will play on an Echo device wi
 My high level goals and associated requirements for this project are shown below.
 
 1. **Quickly archive Zoneminder alarm frames to the cloud in order to safeguard against malicious removal of on-site server.**
-This lead to the requirement of a five second or less upload time to a secure AWS S3 bucket. Although ZoneMinder has a built-in ftp-based filter it was suboptimal for this application as explained below.
+This lead to the requirement of a five second or less upload time to a secure AWS S3 bucket. Although ZoneMinder has a built-in ftp-based filter it was sub-optimal for this application as explained below.
 
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.**
 This lead to the requirement to use a higher-level object and person detection algorithm based on AWS Rekognition.
@@ -68,7 +68,7 @@ The figure below shows the smart-zoneminder system architecture.
 ![Alt text](/img/sz-blk-dia.jpg?raw=true "smart-zoneminder system architecture diagram.")
 
 # System Components and Installation
-The information below details each major component in the architecture, the interconnects between the other componenets and how to install them both locally and in the cloud. 
+The information below details each major component in the architecture, the interconnects between the other components and how to install them both locally and in the cloud. 
 
 ## Prerequisites
 
@@ -76,18 +76,18 @@ The information below details each major component in the architecture, the inte
 
 You need to have ZoneMinder installed on a local linux machine to use smart-zoneminder. I'm using version 1.29.0 which is installed on machine running Debian 8. I followed [Debian 8 64-bit with Zoneminder 1.29.0 the Easy Way](https://wiki.zoneminder.com/Debian_8_64-bit_with_Zoneminder_1.29.0_the_Easy_Way) to install ZoneMinder.
 
-I have the monitor function set to [Mocord](http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html) which means that the camera streams will be continuously recorded, with motion being marked as an alarm within an event (which is a 600 second block of continously recored video). ZoneMinder stores the camera streams as JPEGs for each video frame in the event. I chose this mode because I wanted to have a record of all the video as well as the alarms. ZoneMinder does provide for a means ("filters") to upload an event to an external server when certain conditions are met, such as an alarm occuring. Its possible to use such a filter instead of the uploader I created but I didn't want to upload 600 s worth of images everytime an alarm occured and the filter would have been slow, worse case being almost 600 s if an alarm happened at the start of an event.
+I have the monitor function set to [Mocord](http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html) which means that the camera streams will be continuously recorded, with motion being marked as an alarm within an event (which is a 600 second block of continuously recorded video). ZoneMinder stores the camera streams as JPEGs for each video frame in the event. I chose this mode because I wanted to have a record of all the video as well as the alarms. ZoneMinder does provide for a means ("filters") to upload an event to an external server when certain conditions are met, such as an alarm occurring. Its possible to use such a filter instead of the uploader I created but I didn't want to upload 600 s worth of images every time an alarm occurred and the filter would have been slow, worse case being almost 600 s if an alarm happened at the start of an event.
 
 Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very useful but it takes some trial and error to get it right given each situation is so different. Zoneminder is configured to analyze the feeds for motion at 2 FPS which also helps to limit Rekognition costs but it comes at the expense of possibly missing a high speed object moving through the camera's FOV (however unlikely in my situation). 
 
-Currently smart-zoneminder naively sends every alarm frame detected by ZoneMinder to the cloud. This is expensive. Clearly there are more optimal ways to process the alarms locally in terms of more advanced motion detection algorithims and exploiting the temporal coherence between alarm frames that would limit cloud costs without some of the current restrictions. This is an area for future study by the project. 
+Currently smart-zoneminder naively sends every alarm frame detected by ZoneMinder to the cloud. This is expensive. Clearly there are more optimal ways to process the alarms locally in terms of more advanced motion detection algorithms and exploiting the temporal coherence between alarm frames that would limit cloud costs without some of the current restrictions. This is an area for future study by the project. 
 
-I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at 2 FPS. I've configured the cameras' shutter to minimze motion blur at the expense of noise in low light situations since I found Rekognition's accuracy is more affected by the former.
+I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at 2 FPS. I've configured the cameras' shutter to minimize motion blur at the expense of noise in low light situations since I found Rekognition's accuracy is more affected by the former.
 
-Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependiencies out into configuration files where feasible but if you heavily customize ZoneMinder its likley some path in the component code will need to be modified that's not in a configuration file.
+Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
 ### Local Server
-ZoneMinder and the local components required for the project are running on an Intel Core i5‑7600K machine with 128 GB RAM and a 2 TB dedicated hard drive for ZoneMinder's image store. The OS is Debian 8 (Jessie).There's no restriction that requries ZoneMinder and the project's software to run on the same machine nor is a very high perfromace machine required. The highest system load tends to be from ZoneMinder's motion analysis but even with my seven cameras this takes less than one full core to run. 
+ZoneMinder and the local components required for the project are running on an Intel Core i5‑7600K machine with 128 GB RAM and a 2 TB dedicated hard drive for ZoneMinder's image store. The OS is Debian 8 (Jessie).There's no restriction that requires ZoneMinder and the project's software to run on the same machine nor is a very high performance machine required. The highest system load tends to be from ZoneMinder's motion analysis but even with my seven cameras this takes less than one full core to run. 
 
 TBA - Clone smart-zoneminder repo
 
