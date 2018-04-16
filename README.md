@@ -92,7 +92,7 @@ Some of the components interface with ZoneMinder's MySql database and image stor
 If you installed ZoneMinder successfully then apache should be up and running but a few modifications are required for this project. The Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that is used to display clips of alarm videos requires the video file to be hosted at an Internet-accessible HTTPS endpoint. HTTPS is required, and the domain hosting the files must present a valid, trusted SSL certificate. Self-signed certificates cannot be used. Since the video clip is generated on the local server Apache needs to serve the video file in this manner. This means that you need to setup a HTTPS virtual host with a publicly accessible directory on your local machine. Note that you can also leverage this to access the ZoneMinder web interface in a secure manner externally. Here are the steps I followed to configure Apache to use HTTPS and serve the alarm video clip.
 
 1. Get a hostname via a DDNS or DNS provider. I used [noip](https://www.noip.com/).
-2. Get a SSL cert from a CA. I used [Let's Eencrypt](https://letsencrypt.org/) and the command at my local machine `certbot -d [hostname] --rsa-key-size 4096 --manual --preferred-challenges dns certonly`. It will ask you to verify domain ownership by creating a special DNS record at your provider.
+2. Get a SSL cert from a CA. I used [Let's Encrypt](https://letsencrypt.org/) and the command at my local machine `certbot -d [hostname] --rsa-key-size 4096 --manual --preferred-challenges dns certonly`. It will ask you to verify domain ownership by creating a special DNS record at your provider.
 3. Follow [How To Create a SSL Certificate on Apache for Debian 8](https://www.digitalocean.com/community/tutorials/how-to-create-a-ssl-certificate-on-apache-for-debian-8) except instead of using self-signed certs use the certs generated above. 
 4. Create a directory to hold the generated alarm clip and make the permissions for u, g and o rwx. I created this directory at /var/www/public.
 5. Configure Apache to allow the public directory to be accessed by adding something like this to the configuration file in the sites-enabled directory:
@@ -117,9 +117,15 @@ You'll also need an [Amazon AWS](https://aws.amazon.com/) account to run the ski
 ### Clone smart-zoneminder
 To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running `git clone https://github.com/goruck/smart-zoneminder`.
 
-## Alarm Uploader
+## Alarm Uploader (zm-s3-upload)
+The Alarm Uploader, [zm-s3-upload](https://github.com/goruck/smart-zoneminder/tree/master/zm-s3-upload), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found sends them to an S3 bucket and marks them as having been uploaded. The Alarm Uploader also attaches metadata to the alarm frame image such as alarm score, event ID, frame number, date, and others. The metadata is used later on by the cloud services to process the image. The Alarm Uploader will concurrently upload alarm frames to optimize overall upload time. The default value is ten concurrent uploads. Upload speed will vary depending on your Internet bandwidth, image size and other factors but typically frames will be uploaded to S3 in less than a few hundred milliseconds. 
 
-## Alarm Clip Generator
+Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/README.md) for installation instructions. 
+
+## Alarm Clip Generator (gen-vid)
+The Alarm Clip Generator, [gen-vid](https://github.com/goruck/smart-zoneminder/blob/master/cgi/gen-vid.py), is a python script run in Apache's CGI on the local server that generates an MP4 video of an alarm event given its Event ID, starting Frame ID and ending Frame ID. The script is initiated via the CGI by the Alexa skill handler and the resulting video is played back on an Echo device with a screen upon a user's request.
+
+Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions.
 
 ## AWS Step
 
