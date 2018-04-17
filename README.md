@@ -103,10 +103,9 @@ If you installed ZoneMinder successfully then apache should be up and running bu
     AddType video/mp4 .mp4
 </Directory>
 ```
-6. Restart Apache.
-7. Allow external access to Apache by opening the right port on your firewall. 
-
-Also a CGI script is used to generate the clip so you also need to make sure Apache is configured to allow the CGI to be used. You should allow the CGI script only to be accessed externally via HTTPS and only with a password. I used [DIY: Enable CGI on your Apache server](https://www.techrepublic.com/blog/diy-it-guy/diy-enable-cgi-on-your-apache-server/) as a guide but only enabled the CGI to be used with the HTTPS virtual host. 
+6. Configure Apache to allow the CGI to be used. You should allow the CGI script only to be accessed externally via HTTPS and only with a password. I used [DIY: Enable CGI on your Apache server](https://www.techrepublic.com/blog/diy-it-guy/diy-enable-cgi-on-your-apache-server/) as a guide but only enabled the CGI to be used with the HTTPS virtual host.
+7. Restart Apache.
+8. Allow external access to Apache by opening the right port on your firewall. 
 
 ### Amazon Developers Account
 You'll need an [Amazon Developers](https://developer.amazon.com/) account to use the Alexa skills I developed for this project since I haven't published them. 
@@ -125,7 +124,9 @@ Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zonemin
 ## Alarm Clip Generator (gen-vid)
 The Alarm Clip Generator, [gen-vid](https://github.com/goruck/smart-zoneminder/blob/master/cgi/gen-vid.py), is a python script run in Apache's CGI on the local server that generates an MP4 video of an alarm event given its Event ID, starting Frame ID and ending Frame ID. The script is initiated via the CGI by the Alexa skill handler and the resulting video is played back on an Echo device with a screen upon a user's request.
 
-Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions.
+ZoneMinder does offer a streaming video API that could be used to view the event with the alarm frames via a web browser. However rhe Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that's used to playback the alarm clip requires very specific formats which are not supported by the ZoneMinder streaming API. Additionally I wanted to show only the alarm frames and not the entire event which also isn't supported by the Zoneminder API. So I decided to create gen-vid but it does come at the expense of complexity and user perceived latency since a long alarm clip takes some time to generate on my local machine. I'll be working to reduce this latency. 
+
+Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions. Apache must be setup to enable the CGI, see above. 
 
 ## AWS Step
 
