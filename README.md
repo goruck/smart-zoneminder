@@ -113,6 +113,55 @@ You'll need an [Amazon Developers](https://developer.amazon.com/) account to use
 ### AWS Account
 You'll also need an [Amazon AWS](https://aws.amazon.com/) account to run the skill's handler and the other lambda functions required for this project.
 
+### DynamoDB
+smart-zoneminder uses a [DynamoDB](https://aws.amazon.com/dynamodb/?nc2=h_l3_db) table to store information about the alarm frame images uploaded to S3. This table needs to be created either through the AWS cli or the console. Here's how to do it via the console.
+
+1. Open the DynamoDB console at https://console.aws.amazon.com/dynamodb/. Make sure you are using the AWS Region that you will later create smart-zoneminder's lambda functions. 
+
+2. Choose Create Table.
+
+3. In the Create DynamoDB table screen, do the following:
+    * In the Table name field, type ZmAlarmFrames.
+    * For the Primary key, in the Partition key field, type ZmCameraName. Set the data type to String.
+    * Choose Add sort key.
+    * In the Sort Key field type ZmEventDateTime. Set the data type to String. 
+
+When the settings are as you want them, choose Create.
+
+### S3
+You'll need an [S3 bucket](https://aws.amazon.com/documentation/s3/) where your images can be uploaded for processing and archived. You can create the bucket either through the AWS cli or the console, here's how to do it via the console.
+
+1. Sign in to the AWS Management Console and open the Amazon S3 console at https://console.aws.amazon.com/s3/.
+2. Choose Create bucket.
+3. In the Bucket name field, type zm-alarm-frames.
+4. For Region, choose the region where you want the bucket to reside. This should be the same as the DynamoDB and lambda functions region. 
+5. Choose Create.
+6. The bucket will need two root directories, /upload and /archive. Choose Create folder to make these. 
+7. Directly under the /archive directory, create the /alerts and /falsepositives subdirectories, again by using choosing Create folder. 
+8. In the "Permissions->Bucket Policy" tab for your S3 Bucket, set up the following Bucket Policy.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": [
+                "s3:Get*",
+                "s3:List*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::your-bucket-name",
+                "arn:aws:s3:::your-bucket-name/*"
+            ]
+        }
+    ]
+}
+```
+
 ### Clone smart-zoneminder
 To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running `git clone https://github.com/goruck/smart-zoneminder`.
 
@@ -128,17 +177,23 @@ ZoneMinder does offer a streaming video API that could be used to view the event
 
 Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions. Apache must be setup to enable the CGI, see above. 
 
-## AWS Step
+## Start State Machine (s3-trigger-image-processing)
 
-## AWS Rekognition
+## Step (step-smart-zoneminder)
 
-## S3 Archiver
+## Rekognition (rekognition-image-assessment)
 
-## DynamoDB
+## Evaluate Rekognition Labels (rekognition-evaluate-labels)
 
-## Alexa Skill
+## Archive S3 Image (s3-archive-image)
 
-## Alexa Skill Handler
+## Store DynamoDB Metadata (ddb-store-metadata)
+
+## Error Handler (error-handler)
+
+## Alexa Skill (skill.json)
+
+## Alexa Skill Handler (alexa-smart-zoneminder)
 
 # License
 Everything here is licensed under the [MIT license](https://choosealicense.com/licenses/mit/).
