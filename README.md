@@ -177,7 +177,10 @@ ZoneMinder does offer a [streaming video API](https://github.com/ZoneMinder/zone
 
 Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions. Apache must be setup to enable the CGI, see above. 
 
-## Start State Machine (s3-trigger-image-processing)
+## Trigger Image Processing (s3-trigger-image-processing)
+The Trigger Image Processing component (s3-trigger-image-processing) is an AWS Lambda Function that monitors the S3 bucket "upload" directory for new alarm image files and triggers their processing by calling the [step function](https://github.com/goruck/smart-zoneminder/tree/master/aws-step-function).
+
+Please see the Start State Machine's [README](https://github.com/goruck/smart-zoneminder/tree/master/aws-lambda/s3-trigger-image-processing) for installation instructions. 
 
 ## State Machine
  The step function orchestrates calls to the AWS Lambda Functions associated with ZoneMinder alarm frame cloud processing. The State Machine is implemented by an [AWS Step Function](https://aws.amazon.com/step-functions/) which is defined by [step-smart-zoneminder.json](https://github.com/goruck/smart-zoneminder/blob/master/aws-step-function/step-smart-zoneminder.json) in the [aws-step-function](https://github.com/goruck/smart-zoneminder/tree/master/aws-step-function) directory. The State Machine's state transition diagram is shown below.
