@@ -2,6 +2,8 @@
 
 Monitors the s3 buckets "upload" directory for new image files and triggers their processing by calling the [step function](https://github.com/goruck/smart-zoneminder/tree/master/aws-step-function).
 
+Based on and inspired by [smart-security-camera](https://github.com/markwest1972/smart-security-camera).
+
 ## Contents
 
 1. **index.js** - source code.
