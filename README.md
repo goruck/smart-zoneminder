@@ -173,23 +173,31 @@ Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zonemin
 ## Alarm Clip Generator (gen-vid)
 The Alarm Clip Generator, [gen-vid](https://github.com/goruck/smart-zoneminder/blob/master/cgi/gen-vid.py), is a python script run in Apache's CGI on the local server that generates an MP4 video of an alarm event given its Event ID, starting Frame ID and ending Frame ID. The script is initiated via the CGI by the Alexa skill handler and the resulting video is played back on an Echo device with a screen upon a user's request.
 
-ZoneMinder does offer a streaming video API that could be used to view the event with the alarm frames via a web browser. However rhe Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that's used to playback the alarm clip requires very specific formats which are not supported by the ZoneMinder streaming API. Additionally I wanted to show only the alarm frames and not the entire event which also isn't supported by the Zoneminder API. So I decided to create gen-vid but it does come at the expense of complexity and user perceived latency since a long alarm clip takes some time to generate on my local machine. I'll be working to reduce this latency. 
+ZoneMinder does offer a [streaming video API](https://github.com/ZoneMinder/zoneminder/blob/master/src/zms.cpp) that can be used to view the event with the alarm frames via a web browser. However rhe Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that's used to playback the alarm clip requires very specific formats which are not supported by the ZoneMinder streaming API. Additionally I wanted to show only the alarm frames and not the entire event which also isn't supported by the Zoneminder API. Also its possible to create the video clip completely on the cloud from the alarm images stored in DynamoDB, however gaps would likely exist in videos created this way because there's no guarantee that ZoneMinder's motion detection would pick up all frames. So I decided to create gen-vid but it does come at the expense of complexity and user perceived latency since a long alarm clip takes some time to generate on my local machine. I'll be working to reduce this latency. 
 
 Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions. Apache must be setup to enable the CGI, see above. 
 
 ## Start State Machine (s3-trigger-image-processing)
 
-## Step (step-smart-zoneminder)
+## State Machine
+ The step function orchestrates calls to the AWS Lambda Functions associated with ZoneMinder alarm frame cloud processing. The State Machine is implemented by an [AWS Step Function](https://aws.amazon.com/step-functions/) which is defined by [step-smart-zoneminder.json](https://github.com/goruck/smart-zoneminder/blob/master/aws-step-function/step-smart-zoneminder.json) in the [aws-step-function](https://github.com/goruck/smart-zoneminder/tree/master/aws-step-function) directory. The State Machine's state transition diagram is shown below.
 
-## Rekognition (rekognition-image-assessment)
+![Alt text](aws-step-function/step-smart-zoneminder.png?raw=true "state transition diagram diagram.")
 
-## Evaluate Rekognition Labels (rekognition-evaluate-labels)
+Please see the State Machine's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-step-function/README.md) for installation instructions.
 
-## Archive S3 Image (s3-archive-image)
+## Alarm Frame Processing
+There are several AWS Lambda Functions that process ZoneMinder alarm frames. These are described below. 
 
-## Store DynamoDB Metadata (ddb-store-metadata)
+### Rekognition (rekognition-image-assessment)
 
-## Error Handler (error-handler)
+### Evaluate Rekognition Labels (rekognition-evaluate-labels)
+
+### Archive S3 Image (s3-archive-image)
+
+### Store DynamoDB Metadata (ddb-store-metadata)
+
+### Error Handler (error-handler)
 
 ## Alexa Skill (skill.json)
 
