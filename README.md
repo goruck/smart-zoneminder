@@ -180,7 +180,7 @@ Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-z
 ## Trigger Image Processing (s3-trigger-image-processing)
 The Trigger Image Processing component (s3-trigger-image-processing) is an AWS Lambda Function that monitors the S3 bucket "upload" directory for new alarm image files and triggers their processing by calling the [step function](https://github.com/goruck/smart-zoneminder/tree/master/aws-step-function).
 
-Please see the Start State Machine's [README](https://github.com/goruck/smart-zoneminder/tree/master/aws-lambda/s3-trigger-image-processing) for installation instructions. 
+Please see the Start State Machine's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/s3-trigger-image-processing/README.md) for installation instructions. 
 
 ## State Machine
  The step function orchestrates calls to the AWS Lambda Functions associated with ZoneMinder alarm frame cloud processing. The State Machine is implemented by an [AWS Step Function](https://aws.amazon.com/step-functions/) which is defined by [step-smart-zoneminder.json](https://github.com/goruck/smart-zoneminder/blob/master/aws-step-function/step-smart-zoneminder.json) in the [aws-step-function](https://github.com/goruck/smart-zoneminder/tree/master/aws-step-function) directory. The State Machine's state transition diagram is shown below.
@@ -190,9 +190,12 @@ Please see the Start State Machine's [README](https://github.com/goruck/smart-zo
 Please see the State Machine's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-step-function/README.md) for installation instructions.
 
 ## Alarm Frame Processing
-There are several AWS Lambda Functions that process ZoneMinder alarm frames. These are described below. 
+There are several AWS Lambda Functions that process ZoneMinder alarm frames. These are described below and are in the [aws-lambda](https://github.com/goruck/smart-zoneminder/tree/master/aws-lambda) folder. 
 
 ### Rekognition (rekognition-image-assessment)
+The AWS Lambda function in the [rekognition-image-assessment](https://github.com/goruck/smart-zoneminder/tree/master/aws-lambda/rekognition-image-assessment) folder sends images from s3 to Amazon Rekognition for object detection.
+
+Please see the function's [README]() for installation instructions. 
 
 ### Evaluate Rekognition Labels (rekognition-evaluate-labels)
 
