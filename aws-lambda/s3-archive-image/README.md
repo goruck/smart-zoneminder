@@ -2,6 +2,8 @@
 
 Archives files after successfull processing (moves them from "upload" to the relevant "archive" subdirectory in s3).
 
+Based on and inspired by [smart-security-camera](https://github.com/markwest1972/smart-security-camera).
+
 ## Contents
 
 1. **index.js** - source code.
