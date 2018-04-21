@@ -5,6 +5,7 @@ AWS Lambda function that implements an Alexa skill handler for smart-zoneminder.
 1. **index.js** - source code.
 2. **config.json** - main configuration file.
 3. **mkzip** - script to zip files for uploading to AWS Lambda.
+4. **package.json** - npm package file.
 
 ## How to use
 
