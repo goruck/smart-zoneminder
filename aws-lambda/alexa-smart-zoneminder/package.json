@@ -1,0 +1,25 @@
+{
+    "name": "alexa-smart-zonminder",
+    "version": "0.1.0",
+    "author": "Lindo St. Angel <lindostangel@gmai.com>",
+    "description": "alexa skill handler for zoneminder",
+    "license": "MIT",
+    "engines": {
+        "node": ">=6.12.2"
+    },
+    "dependencies": {
+        "alexa-sdk": ">=1.0.25"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/goruck/smart-zoneminder/aws-lambda/alexa-smart-zoneminder"
+    },
+    "bugs": {
+        "url": "https://github.com/goruck/smart-zoneminder/issues"
+    },
+    "keywords": [
+        "zoneminder",
+        "alexa"
+    ]
+}
+
