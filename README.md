@@ -217,9 +217,15 @@ The AWS Lambda function in the error-handler folder deals with any error conditi
 
 Please see the function's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/error-handler/README.md) for installation instructions.
 
-## Alexa Skill (skill.json)
+## Alexa Skill
+The skill.json file in the aws-ask folder defines the Alexa skill that the user interacts with to control ZoneMinder.
+
+Please see the [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-ask/README.md) for installation instructions. 
 
 ## Alexa Skill Handler (alexa-smart-zoneminder)
+The AWS Lambda function in the aws-lambda/alexa-smart-zoneminder folder implements the skill handler for the Alexa skill described above.
+
+Please see the function's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/alexa-smart-zoneminder/README.md) for installation instructions.
 
 # License
 Everything here is licensed under the [MIT license](https://choosealicense.com/licenses/mit/).
