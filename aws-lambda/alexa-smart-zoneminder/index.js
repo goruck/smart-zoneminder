@@ -1060,19 +1060,19 @@ function renderTemplate (content) {
  *
  */
 var httpsReq = (method, path, postData, text, user, pass, callback) => {
-    // If environment variables for host and port exist then override defaults
-    var HOST = '';
+    // If environment variables for host and port exist then override configuration. 
+    let HOST = '';
     if (process.env.host) {
         HOST = process.env.host;
     } else {
-        HOST = fs.readFileSync('./host.txt').toString().replace(/\n$/, ''); // Ignore last newline character
+        HOST = credsObj.host;
     }
 
-    var PORT = '';
+    let PORT = '';
     if (process.env.port) {
         PORT = process.env.port;
     } else {
-        PORT = fs.readFileSync('./port.txt').toString().replace(/\n$/, '');
+        PORT = credsObj.port;
     }
 
     /*var CERT = fs.readFileSync('./certs/client.crt'),
