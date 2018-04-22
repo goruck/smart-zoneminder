@@ -3,6 +3,16 @@
 # smart-zoneminder
 smart-zoneminder enables fast upload of [ZoneMinder](https://www.zoneminder.com/) alarm frame images to an S3 archive where they are analyzed by Amazon Rekognition and made accessible by voice via Alexa. The use of Rekognition dramatically reduces the number of false alarms and provides for robust scene, object and face detection. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
 
+# Table of Contents
+1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
+2. [Project Requirements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#project-requirements)
+3. [System Architecture](https://github.com/goruck/smart-zoneminder/blob/master/README.md#system-architecture)
+4. [System Components and Installation](https://github.com/goruck/smart-zoneminder/blob/master/README.md#system-components-and-installation)
+5. [License](https://github.com/goruck/smart-zoneminder/blob/master/README.md#license)
+6. [Contact](https://github.com/goruck/smart-zoneminder/blob/master/README.md#contact)
+7. [Acknowledgements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#acknowledgements)
+8. [Appendix](https://github.com/goruck/smart-zoneminder/blob/master/README.md#appendix)
+
 # Usage Examples
 Hera are a few of the things you can do with smart-zoneminder.
 
