@@ -10,9 +10,12 @@
  */
 
 var zms3Config = function() {
+    // Get ZoneMinder MySql user name and password.
+    // zmUserPassArr[0] will contain ZoneMinder MySql user name.
+    // zmUserPassArr[1] will contain ZoneMinder MySql password.
     const fs = require('fs');
-    let zmPass = fs.readFileSync('./zm-pass.txt').toString().replace(/\n$/, '');
-    let zmUser = fs.readFileSync('./zm-user.txt').toString().replace(/\n$/, '');
+    const text = fs.readFileSync('./zm-user-pass.txt', 'utf-8');
+    const zmUserPassArr = text.split('\n');
 
     /*
     * The "type" of frame to look for in the Zoneminder DB
@@ -26,9 +29,9 @@ var zms3Config = function() {
     /* Database host (mysql) - zoneminder DB */
     this.DBHOST = "localhost";
     /* Database user name, must have select on zoneminder tables */
-    this.DBUSR = zmUser;
+    this.DBUSR = zmUserPassArr[0];
     /* Database user's password */
-    this.DBPWD = zmPass;
+    this.DBPWD = zmUserPassArr[1];
     /* Database name for zoneminder */
     this.DBNAME = "zm";
     /* Base path where your zoneminder events are stored. */
