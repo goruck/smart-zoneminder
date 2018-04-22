@@ -34,7 +34,7 @@ var zms3Config = function() {
     /* Base path where your zoneminder events are stored. */
     this.IMGBASEPATH = "/media/lindo/NVR/zoneminder/events";
     /* Console logging on or off (true or false) */
-    this.CONSOLELOGGING = true;
+    this.CONSOLELOGGING = false;
     /* Max concurrent uploads... these will be executed non-blocking
      * and the next batch will wait until this batch has completed.
      */
@@ -46,10 +46,18 @@ var zms3Config = function() {
      */
     this.LOGFILEBASE = '/home/lindo/dev/smart-zoneminder/zm-s3-upload/logfile';
 
+    // Get current datetime and format for MySql query.
+    const date = new Date();
+    const dateTime = date.getFullYear() + '-' +
+                     ('0' + (date.getMonth() + 1)).slice(-2) + '-' +
+                     ('0' + date.getDate()).slice(-2) + ' ' +
+                     date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+    //const dateTime = "'2018-04-21 20:30:00'";
+
     /* Base query used to get alarm frames from the zoneminder DB.
-    * Only change this if you:
-    * 1) Have customized your zoneminder DB somehow
-    * 2) REALLY know what you are doing.
+     * Only change this if you:
+     * 1) Have customized your zoneminder DB somehow
+     * 2) REALLY know what you are doing.
      */
     this.zmQuery = "select f.frameid, f.timestamp as frame_timestamp, f.score, " +
         "f.delta as frame_delta," +
@@ -60,7 +68,7 @@ var zms3Config = function() {
         "join Monitors m on e.monitorid = m.id " +
         "left join alarm_uploaded au on (au.frameid = f.frameid and au.eventid = f.eventid) " +
         "where f.type = ? " +
-        "and f.timestamp > '2018-04-06 21:00:00' and upload_timestamp is null limit 0,?";
+        "and f.timestamp > '" + dateTime + "' and upload_timestamp is null limit 0,?";
 
     return this;
 }
