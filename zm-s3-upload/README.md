@@ -1,7 +1,14 @@
 # zm-s3-upload
-Uploads ZoneMinder alarm frames to an AWS S3 bucket.
+This directory contains the node.js applications that upload ZoneMinder alarm frames to an AWS S3 bucket.
 
 Inspired by and based on Brian Roy's original [work](https://github.com/briantroy/Zoneminder-Alert-Image-Upload-to-Amazon-S3).
+
+# Contents
+1. **zm-s3-upload.js** - Main node.js application.
+2. **zm-s3-upload-config.js** - configuration app.
+3. **zms3db.sql** - MySql script to create alarm upload table.
+4. **tLogger.js** - Logger app.
+5. **package.json** - npm package file.
 
 # Installation
 1. Clone this git repo to local machine running Zoneminder and cd to it. 
