@@ -2,24 +2,25 @@
 
 '''
 CGI script to generate a video given a Zoneminder Event ID, Start Frame and End Frame.
-URL format is http://HOST/cgi-bin/gen-vid.py?event=EVENT_ID&start_frame=SF&end_frame=EF
+URL format is http://HOST/cgi/gen-vid.py?event=EVENT_ID&start_frame=SF&end_frame=EF
 
 Copyright 2018 Lindo St. Angel
 '''
 
-import cgi, cgitb, os, MySQLdb, datetime, json
+import cgi, cgitb, os, datetime, json
+import mysql.connector as mysqldb
 from subprocess import check_call, CalledProcessError
 
 # Define where to save generated video clip.
-OUT_PATH = '/var/www/public/'
+OUT_PATH = '/var/www/lindo.loginto.me/public/'
 
 # Define where Zoneminder keeps event images.
-IMAGE_BASE = '/media/lindo/NVR/zoneminder/events/'
+IMAGE_BASE = '/nvr/zoneminder/events/'
 
 def print_json( success, message ):
    'This prints json to the requestor'
    print 'Content-Type: application/json\n\n'
-   result = {'success':success,'message':message};
+   result = {'success':success,'message':message}
    print json.dumps(result)
    return
 
@@ -40,7 +41,7 @@ password = lines[1].rstrip()
 zm_user_pass.close()
 
 # Connect to zm mysql db.
-db = MySQLdb.connect(host = 'localhost',
+db = mysqldb.connect(host = 'localhost',
                      user = username,
                      passwd = password,
                      db = 'zm')
@@ -54,7 +55,7 @@ query = ('SELECT Events.MonitorId,Frames.TimeStamp FROM Events' +
          ' JOIN Frames ON Frames.EventId=Events.Id WHERE Events.Id=%s LIMIT 1')
 
 # Perform query with event id passed to script.
-cur.execute(query, event)
+cur.execute(query, (event, ))
 
 # data contains results from query.
 # Note this will be a single tuple with two members. 
