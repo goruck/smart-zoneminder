@@ -435,7 +435,7 @@ var handlers = {
             log('INFO', `End Frame of latest alarm image: ${endFrame} from ${ZmEventDateTime}`);
 
             const method   = 'GET';
-            const path     = '/cgi-bin/gen-vid.py?event='+lastEvent.toString()+
+            const path     = '/cgi/gen-vid.py?event='+lastEvent.toString()+
                              '&start_frame='+startFrame.toString()+'&end_frame='+endFrame.toString();
             const postData = '';
             const text     = true;
@@ -1106,7 +1106,8 @@ var httpsReq = (method, path, postData, text, user, pass, callback) => {
     }
 
     var req = https.request(options, (result) => {
-        var data = new Stream();
+        const data = new Stream();
+        data.setEncoding('utf8'); // else a buffer will be returned
 
         result.on('data', (chunk) => {
             data.push(chunk);
