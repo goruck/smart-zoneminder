@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 '''
 CGI script to generate a video given a Zoneminder Event ID, Start Frame and End Frame.
@@ -19,9 +19,9 @@ IMAGE_BASE = '/nvr/zoneminder/events/'
 
 def print_json( success, message ):
    'This prints json to the requestor'
-   print 'Content-Type: application/json\n\n'
+   print ('Content-Type: application/json\n\n')
    result = {'success':success,'message':message}
-   print json.dumps(result)
+   print (json.dumps(result))
    return
 
 # Create instance of FieldStorage for cgi handling.
@@ -70,8 +70,7 @@ if data:
     # time_stamp is a datetime object.
     time_stamp = data[1].strftime('%y %m %d %H %M %S')
     year, month, day, hour, minute, second = time_stamp.split(' ')
-    image_base = IMAGE_BASE
-    image_path = (image_base + monitor_id + '/' + year + '/' + month + '/' + day +
+    image_path = (IMAGE_BASE + monitor_id + '/' + year + '/' + month + '/' + day +
                   '/' + hour + '/' + minute + '/' + second + '/%05d-capture.jpg')
 else:
     print_json(False, 'Event data not found!')
@@ -80,9 +79,16 @@ else:
 FNULL = open(os.devnull, 'w')
 
 # ffmpeg command line to generate MP4.
-FFMPEG_MP4 = (['/usr/bin/ffmpeg', '-r', '10', '-s', '640x480', '-start_number', start_frame,
+FFMPEG_MP4 = (['/usr/bin/ffmpeg', '-r', '10', '-s', '640x480',
+               '-start_number', start_frame,
                '-i', image_path, '-frames', total_frames, '-vcodec', 'libx264', '-preset', 'veryfast',
                '-crf', '35', '-y', (OUT_PATH + 'alarm-video.mp4')])
+
+# ffmpeg command to generate MP4 with Nvidia GPU HW acceleration.
+FFMPEG_MP4_HW = (['/usr/bin/ffmpeg', '-hwaccel', 'cuvid', '-r', '10', '-s', '640x480',
+                  '-start_number', start_frame,
+                  '-i', image_path, '-frames', total_frames, '-vcodec', 'h264_nvenc', '-preset', 'fast',
+                  '-crf', '35', '-y', (OUT_PATH + 'alarm-video.mp4')])
 
 # ffmpeg command line to generate MJPEG.
 FFMPEG_MJPEG = (['/usr/bin/ffmpeg', '-f', 'image2', '-r', '10', '-s', '640x480',
@@ -90,7 +96,7 @@ FFMPEG_MJPEG = (['/usr/bin/ffmpeg', '-f', 'image2', '-r', '10', '-s', '640x480',
                  '-y', (OUT_PATH + 'alarm-video.ts')])
 
 try:
-    check_call(FFMPEG_MP4, stdout=FNULL, stderr=FNULL, shell=False)
+    check_call(FFMPEG_MP4_HW, stdout=FNULL, stderr=FNULL, shell=False)
 except CalledProcessError as e:
     print_json(False, 'CalledPrcessError! %s' % e)
     quit()
