@@ -35,7 +35,7 @@ var zms3Config = function() {
     /* Database name for zoneminder */
     this.DBNAME = "zm";
     /* Base path where your zoneminder events are stored. */
-    this.IMGBASEPATH = "/media/lindo/NVR/zoneminder/events";
+    this.IMGBASEPATH = '/nvr/zoneminder/events';
     /* Console logging on or off (true or false) */
     this.CONSOLELOGGING = false;
     /* Max concurrent uploads... these will be executed non-blocking
