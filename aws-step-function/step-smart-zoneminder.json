@@ -1,7 +1,18 @@
 {
-    "Comment": "Process incoming image files to determine true alarms vs false positives.",
-    "StartAt": "rekognition-image-assessment",
+    "Comment": "Process incoming image files for smart-zoneminder.",
+    "StartAt": "choice-rek",
     "States": {
+        "choice-rek": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.local",
+                "BooleanEquals": true,
+                "Next": "s3-archive-image"
+              }
+            ],
+            "Default": "rekognition-image-assessment"
+          },
         "error-handler": {
             "Type": "Task",
             "Resource": "arn:aws:lambda:us-west-2:232513044594:function:error-handler",
