@@ -33,6 +33,7 @@ exports.handler = (event, context) => {
             // Check for an alert in the S3 object metadata which means local obj recognition was used. 
             if (data.Metadata.alert !== undefined) {
                 jsonData.Alert = data.Metadata.alert;
+                jsonData.Labels = data.Metadata.labels;
                 jsonData.local = true;
             } else {
                 jsonData.local = false;
