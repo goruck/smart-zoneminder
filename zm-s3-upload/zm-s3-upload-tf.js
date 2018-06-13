@@ -135,15 +135,26 @@ function getFrames() {
             //tLog.writeLogMsg('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete, 'info')
 
             const objectsFound = JSON.parse(data.toString());
-
+            // Placeholder label object.
+            const labels = {
+                "Labels": [
+                    {
+                        "Confidence": 90,
+                        "Name": "Person"
+                    }
+                ]
+            }
             for (let testImage in objectsFound) {
-                let obj = objectsFound[testImage].find(o => o.name === 'person');
-                if (obj === undefined) {
+                let objLabels = objectsFound[testImage].find(o => o.name === 'person');
+                if (objLabels === undefined) {
                     tLog.writeLogMsg('Person NOT found in '+testImage, 'info');
                     aryRowsObject[testImage].alert = 'false';
                 } else {
                     tLog.writeLogMsg('Person found in '+testImage, 'info');
                     aryRowsObject[testImage].alert = 'true';
+                    // Need to deal with invalid JSON with 2 stringifies. TODO - fix
+                    //aryRowsObject[testImage].labels = JSON.stringify(JSON.stringify(objLabels));
+                    aryRowsObject[testImage].objLabels = JSON.stringify(labels);
                 }
             }
 
@@ -204,7 +215,8 @@ function getFrames() {
                                 'zmFrameId': imgData.frameid.toString(),
                                 'zmFrameDatetime': dtFrameMs.toISOString(),
                                 'zmScore': imgData.score.toString(),
-                                'alert': imgData.alert
+                                'alert': imgData.alert,
+                                'labels': imgData.objLabels
                             }
                         };
                         s3.putObject(params, (error, data) => {
