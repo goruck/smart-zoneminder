@@ -24,11 +24,19 @@ exports.handler = (event, context) => {
         } else {
             console.log('New file uploaded:', {bucket: bucket, key : key});
 
-            const jsonData = {
+            let jsonData = {
                 "bucket": bucket.toString(),
                 "key": key.toString(),
                 "metadata": data.Metadata
             };
+
+            // Check for an alert in the S3 object metadata which means local obj recognition was used. 
+            if (data.Metadata.alert !== undefined) {
+                jsonData.Alert = data.Metadata.alert;
+                jsonData.local = true;
+            } else {
+                jsonData.local = false;
+            }
      
             // Setup the parameters for triggering the step function
             var params = {
