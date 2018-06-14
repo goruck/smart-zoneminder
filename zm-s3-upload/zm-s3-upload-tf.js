@@ -135,7 +135,8 @@ function getFrames() {
             //tLog.writeLogMsg('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete, 'info')
 
             const objectsFound = JSON.parse(data.toString());
-            // Placeholder label object.
+
+            // Placeholder label objects.
             const labels = {
                 "Labels": [
                     {
@@ -143,7 +144,8 @@ function getFrames() {
                         "Name": "Person"
                     }
                 ]
-            }
+            };
+
             for (let testImage in objectsFound) {
                 let objLabels = objectsFound[testImage].find(o => o.name === 'person');
                 if (objLabels === undefined) {
@@ -204,7 +206,7 @@ function getFrames() {
                             dtFrame.getDate(), dtFrame.getHours(), dtFrame.getMinutes(),
                             dtFrame.getSeconds(), timestampMs);
                     
-                        const params = {
+                        let params = {
                             Bucket: 'zm-alarm-frames',
                             Key: 'upload/' + S3PathKey,
                             Body: data,
@@ -215,10 +217,14 @@ function getFrames() {
                                 'zmFrameId': imgData.frameid.toString(),
                                 'zmFrameDatetime': dtFrameMs.toISOString(),
                                 'zmScore': imgData.score.toString(),
-                                'alert': imgData.alert,
-                                'labels': imgData.objLabels
+                                'alert': imgData.alert
                             }
                         };
+
+                        if (imgData.alert === 'true') {
+                            params.Metadata.labels = imgData.objLabels;
+                        }
+
                         s3.putObject(params, (error, data) => {
                         // Handle error - try to get alarm frame again by triggering isComplete flag. 
                             if (error) {
