@@ -2,7 +2,7 @@
 
 # Detect objects using tensorflow-gpu.
 # Designed to be run as a script from node.js as part of the smart-zoneminder project. 
-# Copywrite 2018 Lindo St. Angel
+# Copyright (c) 2018 Lindo St. Angel
 #
 # See below for addtional information.
 # https://stackoverflow.com/questions/45674696/tensorflow-object-detection-api-print-objects-found-on-image-to-console
@@ -103,14 +103,9 @@ def detect_object_in_image(image_path):
     #print(boxes.shape)
     #print(num_detections)
 
-# Allowing GPU memory growth to avoid Cuda OOM problems.
-# See https://www.tensorflow.org/programmers_guide/using_gpu.
-config = tf.ConfigProto()
-#config.gpu_options.allow_growth = True
-
 objects_in_image = {}
 with detection_graph.as_default():
-  with tf.Session(config=config,graph=detection_graph) as sess:
+  with tf.Session(graph=detection_graph) as sess:
     sess.run(tf.global_variables_initializer())
     for image_path in TEST_IMAGE_PATHS:
         #objects_in_image.append(detect_object_in_image(image_path))
