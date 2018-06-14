@@ -124,8 +124,7 @@ function getFrames() {
         // Run Tensorflow-GPU people detection script.
         // See https://stackoverflow.com/questions/23450534/how-to-call-a-python-function-from-node-js
         const { spawn } = require('child_process');
-        const pyProg = spawn('/home/lindo/develop/tensorflow/models/research/object_detection/object_detection_lindo.py',
-            testImagePaths);
+        const pyProg = spawn('../obj-detect/obj_detect.py', testImagePaths);
 
         /*pyProg.stderr.on('data', function(data) {
             console.log(data.toString());
