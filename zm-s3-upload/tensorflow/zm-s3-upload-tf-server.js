@@ -3,7 +3,10 @@
 /**
  *
  * This will scan for new alarm frames in Zoneminder.
- * When it finds them it uploads them to Amazon S3.
+ * When it finds them it will run object detection on the image using Tensorflow.
+ * Then it will upload the image and any found objects to Amazon S3.
+ * 
+ * This version uses a Tensorflow zerorpc server. 
  *
  * Lindo St. Angel 2018.
  *
@@ -13,16 +16,16 @@
  */
 
 /* Get our Configuration... */
-var zmConfig = require('./zm-s3-upload-config.js').zms3Config();
+var zmConfig = require('../zm-s3-upload-config.js').zms3Config();
 
 // Globals.
 const fs = require('fs');
-const AWS = require('./node_modules/aws-sdk');
+const AWS = require('../node_modules/aws-sdk');
 var s3 = new AWS.S3();
 var isComplete = true;
 
 // DB Connection.
-const mysql = require('./node_modules/mysql');
+const mysql = require('../node_modules/mysql');
 
 const client = mysql.createConnection({
     host     : zmConfig.DBHOST,
@@ -31,7 +34,7 @@ const client = mysql.createConnection({
     database : zmConfig.DBNAME
 });
 
-var tLog = require('./tLogger').tLogger();
+var tLog = require('../tLogger').tLogger();
 tLog.createLogger(zmConfig.LOGFILEBASE, zmConfig.CONSOLELOGGING);
 console.log('Logger created...');
 
@@ -111,29 +114,29 @@ function getFrames() {
             testImagePaths.push(imageFullPath);
         }
 
-        // Convert aryRows to object using imageFullPath as object key.
-        // This will allow us to select an alarm frame image by full path name.
-        // See https://medium.com/dailyjs/rewriting-javascript-converting-an-array-of-objects-to-an-object-ec579cafbfc7.
-        const arrayToObject = (array, keyField) =>
-            array.reduce((obj, item) => {
-                obj[item[keyField]] = item;
-                return obj;
-            }, {});
-        let aryRowsObject = arrayToObject(aryRows.slice(0, maxInit), 'imageFullPath');
+        // zerorpc connection.
+        // Heartbeat should be greater than the time required to run detection on maxInit frames. 
+        const zerorpc = require('zerorpc');
+        const zerorpcClient = new zerorpc.Client({heartbeatInterval: 60000});
+        zerorpcClient.connect('ipc:///tmp/zmq.pipe');
+        
+        zerorpcClient.on('error', function(error) {
+            console.error('RPC client error: ', error);
+        });
 
-        // Run Tensorflow-GPU people detection script.
-        // See https://stackoverflow.com/questions/23450534/how-to-call-a-python-function-from-node-js
-        const { spawn } = require('child_process');
-        const pyProg = spawn('../obj-detect/obj_detect.py', testImagePaths);
-
-        /*pyProg.stderr.on('data', function(data) {
-            console.log(data.toString());
-        });*/
-
-        pyProg.stdout.on('data', function(data) {
+        zerorpcClient.invoke('detect', testImagePaths, function(error, res, more) {
             //tLog.writeLogMsg('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete, 'info')
 
-            const objectsFound = JSON.parse(data.toString());
+            if (error) {
+                console.log('zerorpcClient: '+error);
+                return;
+            }
+
+            /*if(!more) {
+                console.log('detect Done.');
+            }*/
+
+            const objectsFound = JSON.parse(res.toString());
 
             // Placeholder label objects.
             const labels = {
@@ -145,21 +148,19 @@ function getFrames() {
                 ]
             };
 
-            for (let testImage in objectsFound) {
-                let objLabels = objectsFound[testImage].find(o => o.name === 'person');
+            // Scan objectsFound array for a person. 
+            for (let i = 0; i < maxInit; i++) {
+                let fileName = objectsFound[i].image;
+                let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
                 if (objLabels === undefined) {
-                    tLog.writeLogMsg('Person NOT found in '+testImage, 'info');
-                    aryRowsObject[testImage].alert = 'false';
+                    tLog.writeLogMsg('Person NOT found in '+fileName, 'info');
+                    aryRows[i].alert = 'false';
                 } else {
-                    tLog.writeLogMsg('Person found in '+testImage, 'info');
-                    aryRowsObject[testImage].alert = 'true';
-                    // Need to deal with invalid JSON with 2 stringifies. TODO - fix
-                    //aryRowsObject[testImage].labels = JSON.stringify(JSON.stringify(objLabels));
-                    aryRowsObject[testImage].objLabels = JSON.stringify(labels);
+                    tLog.writeLogMsg('Person found in '+fileName, 'info');
+                    aryRows[i].alert = 'true';
+                    aryRows[i].objLabels = JSON.stringify(labels);
                 }
             }
-
-            //console.log(aryRowsObject);
 
             // Upload images.
             // Asynchronous Process inside a javascript for loop.
@@ -177,6 +178,7 @@ function getFrames() {
                     if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
                         tLog.writeLogMsg('This Image is bad:', 'warning');
                         tLog.writeLogMsg(imgData, 'warning');
+                        zerorpcClient.close();
                         return;
                     }
 
@@ -194,6 +196,7 @@ function getFrames() {
                         if (error) { 
                             tLog.writeErrMsg('readFile error: '+error, 'error');
                             tLog.writeLogMsg('Retry to get alarm frame...', 'info');
+                            zerorpcClient.close();
                             isComplete = true;
                             return;
                         }
@@ -229,6 +232,7 @@ function getFrames() {
                             if (error) {
                                 tLog.writeErrMsg('S3 upload error: '+error, 'error');
                                 tLog.writeLogMsg('Retrying to get alarm frame...', 'info');
+                                zerorpcClient.close();
                                 isComplete = true;
                                 return;
                             }
@@ -242,6 +246,7 @@ function getFrames() {
                             client.query(uploadInsertQuery, aryBind, (error, results, fields) => {
                                 if (error) {
                                     tLog.writeErrMsg('Insert query error: '+error.stack, 'error');
+                                    zerorpcClient.close();
                                     return;
                                 }
 
@@ -253,6 +258,7 @@ function getFrames() {
                                 if (uploadCount > maxInit - 1) {
                                     tLog.writeLogMsg(uploadCount+' image(s) have been uploaded', 'info');
                                     tLog.writeLogMsg('Ready for new alarm frames...', 'info');
+                                    zerorpcClient.close();
                                     isComplete = true;
                                 }
                             });

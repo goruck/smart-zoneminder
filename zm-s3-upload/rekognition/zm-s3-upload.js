@@ -18,7 +18,7 @@ var zmConfig = require('./zm-s3-upload-config.js').zms3Config();
 // Globals.
 const fs = require('fs');
 const AWS = require('./node_modules/aws-sdk');
-const uuid = require('./node_modules/uuid4');
+//const uuid = require('./node_modules/uuid4');
 var s3 = new AWS.S3();
 var isComplete = true;
 

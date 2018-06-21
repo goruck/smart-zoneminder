@@ -1,20 +1,21 @@
 {
-    "name": "zm-s3-upload",
+    "name": "zm-s3-upload-tf-server",
     "version": "0.1.0",
     "author": "Lindo St. Angel <lindostangel@gmai.com>",
-    "description": "uploads zoneminder alarm frames to aws s3",
+    "description": "uploads zoneminder alarm frames to aws s3 using tensorflow",
     "license": "MIT",
     "engines": {
         "node": ">=6.12.2"
     },
     "dependencies": {
-        "mysql": ">=2.15.0",
         "aws-sdk": ">=2.202.0",
-        "winston": ">=2.4.0"
+        "mysql": ">=2.15.0",
+        "winston": ">=2.4.0",
+        "zeromq": "^4.6.0"
     },
     "repository": {
         "type": "git",
-        "url": "git://github.com/goruck/smart-zoneminder/zm-s3-upload"
+        "url": "git://github.com/goruck/smart-zoneminder/zm-s3-upload/tensorflow"
     },
     "bugs": {
         "url": "https://github.com/goruck/smart-zoneminder/issues"
