@@ -13,17 +13,17 @@
  */
 
 /* Get our Configuration... */
-var zmConfig = require('./zm-s3-upload-config.js').zms3Config();
+var zmConfig = require('../zm-s3-upload-config.js').zms3Config();
 
 // Globals.
 const fs = require('fs');
-const AWS = require('./node_modules/aws-sdk');
+const AWS = require('../node_modules/aws-sdk');
 //const uuid = require('./node_modules/uuid4');
 var s3 = new AWS.S3();
 var isComplete = true;
 
 // DB Connection.
-const mysql = require('./node_modules/mysql');
+const mysql = require('../node_modules/mysql');
 
 const client = mysql.createConnection({
   host     : zmConfig.DBHOST,
@@ -32,7 +32,7 @@ const client = mysql.createConnection({
   database : zmConfig.DBNAME
 });
 
-var tLog = require('./tLogger').tLogger();
+var tLog = require('../tLogger').tLogger();
 tLog.createLogger(zmConfig.LOGFILEBASE, zmConfig.CONSOLELOGGING);
 console.log('Logger created...');
 
