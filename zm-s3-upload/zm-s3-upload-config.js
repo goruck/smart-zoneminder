@@ -14,7 +14,7 @@ var zms3Config = function() {
     // zmUserPassArr[0] will contain ZoneMinder MySql user name.
     // zmUserPassArr[1] will contain ZoneMinder MySql password.
     const fs = require('fs');
-    const text = fs.readFileSync('./zm-user-pass.txt', 'utf-8');
+    const text = fs.readFileSync('/home/lindo/develop/smart-zoneminder/zm-s3-upload/zm-user-pass.txt', 'utf-8');
     const zmUserPassArr = text.split('\n');
 
     /*
@@ -47,7 +47,7 @@ var zms3Config = function() {
      * The base path & file name prefix for your log files.
      * A .log and .err file will be created based on this.
      */
-    this.LOGFILEBASE = '/home/lindo/dev/smart-zoneminder/zm-s3-upload/logfile';
+    this.LOGFILEBASE = '/home/lindo/develop/smart-zoneminder/zm-s3-upload/logfile';
 
     // Get current datetime and format for MySql query.
     const date = new Date();
