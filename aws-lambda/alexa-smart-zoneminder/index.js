@@ -1137,7 +1137,7 @@ var httpsReq = (method, path, postData, text, user, pass, callback) => {
 
     // Set timeout on socket inactivity. 
     req.on('socket', function (socket) {
-        socket.setTimeout(20000); // 20 sec timeout. 
+        socket.setTimeout(45000); // 45 sec timeout. 
         socket.on('timeout', function() {
             req.abort();
         });
