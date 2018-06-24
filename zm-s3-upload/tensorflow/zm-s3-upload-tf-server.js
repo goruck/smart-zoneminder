@@ -34,8 +34,8 @@ const client = mysql.createConnection({
     database : zmConfig.DBNAME
 });
 
-var tLog = require('../tLogger').tLogger();
-tLog.createLogger(zmConfig.LOGFILEBASE, zmConfig.CONSOLELOGGING);
+// Logger. 
+const logger = require('../logger');
 console.log('Logger created...');
 
 console.log('Waiting for first alarm frames...');
@@ -43,17 +43,17 @@ restartProcessing();
 
 function restartProcessing() {
     if(isComplete) {
-        //tLog.writeLogMsg("Getting more frames to process.", "info");
+        logger.debug('Getting more frames to process.');
         var countNotReady = 0;
         isComplete = false;
         getFrames();
         setTimeout(restartProcessing, 500);
     } else {
-        //tLog.writeLogMsg("Not ready for more frames yet...", "info");
+        logger.debug('Not ready for more frames yet...');
         countNotReady++;
         setTimeout(restartProcessing, 500);
         if(countNotReady > 120) {
-            tLog.writeErrMsg('Could not restart processing.', 'error');
+            logger.error('Could not restart processing.');
             process.exit(1);
         }
     }
@@ -67,7 +67,7 @@ function getFrames() {
     var query = client.query(zmConfig.zmQuery, [zmConfig.FTYPE, zmConfig.MAXRECS]);
 
     query.on('error', function(err) {
-        tLog.writeErrMsg('mysql query error: '+err.stack, 'error');
+        logger.error('mysql query error: ' + err.stack);
     });
 
     /*query.on('fields', function(fields) {
@@ -84,85 +84,103 @@ function getFrames() {
     });
 
     query.on('end', function () {
-        var ms = new Date();
-        var dur =  ms.getTime() - q1s;
+        const ms = new Date();
+        const dur =  ms.getTime() - q1s;
 
-        if (aryRows.length !== 0) {
-            tLog.writeLogMsg(aryRows.length+' un-uploaded frames found in: '+dur+' milliseconds', 'info');
-        }
-
-        var maxInit;
         if (aryRows.length === 0) {
             // Nothing to upload.
-            maxInit = -1;
             isComplete = true;
             return;
-        } else if(aryRows.length < zmConfig.MAXCONCURRENTUPLOAD) {
-            maxInit = aryRows.length;
         } else {
-            maxInit = zmConfig.MAXCONCURRENTUPLOAD;
+            logger.info(aryRows.length+' un-uploaded frames found in: '+dur+' milliseconds');
         }
+
+        // Determine maximum number of concurrent S3 uploads. 
+        let maxInit = 0;
+        (aryRows.length < zmConfig.MAXCONCURRENTUPLOAD) ?
+            maxInit = aryRows.length : maxInit = zmConfig.MAXCONCURRENTUPLOAD;
+
+        logger.debug('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete);
 
         let uploadCount = 0;
 
-        let testImagePaths = [];
-
-        // Add full path of image to alarm frames and build test image path array.
-        for (let i = 0; i < maxInit; i++) {
-            let imageFullPath = buildFilePath(aryRows[i]);
-            aryRows[i].imageFullPath = imageFullPath;
-            testImagePaths.push(imageFullPath);
+        const runLocalObjDet = true;
+        if (runLocalObjDet === true) {
+            localObjDet();
+        } else {
+            uploadImages();
         }
 
-        // zerorpc connection.
-        // Heartbeat should be greater than the time required to run detection on maxInit frames. 
-        const zerorpc = require('zerorpc');
-        const zerorpcClient = new zerorpc.Client({heartbeatInterval: 60000});
-        zerorpcClient.connect('ipc:///tmp/zmq.pipe');
-        
-        zerorpcClient.on('error', function(error) {
-            console.error('RPC client error: ', error);
-        });
+        // Perform local object detection then upload to S3. 
+        function localObjDet() {
+            logger.info('Running with local object detection enabled.');
 
-        zerorpcClient.invoke('detect', testImagePaths, function(error, res, more) {
-            //tLog.writeLogMsg('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete, 'info')
+            let testImagePaths = [];
 
-            if (error) {
-                console.log('zerorpcClient: '+error);
-                return;
-            }
-
-            /*if(!more) {
-                console.log('detect Done.');
-            }*/
-
-            const objectsFound = JSON.parse(res.toString());
-
-            // Placeholder label objects.
-            const labels = {
-                "Labels": [
-                    {
-                        "Confidence": 90,
-                        "Name": "Person"
-                    }
-                ]
-            };
-
-            // Scan objectsFound array for a person. 
+            // Add full path of image to alarm frames and build test image path array.
             for (let i = 0; i < maxInit; i++) {
-                let fileName = objectsFound[i].image;
-                let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
-                if (objLabels === undefined) {
-                    tLog.writeLogMsg('Person NOT found in '+fileName, 'info');
-                    aryRows[i].alert = 'false';
-                } else {
-                    tLog.writeLogMsg('Person found in '+fileName, 'info');
-                    aryRows[i].alert = 'true';
-                    aryRows[i].objLabels = JSON.stringify(labels);
-                }
+                let imageFullPath = buildFilePath(aryRows[i]);
+                //aryRows[i].imageFullPath = imageFullPath;
+                testImagePaths.push(imageFullPath);
             }
 
-            // Upload images.
+            // zerorpc connection.
+            // Heartbeat should be greater than the time required to run detection on maxInit frames. 
+            const zerorpc = require('zerorpc');
+            const zerorpcClient = new zerorpc.Client({heartbeatInterval: 60000});
+            zerorpcClient.connect('ipc:///tmp/zmq.pipe');
+
+            const zerorpcP = new Promise((resolve, reject) => {
+                zerorpcClient.on('error', (error) => {
+                    reject(error);
+                });
+
+                zerorpcClient.invoke('detect', testImagePaths, (error, data) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(JSON.parse(data.toString()));
+                    }
+                });
+            });
+
+            zerorpcP.then((result) => {
+                const objectsFound = result;
+
+                // Placeholder label objects.
+                const labels = {
+                    "Labels": [
+                        {
+                            "Confidence": 90,
+                            "Name": "Person"
+                        }
+                    ]
+                };
+
+                // Scan objectsFound array for a person. 
+                for (let i = 0; i < maxInit; i++) {
+                    let fileName = objectsFound[i].image;
+                    let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
+                    if (objLabels === undefined) {
+                        logger.info('Person NOT found in ' + fileName);
+                        aryRows[i].alert = 'false';
+                    } else {
+                        logger.info('Person found in ' + fileName);
+                        aryRows[i].alert = 'true';
+                        aryRows[i].objLabels = JSON.stringify(labels);
+                    }
+                }
+
+                uploadImages();
+            }).catch((error) => {
+                logger.error('Local object detection error: ' + error);
+            });
+
+            return;
+        }
+
+        // Upload images to S3.
+        function uploadImages() {
             // Asynchronous Process inside a javascript for loop.
             // Using IIFE (Immediately Invoked Function Expression) with closure.
             // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
@@ -176,28 +194,23 @@ function getFrames() {
 
                     // Check for bad image file.
                     if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
-                        tLog.writeLogMsg('This Image is bad:', 'warning');
-                        tLog.writeLogMsg(imgData, 'warning');
-                        zerorpcClient.close();
+                        logger.error('Bad image: ' + imgData);
                         return;
                     }
 
                     // Build S3 path and key.
-                    var S3PathKey = buildS3PathKey(imgData);
+                    const S3PathKey = buildS3PathKey(imgData);
 
                     // Path to image file name. 
-                    const fileName = imgData.imageFullPath;
+                    //const fileName = imgData.imageFullPath;
+                    const fileName = buildFilePath(imgData);
 
-                    tLog.writeLogMsg('The file: ' + fileName + ' will be saved to: ' + S3PathKey, 'info');
+                    logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
 
                     // Read image from filesystem, upload to S3 and mark it as uploaded in ZM's database. 
                     fs.readFile(fileName, (error, data) => {
-                    // Handle error - try to get alarm frame again by triggering isComplete flag.
                         if (error) { 
-                            tLog.writeErrMsg('readFile error: '+error, 'error');
-                            tLog.writeLogMsg('Retry to get alarm frame...', 'info');
-                            zerorpcClient.close();
-                            isComplete = true;
+                            logger.error('readFile error: ' + error);
                             return;
                         }
 
@@ -218,47 +231,48 @@ function getFrames() {
                                 'zmEventId': imgData.eventid.toString(),
                                 'zmFrameId': imgData.frameid.toString(),
                                 'zmFrameDatetime': dtFrameMs.toISOString(),
-                                'zmScore': imgData.score.toString(),
-                                'alert': imgData.alert
+                                'zmScore': imgData.score.toString()
                             }
                         };
 
-                        if (imgData.alert === 'true') {
-                            params.Metadata.labels = imgData.objLabels;
+                        // Add metadata for local object detection if it exists. 
+                        if (typeof(imgData.alert) !== 'undefined') {
+                            params.Metadata.alert = imgData.alert;
+                            if (imgData.alert === 'true') {
+                                params.Metadata.labels = imgData.objLabels;
+                            }
                         }
 
-                        s3.putObject(params, (error, data) => {
+                        s3.putObject(params, (error) => {
                         // Handle error - try to get alarm frame again by triggering isComplete flag. 
                             if (error) {
-                                tLog.writeErrMsg('S3 upload error: '+error, 'error');
-                                tLog.writeLogMsg('Retrying to get alarm frame...', 'info');
-                                zerorpcClient.close();
+                                logger.error('S3 upload error: ' + error);
+                                logger.info('Retrying to get alarm frame...');
+                                //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
                                 isComplete = true;
-                                return;
                             }
 
-                            tLog.writeLogMsg('The file: ' + fileName + ' was saved to ' + S3PathKey, 'info');
+                            logger.info('The file: ' + fileName + ' was saved to ' + S3PathKey);
 
                             const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
-                                                  'values(?,?,now())';
+                                                      'values(?,?,now())';
                             var aryBind = new Array(imgData.frameid, imgData.eventid);
 
-                            client.query(uploadInsertQuery, aryBind, (error, results, fields) => {
+                            client.query(uploadInsertQuery, aryBind, (error) => {
                                 if (error) {
-                                    tLog.writeErrMsg('Insert query error: '+error.stack, 'error');
-                                    zerorpcClient.close();
+                                    logger.error('Insert query error: ' + error.stack);
                                     return;
                                 }
 
-                                tLog.writeLogMsg('Insert Query Complete. FrameID: ' +
-                                             imgData.frameid + ' EventID: ' + imgData.eventid, 'info');
+                                logger.info('Insert Query Complete. FrameID: ' +
+                                             imgData.frameid + ' EventID: ' + imgData.eventid);
 
                                 uploadCount++;
-                                //tLog.writeLogMsg('uploadCount: '+uploadCount, 'info');
+                                logger.debug('uploadCount: ' + uploadCount);
                                 if (uploadCount > maxInit - 1) {
-                                    tLog.writeLogMsg(uploadCount+' image(s) have been uploaded', 'info');
-                                    tLog.writeLogMsg('Ready for new alarm frames...', 'info');
-                                    zerorpcClient.close();
+                                    logger.info(uploadCount + ' image(s) have been uploaded');
+                                    logger.info('Ready for new alarm frames...');
+                                    //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
                                     isComplete = true;
                                 }
                             });
@@ -266,7 +280,9 @@ function getFrames() {
                     });
                 })(i); // end IIFE with closure
             } // end for loop
-        });
+
+            return;
+        }
 
         // Build S3 path and key.
         function buildS3PathKey(imgData) {
