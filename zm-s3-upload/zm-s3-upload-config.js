@@ -37,7 +37,7 @@ var zms3Config = function() {
     /* Base path where your zoneminder events are stored. */
     this.IMGBASEPATH = '/nvr/zoneminder/events';
     /* Console logging on or off (true or false) */
-    this.CONSOLELOGGING = false;
+    this.CONSOLELOGGING = true;
     /* Max concurrent uploads... these will be executed non-blocking
      * and the next batch will wait until this batch has completed.
      */

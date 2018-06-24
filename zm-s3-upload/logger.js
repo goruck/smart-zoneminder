@@ -6,12 +6,10 @@
  *
  */
 
-const logConfig = {
-    level: 'info', // error (0), warn, info, verbose, debug, silly (5)
-    silent: false, // Turn off all logging if true. 
-    consoleLog: true, // Log to console if true. 
-    baseName: '/home/lindo/develop/smart-zoneminder/zm-s3-upload/'
-};
+// Get configuration.
+const fs = require('fs');
+const configObj = JSON.parse(fs.readFileSync('./zm-s3-upload-config.json'));
+const logConfig = configObj.logConfig;
 
 const { createLogger, format, transports } = require('./node_modules/winston');
 const { simple, json, combine, timestamp } = format;

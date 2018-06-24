@@ -1,0 +1,20 @@
+{
+    "zms3Config": {
+        "MAXRECS": 400,
+        "DBHOST": "localhost",
+        "DBUSR": "zmuser",
+        "DBPWD": "zmpass",
+        "DBNAME": "zm",
+        "IMGBASEPATH": "/nvr/zoneminder/events",
+        "MAXCONCURRENTUPLOAD": 10,
+        "runLocalObjDet": true,
+        "zerorpcHeartBeat": 60000,
+        "zerorpcPipe": "ipc:///tmp/zmq.pipe"
+    },
+    "logConfig": {
+        "level": "info",
+        "silent": false,
+        "consoleLog": true,
+        "baseName": "/home/lindo/develop/smart-zoneminder/zm-s3-upload/"
+    }
+}

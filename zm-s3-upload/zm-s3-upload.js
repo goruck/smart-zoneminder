@@ -3,28 +3,27 @@
 /**
  *
  * This will scan for new alarm frames in Zoneminder.
- * When it finds them it will run object detection on the image using Tensorflow.
- * Then it will upload the image and any found objects to Amazon S3.
- * 
- * This version uses a Tensorflow zerorpc server. 
+ * If local object detection is enabled then it will upload the image and found objects to S3.
+ * If not then it will upload the image where remote object detection will be performed. 
  *
- * Lindo St. Angel 2018.
+ * Copyright (c) Lindo St. Angel 2018.
  *
- * Based on Brian Roy's original work.
+ * Inspired by Brian Roy's original work.
  * See https://github.com/briantroy/Zoneminder-Alert-Image-Upload-to-Amazon-S3
  *
  */
 
-/* Get our Configuration... */
-var zmConfig = require('./zm-s3-upload-config.js').zms3Config();
-
 // Globals.
 const fs = require('fs');
 const AWS = require('./node_modules/aws-sdk');
-var s3 = new AWS.S3();
-var isComplete = true;
+const s3 = new AWS.S3();
+let isComplete = true;
 
-// DB Connection.
+// Get configuration details. 
+const configObj = JSON.parse(fs.readFileSync('./zm-s3-upload-config.json'));
+const zmConfig = configObj.zms3Config;
+
+// mysql database connection.
 const mysql = require('./node_modules/mysql');
 
 const client = mysql.createConnection({
@@ -34,10 +33,31 @@ const client = mysql.createConnection({
     database : zmConfig.DBNAME
 });
 
+// Set mysql query for ZoneMinder alarm frames. 
+const queryStartDate = new Date();
+const dateTime = queryStartDate.getFullYear() + '-' +
+    ('0' + (queryStartDate.getMonth() + 1)).slice(-2) + '-' +
+    ('0' + queryStartDate.getDate()).slice(-2) + ' ' +
+    queryStartDate.getHours() + ':' +
+    queryStartDate.getMinutes() + ':' +
+    queryStartDate.getSeconds();
+const zmQuery = 'select f.frameid, f.timestamp as frame_timestamp, f.score, ' +
+    'f.delta as frame_delta,' +
+    'e.name as event_name, e.starttime, m.name as monitor_name, ' +
+    'au.upload_timestamp, f.eventid ' +
+    'from Frames f ' +
+    'join Events e on f.eventid = e.id ' +
+    'join Monitors m on e.monitorid = m.id ' +
+    'left join alarm_uploaded au on (au.frameid = f.frameid and au.eventid = f.eventid) ' +
+    'where f.type = ? ' +
+    'and f.timestamp > \'' + dateTime + '\' and upload_timestamp is null limit 0,?';
+const FTYPE = 'Alarm';
+
 // Logger. 
 const logger = require('./logger');
 console.log('Logger created...');
 
+// Start looking for alarm frames. 
 console.log('Waiting for first alarm frames...');
 restartProcessing();
 
@@ -64,7 +84,7 @@ function getFrames() {
     var q1s = new Date();
     q1s = q1s.getTime();
 
-    var query = client.query(zmConfig.zmQuery, [zmConfig.FTYPE, zmConfig.MAXRECS]);
+    var query = client.query(zmQuery, [FTYPE, zmConfig.MAXRECS]);
 
     query.on('error', function(err) {
         logger.error('mysql query error: ' + err.stack);
@@ -84,8 +104,8 @@ function getFrames() {
     });
 
     query.on('end', function () {
-        const ms = new Date();
-        const dur =  ms.getTime() - q1s;
+        let ms = new Date();
+        let dur =  ms.getTime() - q1s;
 
         if (aryRows.length === 0) {
             // Nothing to upload.
@@ -104,31 +124,29 @@ function getFrames() {
 
         let uploadCount = 0;
 
-        const runLocalObjDet = true;
-        if (runLocalObjDet === true) {
+        if (zmConfig.runLocalObjDet === true) {
+            logger.info('Running with local object detection enabled.');
             localObjDet();
         } else {
+            logger.info('Running with remote object detection enabled.');
             uploadImages();
         }
 
         // Perform local object detection then upload to S3. 
         function localObjDet() {
-            logger.info('Running with local object detection enabled.');
-
             let testImagePaths = [];
 
             // Add full path of image to alarm frames and build test image path array.
             for (let i = 0; i < maxInit; i++) {
                 let imageFullPath = buildFilePath(aryRows[i]);
-                //aryRows[i].imageFullPath = imageFullPath;
                 testImagePaths.push(imageFullPath);
             }
 
             // zerorpc connection.
             // Heartbeat should be greater than the time required to run detection on maxInit frames. 
             const zerorpc = require('zerorpc');
-            const zerorpcClient = new zerorpc.Client({heartbeatInterval: 60000});
-            zerorpcClient.connect('ipc:///tmp/zmq.pipe');
+            const zerorpcClient = new zerorpc.Client({heartbeatInterval: zmConfig.zerorpcHeartBeat});
+            zerorpcClient.connect(zmConfig.zerorpcPipe);
 
             const zerorpcP = new Promise((resolve, reject) => {
                 zerorpcClient.on('error', (error) => {
