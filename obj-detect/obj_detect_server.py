@@ -20,12 +20,10 @@ import zerorpc
 
 from collections import defaultdict
 from io import StringIO
-from matplotlib import pyplot as plt
 from PIL import Image
 
 # Object detection imports.
 from object_detection.utils import label_map_util
-from object_detection.utils import visualization_utils as vis_util
 
 # Model preparation.
 PATH_BASE = '/home/lindo/develop/tensorflow/models/research/object_detection/'
@@ -86,14 +84,19 @@ class DetectRPC(object):
                         print('Image open error {}'.format(e))
                         continue
 
-                    image_np = load_image_into_numpy_array(image)
+                    image_np = load_image_into_numpy_array(image.resize((320,240)))
                     # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                     image_np_expanded = np.expand_dims(image_np, axis=0)
+                    # Define input node.
                     image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
+                    # Define output nodes.
                     # Each box represents a part of the image where a particular object was detected.
                     boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
+                    # This contains class scores for the detections.
                     scores = detection_graph.get_tensor_by_name('detection_scores:0')
+                    # This contains classes for the detections.
                     classes = detection_graph.get_tensor_by_name('detection_classes:0')
+                    # This specifies the number of valid boxes per image in the batch.
                     num_detections = detection_graph.get_tensor_by_name('num_detections:0')
 
                     (boxes, scores, classes, num_detections) = sess.run(
