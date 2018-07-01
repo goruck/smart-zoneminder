@@ -8,6 +8,7 @@
         "IMGBASEPATH": "/nvr/zoneminder/events",
         "MAXCONCURRENTUPLOAD": 10,
         "runLocalObjDet": true,
+        "uploadFalsePositives": false,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/zmq.pipe"
     },

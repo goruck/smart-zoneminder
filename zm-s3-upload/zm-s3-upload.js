@@ -129,7 +129,7 @@ function getFrames() {
             localObjDet();
         } else {
             logger.info('Running with remote object detection enabled.');
-            uploadImages();
+            remoteObjDet();
         }
 
         // Perform local object detection then upload to S3. 
@@ -175,21 +175,37 @@ function getFrames() {
                     ]
                 };
 
-                // Scan objectsFound array for a person. 
+                // Scan objectsFound array for a person and upload alarms to S3.
+                // Note asynchronous Process inside a javascript for loop.
+                // Using IIFE (Immediately Invoked Function Expression) with closure.
+                // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
                 for (let i = 0; i < maxInit; i++) {
                     let fileName = objectsFound[i].image;
                     let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
+
                     if (objLabels === undefined) {
                         logger.info('Person NOT found in ' + fileName);
                         aryRows[i].alert = 'false';
+                        (function() {
+                            if (zmConfig.uploadFalsePositives === false) {
+                                logger.info('False positives will NOT be uploaded.');
+                                // Mark as uploaded in zm db but don't actually upload image.
+                                markAsUploaded(aryRows[i]);
+                            } else {
+                                uploadImage(i);
+                            }
+                        })(i); // end IIFE with closure
                     } else {
                         logger.info('Person found in ' + fileName);
                         aryRows[i].alert = 'true';
                         aryRows[i].objLabels = JSON.stringify(labels);
+                        (function() {
+                            uploadImage(i);
+                        })(i); // end IIFE with closure
                     }
                 }
 
-                uploadImages();
+                //uploadImages();
             }).catch((error) => {
                 logger.error('Local object detection error: ' + error);
             });
@@ -197,109 +213,111 @@ function getFrames() {
             return;
         }
 
+        // Upload to S3 to trigger remote object detection.
+        function remoteObjDet() {
+            for (let i = 0; i < maxInit; i++) {
+                (function() {
+                    uploadImage(i);
+                })(i); // end IIFE with closure
+            }
+        }
+
         // Upload images to S3.
-        function uploadImages() {
-            // Asynchronous Process inside a javascript for loop.
-            // Using IIFE (Immediately Invoked Function Expression) with closure.
-            // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
-            for (var i = 0; i < maxInit; i++) {
-                (function(cntr) {
-                // here the value of i was passed into as the argument cntr
-                // and will be captured in this function closure so each
-                // iteration of the loop can have it's own value
+        function uploadImage(index) {
+            let imgData = aryRows[index];
+            // Check for bad image file.
+            if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
+                logger.error('Bad image: ' + imgData);
+                return;
+            }
 
-                    let imgData = aryRows[cntr];
+            // Build S3 path and key.
+            const S3PathKey = buildS3PathKey(imgData);
 
-                    // Check for bad image file.
-                    if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
-                        logger.error('Bad image: ' + imgData);
-                        return;
+            // Path to image file name. 
+            //const fileName = imgData.imageFullPath;
+            const fileName = buildFilePath(imgData);
+
+            logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
+
+            // Read image from filesystem, upload to S3 and mark it as uploaded in ZM's database. 
+            fs.readFile(fileName, (error, data) => {
+                if (error) { 
+                    logger.error('readFile error: ' + error);
+                    return;
+                }
+
+                // Calculate frame datetime with ms resolution.
+                const dtFrame = new Date(imgData.frame_timestamp);
+                const timestampMs = (imgData.frame_delta % 1).toFixed(3).substring(2);
+                const dtFrameMs = new Date(dtFrame.getFullYear(), dtFrame.getMonth(),
+                    dtFrame.getDate(), dtFrame.getHours(), dtFrame.getMinutes(),
+                    dtFrame.getSeconds(), timestampMs);
+                    
+                let params = {
+                    Bucket: 'zm-alarm-frames',
+                    Key: 'upload/' + S3PathKey,
+                    Body: data,
+                    Metadata: {
+                        'zmMonitorName': imgData.monitor_name,
+                        'zmEventName': imgData.event_name,
+                        'zmEventId': imgData.eventid.toString(),
+                        'zmFrameId': imgData.frameid.toString(),
+                        'zmFrameDatetime': dtFrameMs.toISOString(),
+                        'zmScore': imgData.score.toString()
+                    }
+                };
+
+                // Add metadata for local object detection if it exists from local obj det.
+                if (typeof(imgData.alert) !== 'undefined') {
+                    params.Metadata.alert = imgData.alert;
+                    if (imgData.alert === 'true') {
+                        params.Metadata.labels = imgData.objLabels;
+                    }
+                }
+
+                s3.putObject(params, (error) => {
+                    // Handle error - try to get alarm frame again by triggering isComplete flag. 
+                    if (error) {
+                        logger.error('S3 upload error: ' + error);
+                        logger.info('Retrying to get alarm frame...');
+                        //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
+                        isComplete = true;
                     }
 
-                    // Build S3 path and key.
-                    const S3PathKey = buildS3PathKey(imgData);
+                    logger.info('The file: ' + fileName + ' was saved to ' + S3PathKey);
 
-                    // Path to image file name. 
-                    //const fileName = imgData.imageFullPath;
-                    const fileName = buildFilePath(imgData);
-
-                    logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
-
-                    // Read image from filesystem, upload to S3 and mark it as uploaded in ZM's database. 
-                    fs.readFile(fileName, (error, data) => {
-                        if (error) { 
-                            logger.error('readFile error: ' + error);
-                            return;
-                        }
-
-                        // Calculate frame datetime with ms resolution.
-                        const dtFrame = new Date(imgData.frame_timestamp);
-                        const timestampMs = (imgData.frame_delta % 1).toFixed(3).substring(2);
-                        const dtFrameMs = new Date(dtFrame.getFullYear(), dtFrame.getMonth(),
-                            dtFrame.getDate(), dtFrame.getHours(), dtFrame.getMinutes(),
-                            dtFrame.getSeconds(), timestampMs);
-                    
-                        let params = {
-                            Bucket: 'zm-alarm-frames',
-                            Key: 'upload/' + S3PathKey,
-                            Body: data,
-                            Metadata: {
-                                'zmMonitorName': imgData.monitor_name,
-                                'zmEventName': imgData.event_name,
-                                'zmEventId': imgData.eventid.toString(),
-                                'zmFrameId': imgData.frameid.toString(),
-                                'zmFrameDatetime': dtFrameMs.toISOString(),
-                                'zmScore': imgData.score.toString()
-                            }
-                        };
-
-                        // Add metadata for local object detection if it exists. 
-                        if (typeof(imgData.alert) !== 'undefined') {
-                            params.Metadata.alert = imgData.alert;
-                            if (imgData.alert === 'true') {
-                                params.Metadata.labels = imgData.objLabels;
-                            }
-                        }
-
-                        s3.putObject(params, (error) => {
-                        // Handle error - try to get alarm frame again by triggering isComplete flag. 
-                            if (error) {
-                                logger.error('S3 upload error: ' + error);
-                                logger.info('Retrying to get alarm frame...');
-                                //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
-                                isComplete = true;
-                            }
-
-                            logger.info('The file: ' + fileName + ' was saved to ' + S3PathKey);
-
-                            const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
-                                                      'values(?,?,now())';
-                            var aryBind = new Array(imgData.frameid, imgData.eventid);
-
-                            client.query(uploadInsertQuery, aryBind, (error) => {
-                                if (error) {
-                                    logger.error('Insert query error: ' + error.stack);
-                                    return;
-                                }
-
-                                logger.info('Insert Query Complete. FrameID: ' +
-                                             imgData.frameid + ' EventID: ' + imgData.eventid);
-
-                                uploadCount++;
-                                logger.debug('uploadCount: ' + uploadCount);
-                                if (uploadCount > maxInit - 1) {
-                                    logger.info(uploadCount + ' image(s) have been uploaded');
-                                    logger.info('Ready for new alarm frames...');
-                                    //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
-                                    isComplete = true;
-                                }
-                            });
-                        });
-                    });
-                })(i); // end IIFE with closure
-            } // end for loop
+                    markAsUploaded(imgData);
+                });
+            });
 
             return;
+        }
+
+        // Mark an alarm frame as uploaded in ZoneMinder's database and increment upload counter.
+        function markAsUploaded(imgData) {
+            const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
+                                        'values(?,?,now())';
+            const aryBind = new Array(imgData.frameid, imgData.eventid);
+            
+            client.query(uploadInsertQuery, aryBind, (error) => {
+                if (error) {
+                    logger.error('Insert query error: ' + error.stack);
+                    return;
+                }
+            
+                logger.info('Insert Query Complete. FrameID: ' +
+                            imgData.frameid + ' EventID: ' + imgData.eventid);
+            
+                uploadCount++;
+                logger.debug('uploadCount: ' + uploadCount);
+                if (uploadCount > maxInit - 1) {
+                    logger.info(uploadCount + ' image(s) have been processed.');
+                    logger.info('Ready for new alarm frames...');
+                    //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
+                    isComplete = true;
+                }
+            });
         }
 
         // Build S3 path and key.
