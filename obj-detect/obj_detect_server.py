@@ -9,26 +9,20 @@
 #from gevent import monkey; monkey.patch_all()
 
 import numpy as np
-import os
-import six.moves.urllib as urllib
-import sys
-import tarfile
 import tensorflow as tf
-import zipfile
 import json
 import zerorpc
 #import gevent
 
 from collections import defaultdict
-from io import StringIO
 from PIL import Image
 
 # Object detection imports.
 from object_detection.utils import label_map_util
 
 # Get configuration.
-with open('./config.json') as f:
-    config = json.load(f)
+with open('./config.json') as fp:
+    config = json.load(fp)
 
 # Model preparation.
 PATH_BASE = config['objDetServer']['modelPathBase']
@@ -51,7 +45,7 @@ label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
 
-#Helper code. 
+# Helper code. 
 def load_image_into_numpy_array(image):
     (im_width, im_height) = image.size
     return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
@@ -82,16 +76,12 @@ class DetectRPC(object):
                     print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
                     continue
 
-                try:
-                    image = Image.open(image_path)
-                except OSError as e:
-                    print('Image open error {}'.format(e))
-                    continue
+                with open(image_path, 'rb') as fp:
+                    image = Image.open(fp)
+                    # Convert image to numpy array but resize first to minimize tf processing.
+                    # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
+                    image_np = load_image_into_numpy_array(image.resize((640,480)))
 
-                # Convert image to numpy array but resize first to minimize tf processing.
-                # Note: resize will slightly lower accuracy. 320 x 240 seems like a good balance.
-                image_np = load_image_into_numpy_array(image.resize((320,240)))
-                image.close()
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 # Define input node.
