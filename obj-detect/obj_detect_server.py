@@ -1,22 +1,14 @@
-#!/usr/bin/env /home/lindo/develop/tensorflow/bin/python3.6
-# Note: change above path to suit your configuration. 
-
-# Detect objects using tensorflow-gpu, zerorpc server version.
-# Designed to be called from a zerorpc client as part of the smart-zoneminder project. 
+# Detect objects using tensorflow-gpu served by zerorpc.
+# Needs to be called from a zerorpc client.
 # Copyright (c) 2018 Lindo St. Angel
 
-# Imports.
 #from gevent import monkey; monkey.patch_all()
-
 import numpy as np
 import tensorflow as tf
 import json
 import zerorpc
 #import gevent
-
-from collections import defaultdict
 from PIL import Image
-
 # Object detection imports.
 from object_detection.utils import label_map_util
 
@@ -133,7 +125,7 @@ class DetectRPC(object):
                     # Convert image to numpy array but resize first to minimize tf processing.
                     # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
                     image_np = load_image_into_numpy_array(image.resize((640,480)))
-                    
+
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
