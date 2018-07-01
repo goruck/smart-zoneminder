@@ -22,13 +22,16 @@ from object_detection.utils import label_map_util
 
 # Get configuration.
 with open('./config.json') as fp:
-    config = json.load(fp)
+    config = json.load(fp)['objDetServer']
 
-# Model preparation.
-PATH_BASE = config['objDetServer']['modelPathBase']
-PATH_TO_CKPT = PATH_BASE + config['objDetServer']['modelPath']
-PATH_TO_LABELS = PATH_BASE + config['objDetServer']['labelPath']
-NUM_CLASSES = config['objDetServer']['numClasses']
+PATH_BASE = config['modelPathBase']
+PATH_TO_CKPT = PATH_BASE + config['modelPath']
+PATH_TO_LABELS = PATH_BASE + config['labelPath']
+NUM_CLASSES = config['numClasses']
+CON_IMG_SKIP = config['conseqImagesToSkip']
+MIN_SCORE_THRESH = config['minScore']
+ZRPC_HEARTBEAT = config['zerorpcHeartBeat']
+ZRPC_PIPE = config['zerorpcPipe']
 
 # Load frozen Tensorflow model into memory. 
 detection_graph = tf.Graph()
@@ -71,7 +74,7 @@ class DetectRPC(object):
                     print("Could not derive frame number from image path.")
                     continue
                     
-                if frame_num - old_frame_num  == config['objDetServer']['conseqImagesToSkip']:
+                if frame_num - old_frame_num  == CON_IMG_SKIP:
                     objects_in_image.append({'image': image_path, 'labels': old_labels})
                     print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
                     continue
@@ -101,10 +104,9 @@ class DetectRPC(object):
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
 
-                min_score_thresh = config['objDetServer']['minScore']
                 labels = ([category_index.get(value)
                     for index,value in enumerate(classes[0])
-                    if scores[0,index] > min_score_thresh])
+                    if scores[0,index] > MIN_SCORE_THRESH])
 
                 old_labels = labels
 
@@ -126,9 +128,12 @@ class DetectRPC(object):
             sess.run(tf.global_variables_initializer())
 
             for image_path in test_image_paths:
-                image = Image.open(image_path)
-                image_np = load_image_into_numpy_array(image.resize((320,240)))
-                image.close()
+                with open(image_path, 'rb') as fp:
+                    image = Image.open(fp)
+                    # Convert image to numpy array but resize first to minimize tf processing.
+                    # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
+                    image_np = load_image_into_numpy_array(image.resize((640,480)))
+                    
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
@@ -142,10 +147,9 @@ class DetectRPC(object):
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
 
-                min_score_thresh = config['objDetServer']['minScore']
                 objects_in_image = {'image': image_path, 'labels':([category_index.get(value)
                     for index,value in enumerate(classes[0])
-                    if scores[0,index] > min_score_thresh])}
+                    if scores[0,index] > MIN_SCORE_THRESH])}
 
                 yield json.dumps(objects_in_image)
 
@@ -153,7 +157,7 @@ class DetectRPC(object):
                 # https://github.com/0rpc/zerorpc-python/issues/95
                 #gevent.sleep(0)
 
-s = zerorpc.Server(DetectRPC(), heartbeat=config['objDetServer']['zerorpcHeartBeat'])
+s = zerorpc.Server(DetectRPC(), heartbeat=ZRPC_HEARTBEAT)
 #s.bind("tcp://0.0.0.0:4242")
-s.bind(config['objDetServer']['zerorpcPipe'])
+s.bind(ZRPC_PIPE)
 s.run()
