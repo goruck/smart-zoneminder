@@ -1,4 +1,5 @@
-#!/home/lindo/develop/tensorflow/bin/python3.6
+#!/usr/bin/env /home/lindo/develop/tensorflow/bin/python3.6
+# Note: change above path to suit your configuration. 
 
 # Detect objects using tensorflow-gpu, zerorpc server version.
 # Designed to be called from a zerorpc client as part of the smart-zoneminder project. 
@@ -25,12 +26,15 @@ from PIL import Image
 # Object detection imports.
 from object_detection.utils import label_map_util
 
+# Get configuration.
+with open('./config.json') as f:
+    config = json.load(f)
+
 # Model preparation.
-PATH_BASE = '/home/lindo/develop/tensorflow/models/research/object_detection/'
-PATH_TO_CKPT = PATH_BASE + 'rfcn_resnet101_coco_2018_01_28/frozen_inference_graph.pb'
-#PATH_TO_CKPT = PATH_BASE + 'ssd_mobilenet_v1_coco_2017_11_17/frozen_inference_graph.pb'
-PATH_TO_LABELS = PATH_BASE + 'data/mscoco_label_map.pbtxt'
-NUM_CLASSES = 90
+PATH_BASE = config['objDetServer']['modelPathBase']
+PATH_TO_CKPT = PATH_BASE + config['objDetServer']['modelPath']
+PATH_TO_LABELS = PATH_BASE + config['objDetServer']['labelPath']
+NUM_CLASSES = config['objDetServer']['numClasses']
 
 # Load frozen Tensorflow model into memory. 
 detection_graph = tf.Graph()
@@ -73,7 +77,7 @@ class DetectRPC(object):
                     print("Could not derive frame number from image path.")
                     continue
                     
-                if frame_num - old_frame_num  == 1:
+                if frame_num - old_frame_num  == config['objDetServer']['conseqImagesToSkip']:
                     objects_in_image.append({'image': image_path, 'labels': old_labels})
                     print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
                     continue
@@ -107,7 +111,7 @@ class DetectRPC(object):
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
 
-                min_score_thresh = 0.9
+                min_score_thresh = config['objDetServer']['minScore']
                 labels = ([category_index.get(value)
                     for index,value in enumerate(classes[0])
                     if scores[0,index] > min_score_thresh])
@@ -148,7 +152,7 @@ class DetectRPC(object):
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
 
-                min_score_thresh = 0.9
+                min_score_thresh = config['objDetServer']['minScore']
                 objects_in_image = {'image': image_path, 'labels':([category_index.get(value)
                     for index,value in enumerate(classes[0])
                     if scores[0,index] > min_score_thresh])}
@@ -159,7 +163,7 @@ class DetectRPC(object):
                 # https://github.com/0rpc/zerorpc-python/issues/95
                 #gevent.sleep(0)
 
-s = zerorpc.Server(DetectRPC(), heartbeat=60000)
+s = zerorpc.Server(DetectRPC(), heartbeat=config['objDetServer']['zerorpcHeartBeat'])
 #s.bind("tcp://0.0.0.0:4242")
-s.bind("ipc:///tmp/zmq.pipe")
+s.bind(config['objDetServer']['zerorpcPipe'])
 s.run()
