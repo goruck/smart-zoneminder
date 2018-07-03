@@ -2,15 +2,17 @@
 # Needs to be called from a zerorpc client.
 # Copyright (c) 2018 Lindo St. Angel
 
-#from gevent import monkey; monkey.patch_all()
 import numpy as np
 import tensorflow as tf
 import json
 import zerorpc
-#import gevent
 from PIL import Image
 # Object detection imports.
 from object_detection.utils import label_map_util
+
+# Debug.
+#import warnings
+#warnings.simplefilter('default')
 
 # Get configuration.
 with open('./config.json') as fp:
@@ -34,6 +36,7 @@ with detection_graph.as_default():
     od_graph_def.ParseFromString(serialized_graph)
     tf.import_graph_def(od_graph_def, name='')
   sess = tf.Session(graph=detection_graph)
+  sess.run(tf.global_variables_initializer())
 
 # Load label map. 
 label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
@@ -49,11 +52,10 @@ def load_image_into_numpy_array(image):
 class DetectRPC(object):
     def detect(self, test_image_paths):
        with detection_graph.as_default():
-            sess.run(tf.global_variables_initializer())
-
             objects_in_image = []
             old_labels = []
             frame_num = 0
+            (img_width, img_height) = (640, 480)
             for image_path in test_image_paths:
                 # If consecutive frames then repeat last label to minimize processing.
                 # Image paths must be in the form of:
@@ -71,12 +73,13 @@ class DetectRPC(object):
                     print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
                     continue
 
-                with open(image_path, 'rb') as fp:
-                    image = Image.open(fp)
-                    # Convert image to numpy array but resize first to minimize tf processing.
+                with Image.open(image_path) as image:
+                    # Resize to minimize tf processing.
                     # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
-                    image_np = load_image_into_numpy_array(image.resize((640,480)))
+                    image_resize = image.resize((img_width, img_height))
 
+                # Convert image to numpy array
+                image_np = load_image_into_numpy_array(image_resize)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 # Define input node.
@@ -91,7 +94,7 @@ class DetectRPC(object):
                 # This specifies the number of valid boxes per image in the batch.
                 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
 
-                 # Actual detection.
+                # Actual detection.
                 (boxes, scores, classes, num_detections) = sess.run(
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
@@ -103,29 +106,21 @@ class DetectRPC(object):
                 old_labels = labels
 
                 objects_in_image.append({'image': image_path, 'labels': labels})
-
-                # Allow a heartbeat to happen by putting the greenlet to sleep.
-                # https://github.com/0rpc/zerorpc-python/issues/95
-                #gevent.sleep(0)
-            #print(objects_in_image)
             return json.dumps(objects_in_image)
-
-    def fastmethod(self):
-        return 'Fast Done'
 
     # Streaming server.
     @zerorpc.stream
     def detect_stream(self, test_image_paths):
+        (img_width, img_height) = (640, 480)
         with detection_graph.as_default():
-            sess.run(tf.global_variables_initializer())
-
             for image_path in test_image_paths:
-                with open(image_path, 'rb') as fp:
-                    image = Image.open(fp)
-                    # Convert image to numpy array but resize first to minimize tf processing.
+                with Image.open(image_path) as image:
+                    # Resize to minimize tf processing.
                     # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
-                    image_np = load_image_into_numpy_array(image.resize((640,480)))
+                    image_resize = image.resize((img_width, img_height))
 
+                # Convert image to numpy array
+                image_np = load_image_into_numpy_array(image_resize)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
@@ -145,11 +140,6 @@ class DetectRPC(object):
 
                 yield json.dumps(objects_in_image)
 
-                # Allow a heartbeat to happen by putting the greenlet to sleep.
-                # https://github.com/0rpc/zerorpc-python/issues/95
-                #gevent.sleep(0)
-
 s = zerorpc.Server(DetectRPC(), heartbeat=ZRPC_HEARTBEAT)
-#s.bind("tcp://0.0.0.0:4242")
 s.bind(ZRPC_PIPE)
 s.run()
