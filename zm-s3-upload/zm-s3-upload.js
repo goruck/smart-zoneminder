@@ -126,7 +126,12 @@ function getFrames() {
 
         if (zmConfig.runLocalObjDet === true) {
             logger.info('Running with local object detection enabled.');
-            localObjDet();
+            try {
+                localObjDet();
+            }
+            catch(e) {
+                logger.error(e);
+            }
         } else {
             logger.info('Running with remote object detection enabled.');
             remoteObjDet();
@@ -163,6 +168,8 @@ function getFrames() {
             });
 
             zerorpcP.then((result) => {
+                zerorpcClient.close();
+
                 const objectsFound = result;
 
                 // Placeholder label objects.
@@ -204,10 +211,8 @@ function getFrames() {
                         })(i); // end IIFE with closure
                     }
                 }
-
-                //uploadImages();
             }).catch((error) => {
-                logger.error('Local object detection error: ' + error);
+                throw 'Local object detection error: ' + error;
             });
 
             return;
@@ -225,6 +230,7 @@ function getFrames() {
         // Upload images to S3.
         function uploadImage(index) {
             let imgData = aryRows[index];
+
             // Check for bad image file.
             if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
                 logger.error('Bad image: ' + imgData);
