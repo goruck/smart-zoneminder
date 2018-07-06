@@ -57,37 +57,17 @@ const FTYPE = 'Alarm';
 const logger = require('./logger');
 console.log('Logger created...');
 
-// Start looking for alarm frames. 
-console.log('Waiting for first alarm frames...');
-restartProcessing();
-
-function restartProcessing() {
-    if(isComplete) {
-        logger.debug('Getting more frames to process.');
-        var countNotReady = 0;
-        isComplete = false;
-        getFrames();
-        setTimeout(restartProcessing, 500);
-    } else {
-        logger.debug('Not ready for more frames yet...');
-        countNotReady++;
-        setTimeout(restartProcessing, 500);
-        if(countNotReady > 120) {
-            logger.error('Could not restart processing.');
-            process.exit(1);
-        }
-    }
-}
-
-function getFrames() {
-    var aryRows;
-    var q1s = new Date();
+// Main function to get alarm frames from zm's database. 
+const getFrames = () => {
+    let aryRows = [];
+    let q1s = new Date();
     q1s = q1s.getTime();
 
-    var query = client.query(zmQuery, [FTYPE, zmConfig.MAXRECS]);
+    const query = client.query(zmQuery, [FTYPE, zmConfig.MAXRECS]);
 
-    query.on('error', function(err) {
+    query.on('error', (err) => {
         logger.error('mysql query error: ' + err.stack);
+        process.exit(1);
     });
 
     /*query.on('fields', function(fields) {
@@ -97,18 +77,18 @@ function getFrames() {
     var idx = 0;
     aryRows = new Array();
 
-    query.on('result', function(row) {
+    query.on('result', (row) => {
         row.image_base_path = zmConfig.IMGBASEPATH;
         aryRows[idx] = row;
         idx++;
     });
 
-    query.on('end', function () {
+    query.on('end', () => {
         let ms = new Date();
         let dur =  ms.getTime() - q1s;
 
         if (aryRows.length === 0) {
-            // Nothing to upload.
+            // Nothing to upload, get more frames. 
             isComplete = true;
             return;
         } else {
@@ -122,137 +102,128 @@ function getFrames() {
 
         logger.debug('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete);
 
+        // Build S3 path and key.
+        const buildS3PathKey= (imgData) => {
+            const dtFrame = new Date(imgData.frame_timestamp);
+
+            // Fractional part of frame delta is the number of milliseconds into a ZoneMinder Section Length.
+            // See http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html#monitor-tab.
+            // Required since frame_timestamp does not have ms resolution which is needed for unique timestamps.
+            // NB: this assumes all ZoneMinder monitors are in Record’ or ‘Mocord’ mode.
+            // NB: resolution is limited to 10 ms due to default definition of ZM mysql delta field (decimal(8,2)). 
+            const timestampMilliseconds = (imgData.frame_delta % 1).toFixed(3).substring(2);
+
+            const S3Path = imgData.monitor_name + '/' + dtFrame.getFullYear() +
+            '-' + (dtFrame.getMonth() + 1) + '-' + dtFrame.getDate() + '/hour-' + dtFrame.getHours();
+
+            if (imgData.event_name === 'New Event') {
+                imgData.event_name = 'New_Event';
+            } else {
+                imgData.event_name = imgData.event_name.replace('-', '_');
+            }
+
+            const S3Key = imgData.event_name + '-' + 'ID_' + imgData.eventid + '-' +
+                'Frame_' + imgData.frameid + '-' +
+                dtFrame.getHours() + '-' + dtFrame.getMinutes() + '-' +
+                dtFrame.getSeconds() + '-' + timestampMilliseconds + '.jpg';
+
+            return S3Path + '/' + S3Key;
+        };
+
+        // Build path to image file name.
+        const buildFilePath = imgData => {
+            const dtFrame = new Date(imgData.starttime);
+            let frameId = imgData.frameid;
+            const monitorName = imgData.monitor_name;
+            /* get a two digit year for the file path */
+            let tYear = dtFrame.getFullYear();
+            tYear = String(tYear).slice(2);
+            /* Month with leading zeros */
+            let tMonth = String(dtFrame.getMonth() + 1);
+            if (tMonth.length == 1) tMonth = '0' + tMonth;
+            /* Day with leading zeros */
+            let tDay = String(dtFrame.getDate());
+            if (tDay.length == 1) tDay = '0' + tDay;
+            /* Hours with leading zeros */
+            let tHour = String(dtFrame.getHours());
+            if (tHour.length == 1) tHour = '0' + tHour;
+            /* Minutes... */
+            let tMin = String(dtFrame.getMinutes());
+            if (tMin.length == 1) tMin = '0' + tMin;
+            /* Seconds ... */
+            let tSec = String(dtFrame.getSeconds());
+            if (tSec.length == 1) tSec = '0' + tSec;
+
+            frameId = String(frameId);
+            if (frameId.length == 1) frameId = '0000' + frameId;
+            if (frameId.length == 2) frameId = '000' + frameId;
+            if (frameId.length == 3) frameId = '00' + frameId;
+            if (frameId.length == 4) frameId = '0' + frameId;
+
+            return imgData.image_base_path + '/' + monitorName +
+               '/' + tYear + '/' + tMonth +
+               '/' + tDay + '/' + tHour + '/' + tMin +
+               '/' + tSec + '/' + frameId + '-capture.jpg';
+        };
+
         let uploadCount = 0;
 
-        if (zmConfig.runLocalObjDet === true) {
-            logger.info('Running with local object detection enabled.');
-            try {
-                localObjDet();
-            }
-            catch(e) {
-                logger.error(e);
-            }
-        } else {
-            logger.info('Running with remote object detection enabled.');
-            remoteObjDet();
-        }
+        // Mark an alarm frame as uploaded in ZoneMinder's database and increment upload counter.
+        const markAsUploaded = (imgData) => {
+            const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
+                                      'values(?,?,now())';
+            const aryBind = new Array(imgData.frameid, imgData.eventid);
+            let done = false;
 
-        // Perform local object detection then upload to S3. 
-        function localObjDet() {
-            let testImagePaths = [];
-
-            // Add full path of image to alarm frames and build test image path array.
-            for (let i = 0; i < maxInit; i++) {
-                let imageFullPath = buildFilePath(aryRows[i]);
-                testImagePaths.push(imageFullPath);
-            }
-
-            // zerorpc connection.
-            // Heartbeat should be greater than the time required to run detection on maxInit frames. 
-            const zerorpc = require('zerorpc');
-            const zerorpcClient = new zerorpc.Client({heartbeatInterval: zmConfig.zerorpcHeartBeat});
-            zerorpcClient.connect(zmConfig.zerorpcPipe);
-
-            const zerorpcP = new Promise((resolve, reject) => {
-                zerorpcClient.on('error', (error) => {
-                    reject(error);
-                });
-
-                zerorpcClient.invoke('detect', testImagePaths, (error, data) => {
+            return new Promise((resolve, reject) => {
+                client.query(uploadInsertQuery, aryBind, (error) => {
                     if (error) {
+                        logger.error('markAsUpload error: ' + error.stack);
                         reject(error);
                     } else {
-                        resolve(JSON.parse(data.toString()));
+                        logger.info('Insert Query Complete. FrameID: ' +
+                            imgData.frameid + ' EventID: ' + imgData.eventid);
+            
+                        uploadCount++;
+                        logger.debug('uploadCount: ' + uploadCount);
+                        if (uploadCount > maxInit - 1) {
+                            logger.info(uploadCount + ' image(s) have been processed.');
+                            logger.info('Ready for new alarm frames...');
+                            done = true;
+                        }
+                        resolve(done);
                     }
                 });
             });
+        };
 
-            zerorpcP.then((result) => {
-                zerorpcClient.close();
-
-                const objectsFound = result;
-
-                // Placeholder label objects.
-                const labels = {
-                    "Labels": [
-                        {
-                            "Confidence": 90,
-                            "Name": "Person"
-                        }
-                    ]
-                };
-
-                // Scan objectsFound array for a person and upload alarms to S3.
-                // Note asynchronous Process inside a javascript for loop.
-                // Using IIFE (Immediately Invoked Function Expression) with closure.
-                // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
-                for (let i = 0; i < maxInit; i++) {
-                    let fileName = objectsFound[i].image;
-                    let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
-
-                    if (objLabels === undefined) {
-                        logger.info('Person NOT found in ' + fileName);
-                        aryRows[i].alert = 'false';
-                        (function() {
-                            if (zmConfig.uploadFalsePositives === false) {
-                                logger.info('False positives will NOT be uploaded.');
-                                // Mark as uploaded in zm db but don't actually upload image.
-                                markAsUploaded(aryRows[i]);
-                            } else {
-                                uploadImage(i);
-                            }
-                        })(i); // end IIFE with closure
-                    } else {
-                        logger.info('Person found in ' + fileName);
-                        aryRows[i].alert = 'true';
-                        aryRows[i].objLabels = JSON.stringify(labels);
-                        (function() {
-                            uploadImage(i);
-                        })(i); // end IIFE with closure
-                    }
-                }
-            }).catch((error) => {
-                throw 'Local object detection error: ' + error;
-            });
-
-            return;
-        }
-
-        // Upload to S3 to trigger remote object detection.
-        function remoteObjDet() {
-            for (let i = 0; i < maxInit; i++) {
-                (function() {
-                    uploadImage(i);
-                })(i); // end IIFE with closure
-            }
-        }
-
-        // Upload images to S3.
-        function uploadImage(index) {
+        // Upload images.
+        const uploadImage = (index) => {
+            // Get image data object.
             let imgData = aryRows[index];
 
             // Check for bad image file.
             if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
-                logger.error('Bad image: ' + imgData);
-                return;
+                logger.error('Bad upload image: ' + imgData);
+                return new Promise.reject(new Error('Bad upload image: ' + imgData));
             }
 
             // Build S3 path and key.
             const S3PathKey = buildS3PathKey(imgData);
 
-            // Path to image file name. 
-            //const fileName = imgData.imageFullPath;
+            // Get path to image file name. 
             const fileName = buildFilePath(imgData);
 
             logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
 
-            // Read image from filesystem, upload to S3 and mark it as uploaded in ZM's database. 
-            fs.readFile(fileName, (error, data) => {
-                if (error) { 
-                    logger.error('readFile error: ' + error);
-                    return;
-                }
+            // Read image from filesystem.
+            const getImage = new Promise((resolve, reject) => {
+                fs.readFile(fileName, (error, data) => {
+                    error ? reject(error) : resolve(data);
+                });
+            });
 
+            const uploadToS3 = data => {
                 // Calculate frame datetime with ms resolution.
                 const dtFrame = new Date(imgData.frame_timestamp);
                 const timestampMs = (imgData.frame_delta % 1).toFixed(3).substring(2);
@@ -282,114 +253,169 @@ function getFrames() {
                     }
                 }
 
-                s3.putObject(params, (error) => {
-                    // Handle error - try to get alarm frame again by triggering isComplete flag. 
-                    if (error) {
-                        logger.error('S3 upload error: ' + error);
-                        logger.info('Retrying to get alarm frame...');
-                        //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
-                        isComplete = true;
+                // Actual upload.
+                return new Promise((resolve, reject) => {
+                    s3.putObject(params, (error, result) => {
+                        error ? reject(error) : resolve(result);
+                    });
+                });
+            };
+
+            return new Promise((resolve, reject) => {
+                getImage.then(result => {
+                    uploadToS3(result);
+                    return;
+                }).then(() => {
+                    markAsUploaded(imgData);
+                    return;
+                }).then(() => {
+                    resolve(true);
+                    return;
+                }).catch(error => {
+                    logger.error('Upload image error: ' + error);
+                    reject(error);
+                });
+            });        
+        };
+
+        // Perform local object detection then upload to S3.
+        const localObjDet = () => {
+            return new Promise((resolve, reject) => {
+                let testImagePaths = [];
+
+                // Add full path of image to alarm frames and build test image path array.
+                for (let i = 0; i < maxInit; i++) {
+                    let imageFullPath = buildFilePath(aryRows[i]);
+                    testImagePaths.push(imageFullPath);
+                }
+
+                // zerorpc connection.
+                // Heartbeat should be greater than the time required to run detection on maxInit frames. 
+                const zerorpc = require('zerorpc');
+                const zerorpcClient = new zerorpc.Client({heartbeatInterval: zmConfig.zerorpcHeartBeat});
+                zerorpcClient.connect(zmConfig.zerorpcPipe);
+
+                const zerorpcP = new Promise((resolve, reject) => {
+                    zerorpcClient.on('error', (error) => {
+                        reject(error);
+                    });
+
+                    zerorpcClient.invoke('detect', testImagePaths, (error, data) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve(JSON.parse(data.toString()));
+                        }
+                    });
+                });
+
+                zerorpcP.then((result) => {
+                    zerorpcClient.close();
+
+                    const objectsFound = result;
+
+                    // Placeholder label objects.
+                    const labels = {
+                        "Labels": [
+                            {
+                                "Confidence": 90,
+                                "Name": "Person"
+                            }
+                        ]
+                    };
+
+                    // Scan objectsFound array for a person and upload alarms to S3.
+                    let promises = [];
+                    for (let i = 0; i < maxInit; ++i) {
+                        let fileName = objectsFound[i].image;
+                        let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
+                        if (objLabels === undefined) {
+                            logger.info('Person NOT found in ' + fileName);
+                            aryRows[i].alert = 'false';
+                            if (zmConfig.uploadFalsePositives === false) {
+                                logger.info('False positives will NOT be uploaded.');
+                                // Mark as uploaded in zm db but don't actually upload image.
+                                promises.push[markAsUploaded(aryRows[i])];
+                            } else {
+                                promises.push[uploadImage(i)];
+                            }
+                        } else {
+                            logger.info('Person found in ' + fileName);
+                            aryRows[i].alert = 'true';
+                            aryRows[i].objLabels = JSON.stringify(labels);
+                            promises.push[uploadImage(i)];
+                        }
                     }
 
-                    logger.info('The file: ' + fileName + ' was saved to ' + S3PathKey);
-
-                    markAsUploaded(imgData);
+                    Promise.all(promises).then(() => {
+                        resolve(true);
+                    }).catch((error) => {
+                        reject(new Error('upload error: '+error));
+                    });
+                }).catch((error) => {
+                    reject(new Error('zerorpc error: ' + error));
                 });
-            });
+            }); 
+        }; // end localObjDet
 
-            return;
-        }
-
-        // Mark an alarm frame as uploaded in ZoneMinder's database and increment upload counter.
-        function markAsUploaded(imgData) {
-            const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
-                                        'values(?,?,now())';
-            const aryBind = new Array(imgData.frameid, imgData.eventid);
-            
-            client.query(uploadInsertQuery, aryBind, (error) => {
-                if (error) {
-                    logger.error('Insert query error: ' + error.stack);
-                    return;
+        // Upload to S3 to trigger remote object detection.
+        const remoteObjDet = () => {
+            return new Promise((resolve, reject) => {
+                let promises = [];
+                for (let i = 0; i < maxInit; i++) {
+                    promises.push[uploadImage(i)];
                 }
-            
-                logger.info('Insert Query Complete. FrameID: ' +
-                            imgData.frameid + ' EventID: ' + imgData.eventid);
-            
-                uploadCount++;
-                logger.debug('uploadCount: ' + uploadCount);
-                if (uploadCount > maxInit - 1) {
-                    logger.info(uploadCount + ' image(s) have been processed.');
-                    logger.info('Ready for new alarm frames...');
-                    //if (typeof(zerorpcClient) !== 'undefined') zerorpcClient.close();
-                    isComplete = true;
-                }
+                Promise.all(promises).then(() => {
+                    resolve(true);
+                }).catch((error) => {
+                    reject(new Error('upload error: '+error));
+                });
+            }); 
+        }; // end remoteObjDet
+
+        if (zmConfig.runLocalObjDet === true) {
+            logger.info('Running with local object detection enabled.');
+            localObjDet().then(() => {
+                // Get more frames to process.
+                isComplete = true;
+                return;
+            }).catch(error => {
+                logger.error('localObjDetect error: '+error);
+                // Just die on error. 
+                process.exit(1);
             });
-        }
-
-        // Build S3 path and key.
-        function buildS3PathKey(imgData) {
-            const dtFrame = new Date(imgData.frame_timestamp);
-
-            // Fractional part of frame delta is the number of milliseconds into a ZoneMinder Section Length.
-            // See http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html#monitor-tab.
-            // Required since frame_timestamp does not have ms resolution which is needed for unique timestamps.
-            // NB: this assumes all ZoneMinder monitors are in Record’ or ‘Mocord’ mode.
-            // NB: resolution is limited to 10 ms due to default definition of ZM mysql delta field (decimal(8,2)). 
-            const timestampMilliseconds = (imgData.frame_delta % 1).toFixed(3).substring(2);
-
-            const S3Path = imgData.monitor_name + '/' + dtFrame.getFullYear() +
-                '-' + (dtFrame.getMonth() + 1) + '-' + dtFrame.getDate() + '/hour-' + dtFrame.getHours();
-
-            if (imgData.event_name === 'New Event') {
-                imgData.event_name = 'New_Event';
-            } else {
-                imgData.event_name = imgData.event_name.replace('-', '_');
-            }
-
-            const S3Key = imgData.event_name + '-' + 'ID_' + imgData.eventid + '-' +
-                'Frame_' + imgData.frameid + '-' +
-                dtFrame.getHours() + '-' + dtFrame.getMinutes() + '-' +
-                dtFrame.getSeconds() + '-' + timestampMilliseconds + '.jpg';
-
-            return S3Path + '/' + S3Key;
-        }
-
-        // Build path to image file name.
-        function buildFilePath(imgData) {
-            var dtFrame = new Date(imgData.starttime);
-            var frameId = imgData.frameid;
-            var monitorName = imgData.monitor_name;
-            /* get a two digit year for the file path */
-            var tYear = dtFrame.getFullYear();
-            tYear = String(tYear).slice(2);
-            /* Month with leading zeros */
-            var tMonth = String(dtFrame.getMonth() + 1);
-            if (tMonth.length == 1) tMonth = '0' + tMonth;
-            /* Day with leading zeros */
-            var tDay = String(dtFrame.getDate());
-            if (tDay.length == 1) tDay = '0' + tDay;
-            /* Hours with leading zeros */
-            var tHour = String(dtFrame.getHours());
-            if (tHour.length == 1) tHour = '0' + tHour;
-            /* Minutes... */
-            var tMin = String(dtFrame.getMinutes());
-            if (tMin.length == 1) tMin = '0' + tMin;
-            /* Seconds ... */
-            var tSec = String(dtFrame.getSeconds());
-            if (tSec.length == 1) tSec = '0' + tSec;
-
-            frameId = String(frameId);
-            if (frameId.length == 1) frameId = '0000' + frameId;
-            if (frameId.length == 2) frameId = '000' + frameId;
-            if (frameId.length == 3) frameId = '00' + frameId;
-            if (frameId.length == 4) frameId = '0' + frameId;
-
-            return imgData.image_base_path + '/' + monitorName +
-                   '/' + tYear + '/' + tMonth +
-                   '/' + tDay + '/' + tHour + '/' + tMin +
-                   '/' + tSec + '/' + frameId + '-capture.jpg';
+        } else {
+            logger.info('Running with remote object detection enabled.');
+            remoteObjDet().then(() => {
+                isComplete = true;
+                return;
+            }).catch(error => {
+                logger.error('remoteObjDetect error: '+error);
+                process.exit(1);
+            });
         }
     });
+}; // end getFrames()
 
-    return;
-} // end getFrames()
+// State machine to fetch more alarm frames. 
+const restartProcessing = () => {
+    if(isComplete) {
+        logger.debug('Getting more frames to process.');
+        var countNotReady = 0;
+        isComplete = false;
+        getFrames();
+        setTimeout(restartProcessing, 500);
+    } else {
+        logger.debug('Not ready for more frames yet...');
+        countNotReady++;
+        setTimeout(restartProcessing, 500);
+        if(countNotReady > 120) {
+            logger.error('Could not restart processing.');
+            process.exit(1);
+        }
+    }
+};
+
+// Start looking for alarm frames. 
+console.log('Waiting for first alarm frames...');
+restartProcessing();
