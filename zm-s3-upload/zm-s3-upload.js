@@ -291,7 +291,7 @@ const getFrames = () => {
 
                 // zerorpc connection.
                 // Heartbeat should be greater than the time required to run detection on maxInit frames. 
-                const zerorpc = require('zerorpc');
+                const zerorpc = require('./node_modules/zerorpc');
                 const zerorpcClient = new zerorpc.Client({heartbeatInterval: zmConfig.zerorpcHeartBeat});
                 zerorpcClient.connect(zmConfig.zerorpcPipe);
 

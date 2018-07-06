@@ -1,6 +1,6 @@
 {
     "name": "zm-s3-upload",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "author": "Lindo St. Angel <lindostangel@gmai.com>",
     "description": "uploads zoneminder alarm frames to aws s3",
     "license": "MIT",
@@ -8,10 +8,11 @@
         "node": ">=8.11.3"
     },
     "dependencies": {
-        "aws-sdk": ">=2.202.0",
+        "aws-sdk": "^2.269.1",
         "mysql": ">=2.15.0",
         "winston": ">=3.0.0",
-        "zeromq": "^4.6.0"
+        "zeromq": "^4.6.0",
+        "zerorpc": ">=0.9.7"
     },
     "repository": {
         "type": "git",
