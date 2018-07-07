@@ -208,7 +208,7 @@ const getFrames = () => {
                             logger.error('markAsUpload error: ' + error.stack);
                             reject(error);
                         } else {
-                            logger.info('Insert Query Complete. FrameID: ' +
+                            logger.debug('Insert Query Complete. FrameID: ' +
                                         imgData.frameid + ' EventID: ' + imgData.eventid);
                             resolve(true);
                         }
@@ -348,6 +348,7 @@ const getFrames = () => {
                             promises.push(uploadImage(i, skip));
                         }
                     }
+
                     // Wait until all uploads complete. 
                     Promise.all(promises).then(() => {
                         resolve(true);
@@ -371,7 +372,8 @@ const getFrames = () => {
                     const monitorExists = skipObj.hasOwnProperty(monitor);
                     monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
                     const skip = skipObj[monitor] % (zmConfig.frameSkip + 1);
-                    promises.push[uploadImage(i, skip)];
+                    if (skip) logger.info('Skipping next upload. frameSkip: '+zmConfig.frameSkip);
+                    promises.push(uploadImage(i, skip));
                 }
                 Promise.all(promises).then(() => {
                     resolve(true);
@@ -410,18 +412,18 @@ const getFrames = () => {
 }; // end getFrames()
 
 // State machine to fetch more alarm frames. 
-const restartProcessing = () => {
+const processAlarms = () => {
     if(isComplete) {
         logger.debug('Getting more frames to process.');
         var countNotReady = 0;
         isComplete = false;
         getFrames();
-        setTimeout(restartProcessing, 500);
+        setTimeout(processAlarms, zmConfig.checkForAlarmsInterval);
     } else {
         logger.debug('Not ready for more frames yet...');
         countNotReady++;
-        setTimeout(restartProcessing, 500);
-        if(countNotReady > 120) {
+        setTimeout(processAlarms, zmConfig.checkForAlarmsInterval);
+        if(countNotReady > zmConfig.checkForAlarmsAttempts) {
             logger.error('Could not restart processing.');
             process.exit(1);
         }
@@ -429,5 +431,5 @@ const restartProcessing = () => {
 };
 
 // Start looking for alarm frames. 
-console.log('Waiting for first alarm frames...');
-restartProcessing();
+logger.info('Waiting for first alarm frames...');
+processAlarms();
