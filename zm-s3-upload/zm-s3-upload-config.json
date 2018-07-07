@@ -9,6 +9,7 @@
         "MAXCONCURRENTUPLOAD": 10,
         "runLocalObjDet": true,
         "uploadFalsePositives": false,
+        "frameSkip": 0,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/zmq.pipe"
     },

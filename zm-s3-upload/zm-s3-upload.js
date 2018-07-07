@@ -166,39 +166,15 @@ const getFrames = () => {
                '/' + tSec + '/' + frameId + '-capture.jpg';
         };
 
-        let uploadCount = 0;
-
-        // Mark an alarm frame as uploaded in ZoneMinder's database and increment upload counter.
-        const markAsUploaded = (imgData) => {
-            const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
-                                      'values(?,?,now())';
-            const aryBind = new Array(imgData.frameid, imgData.eventid);
-            let done = false;
-
-            return new Promise((resolve, reject) => {
-                client.query(uploadInsertQuery, aryBind, (error) => {
-                    if (error) {
-                        logger.error('markAsUpload error: ' + error.stack);
-                        reject(error);
-                    } else {
-                        logger.info('Insert Query Complete. FrameID: ' +
-                            imgData.frameid + ' EventID: ' + imgData.eventid);
-            
-                        uploadCount++;
-                        logger.debug('uploadCount: ' + uploadCount);
-                        if (uploadCount > maxInit - 1) {
-                            logger.info(uploadCount + ' image(s) have been processed.');
-                            logger.info('Ready for new alarm frames...');
-                            done = true;
-                        }
-                        resolve(done);
-                    }
-                });
-            });
-        };
-
-        // Upload images.
-        const uploadImage = (index) => {
+        /**
+         * Upload an image to S3 and mark in zm's database.
+         * Returns a Promise of a pending upload. 
+         * 
+         * @param {int} index Index of image in aryRows to process.
+         * @param {boolean} skipUpload If true upload should be skipped and marked only.
+         * @returns {Promise} Pending upload of image. 
+         */
+        const uploadImage = (index, skipUpload) => {
             // Get image data object.
             let imgData = aryRows[index];
 
@@ -208,22 +184,43 @@ const getFrames = () => {
                 return new Promise.reject(new Error('Bad upload image: ' + imgData));
             }
 
-            // Build S3 path and key.
-            const S3PathKey = buildS3PathKey(imgData);
-
             // Get path to image file name. 
             const fileName = buildFilePath(imgData);
 
-            logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
-
             // Read image from filesystem.
-            const getImage = new Promise((resolve, reject) => {
-                fs.readFile(fileName, (error, data) => {
-                    error ? reject(error) : resolve(data);
+            const getImage = file => {
+                return new Promise((resolve, reject) => {
+                    fs.readFile(file, (error, data) => {
+                        error ? reject(error) : resolve(data);
+                    });
                 });
-            });
+            };
+
+            // Mark an alarm frame as uploaded in ZoneMinder's database and increment upload counter.
+            const markAsUploaded = imgData => {
+                const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
+                                          'values(?,?,now())';
+                const aryBind = new Array(imgData.frameid, imgData.eventid);
+
+                return new Promise((resolve, reject) => {
+                    client.query(uploadInsertQuery, aryBind, (error) => {
+                        if (error) {
+                            logger.error('markAsUpload error: ' + error.stack);
+                            reject(error);
+                        } else {
+                            logger.info('Insert Query Complete. FrameID: ' +
+                                        imgData.frameid + ' EventID: ' + imgData.eventid);
+                            resolve(true);
+                        }
+                    });
+                });
+            };
 
             const uploadToS3 = data => {
+                // Build S3 path and key.
+                const S3PathKey = buildS3PathKey(imgData);
+                logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
+
                 // Calculate frame datetime with ms resolution.
                 const dtFrame = new Date(imgData.frame_timestamp);
                 const timestampMs = (imgData.frame_delta % 1).toFixed(3).substring(2);
@@ -261,21 +258,15 @@ const getFrames = () => {
                 });
             };
 
-            return new Promise((resolve, reject) => {
-                getImage.then(result => {
-                    uploadToS3(result);
-                    return;
-                }).then(() => {
-                    markAsUploaded(imgData);
-                    return;
-                }).then(() => {
-                    resolve(true);
-                    return;
-                }).catch(error => {
-                    logger.error('Upload image error: ' + error);
-                    reject(error);
-                });
-            });        
+            // Chain promises and return the last one. 
+            const firstPromise = getImage(fileName).then(result => {
+                if (!skipUpload) return uploadToS3(result);
+                return false;
+            });
+            return firstPromise.then(result => {
+                logger.debug('uploadToS3 result: '+result);
+                return markAsUploaded(imgData);
+            });
         };
 
         // Perform local object detection then upload to S3.
@@ -325,28 +316,39 @@ const getFrames = () => {
                     };
 
                     // Scan objectsFound array for a person and upload alarms to S3.
+                    let skipObj = {};
                     let promises = [];
                     for (let i = 0; i < maxInit; ++i) {
-                        let fileName = objectsFound[i].image;
-                        let objLabels = objectsFound[i].labels.find(o => o.name === 'person');
+                        // Frames to skip for each one processed.
+                        // In general alarms from multiple monitors need to be handled.
+                        const monitor = aryRows[i].monitor_name;
+                        const monitorExists = skipObj.hasOwnProperty(monitor);
+                        monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
+                        const skip = skipObj[monitor] % (zmConfig.frameSkip + 1);
+
+                        // Scan for detected objects and trigger uploads. 
+                        const fileName = objectsFound[i].image;
+                        const objLabels = objectsFound[i].labels.find(o => o.name === 'person');
                         if (objLabels === undefined) {
                             logger.info('Person NOT found in ' + fileName);
                             aryRows[i].alert = 'false';
                             if (zmConfig.uploadFalsePositives === false) {
                                 logger.info('False positives will NOT be uploaded.');
                                 // Mark as uploaded in zm db but don't actually upload image.
-                                promises.push[markAsUploaded(aryRows[i])];
+                                promises.push(uploadImage(i, true));
                             } else {
-                                promises.push[uploadImage(i)];
+                                if (skip) logger.info('Skipping next upload. frameSkip: '+zmConfig.frameSkip);
+                                promises.push(uploadImage(i, skip));
                             }
                         } else {
+                            if (skip) logger.info('Skipping next upload. frameSkip: '+zmConfig.frameSkip);
                             logger.info('Person found in ' + fileName);
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = JSON.stringify(labels);
-                            promises.push[uploadImage(i)];
+                            promises.push(uploadImage(i, skip));
                         }
                     }
-
+                    // Wait until all uploads complete. 
                     Promise.all(promises).then(() => {
                         resolve(true);
                     }).catch((error) => {
@@ -359,11 +361,17 @@ const getFrames = () => {
         }; // end localObjDet
 
         // Upload to S3 to trigger remote object detection.
+        // TODO - combine with local object detect and simplify. 
         const remoteObjDet = () => {
             return new Promise((resolve, reject) => {
                 let promises = [];
+                let skipObj = {};
                 for (let i = 0; i < maxInit; i++) {
-                    promises.push[uploadImage(i)];
+                    const monitor = aryRows[i].monitor_name;
+                    const monitorExists = skipObj.hasOwnProperty(monitor);
+                    monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
+                    const skip = skipObj[monitor] % (zmConfig.frameSkip + 1);
+                    promises.push[uploadImage(i, skip)];
                 }
                 Promise.all(promises).then(() => {
                     resolve(true);
@@ -376,6 +384,8 @@ const getFrames = () => {
         if (zmConfig.runLocalObjDet === true) {
             logger.info('Running with local object detection enabled.');
             localObjDet().then(() => {
+                logger.info(maxInit + ' image(s) have been processed.');
+                logger.info('Ready for new alarm frames...');
                 // Get more frames to process.
                 isComplete = true;
                 return;
@@ -387,6 +397,8 @@ const getFrames = () => {
         } else {
             logger.info('Running with remote object detection enabled.');
             remoteObjDet().then(() => {
+                logger.info(maxInit + ' image(s) have been processed.');
+                logger.info('Ready for new alarm frames...');
                 isComplete = true;
                 return;
             }).catch(error => {
