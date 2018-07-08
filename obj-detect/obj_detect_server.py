@@ -18,13 +18,26 @@ from object_detection.utils import label_map_util
 with open('./config.json') as fp:
     config = json.load(fp)['objDetServer']
 
+# Tensorflow object detection file system paths.
 PATH_BASE = config['modelPathBase']
 PATH_TO_CKPT = PATH_BASE + config['modelPath']
 PATH_TO_LABELS = PATH_BASE + config['labelPath']
+
+# Max number of classes for TF object detection.
 NUM_CLASSES = config['numClasses']
+
+# If consecutive ZoneMinder image frames are found then skip this many after the first.
 CON_IMG_SKIP = config['conseqImagesToSkip']
+
+# Minimum score for valid TF object detection. 
 MIN_SCORE_THRESH = config['minScore']
+
+# Heartbeat interval for zerorpc client in ms.
+# This must match the zerorpc client config. 
 ZRPC_HEARTBEAT = config['zerorpcHeartBeat']
+
+# IPC (or TCP) socket for zerorpc.
+# This must match the zerorpc client config.
 ZRPC_PIPE = config['zerorpcPipe']
 
 # Load frozen Tensorflow model into memory. 
