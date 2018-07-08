@@ -381,7 +381,7 @@ const getFrames = () => {
                             logger.info(numObjDet+' object(s) detected in '+fileName);
                             let labels = {'Labels': []};
                             objectsFound[i].labels.forEach(item => {
-                                labels.Labels.push({'Confidence': item.score, 'Name': item.name});
+                                labels.Labels.push({'Confidence': item.score, 'Name': item.name, 'Box': item.box});
                                 logger.info('..object detected: '+item.name+ ', score: '+item.score.toFixed(4));
                             });
                             aryRows[i].alert = 'true';

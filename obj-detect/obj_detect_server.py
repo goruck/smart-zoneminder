@@ -119,6 +119,7 @@ class DetectRPC(object):
                     if scores[0, index] > MIN_SCORE_THRESH:
                         object_dict = category_index.get(value)
                         object_dict['score'] = float(scores[0, index])
+                        object_dict['box'] = boxes[0, index].tolist()
                         labels.append(object_dict)
 
                 old_labels = labels
@@ -159,6 +160,7 @@ class DetectRPC(object):
                     if scores[0, index] > MIN_SCORE_THRESH:
                         object_dict = category_index.get(value)
                         object_dict['score'] = float(scores[0, index])
+                        object_dict['box'] = boxes[0, index].tolist()
                         labels.append(object_dict)
 
                 yield json.dumps({'image': image_path, 'labels': labels})
