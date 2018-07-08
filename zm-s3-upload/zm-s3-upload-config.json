@@ -9,9 +9,9 @@
         "MAXCONCURRENTUPLOAD": 10,
         "runLocalObjDet": true,
         "uploadFalsePositives": false,
-        "frameSkip": 0,
-        "checkForAlarmsInterval": 500,
-        "checkForAlarmsAttempts": 120,
+        "frameSkip": 1,
+        "checkForAlarmsInterval": 5000,
+        "checkForAlarmsAttempts": 12,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/zmq.pipe"
     },

@@ -99,9 +99,14 @@ class DetectRPC(object):
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
 
-                labels = ([category_index.get(value)
-                    for index,value in enumerate(classes[0])
-                    if scores[0,index] > MIN_SCORE_THRESH])
+                # Get labels and scores of detected objects.
+                labels = []
+                object_dict = {}
+                for index, value in enumerate(classes[0]):
+                    if scores[0, index] > MIN_SCORE_THRESH:
+                        object_dict = category_index.get(value)
+                        object_dict['score'] = float(scores[0, index])
+                        labels.append(object_dict)
 
                 old_labels = labels
 
@@ -134,11 +139,16 @@ class DetectRPC(object):
                     [boxes, scores, classes, num_detections],
                     feed_dict={image_tensor: image_np_expanded})
 
-                objects_in_image = {'image': image_path, 'labels':([category_index.get(value)
-                    for index,value in enumerate(classes[0])
-                    if scores[0,index] > MIN_SCORE_THRESH])}
+                # Get labels and scores of detected objects.
+                labels = []
+                object_dict = {}
+                for index, value in enumerate(classes[0]):
+                    if scores[0, index] > MIN_SCORE_THRESH:
+                        object_dict = category_index.get(value)
+                        object_dict['score'] = float(scores[0, index])
+                        labels.append(object_dict)
 
-                yield json.dumps(objects_in_image)
+                yield json.dumps({'image': image_path, 'labels': labels})
 
 s = zerorpc.Server(DetectRPC(), heartbeat=ZRPC_HEARTBEAT)
 s.bind(ZRPC_PIPE)

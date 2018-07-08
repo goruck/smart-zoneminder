@@ -303,24 +303,18 @@ const getFrames = () => {
                 zerorpcP.then((result) => {
                     zerorpcClient.close();
 
+                    // result is an array of objects containing objects detected in image(s).
+                    // The ordering of items in the array matches the order that they were submitted. 
                     const objectsFound = result;
-
-                    // Placeholder label objects.
-                    const labels = {
-                        "Labels": [
-                            {
-                                "Confidence": 90,
-                                "Name": "Person"
-                            }
-                        ]
-                    };
+                    //const util = require('util');
+                    //console.log(util.inspect(objectsFound, false, null));
 
                     // Scan objectsFound array for a person and upload alarms to S3.
                     let skipObj = {};
                     let promises = [];
                     for (let i = 0; i < maxInit; ++i) {
                         // Frames to skip for each one processed.
-                        // In general alarms from multiple monitors need to be handled.
+                        // Alarms from multiple monitors will need to be concurrently processed.
                         const monitor = aryRows[i].monitor_name;
                         const monitorExists = skipObj.hasOwnProperty(monitor);
                         monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
@@ -328,9 +322,9 @@ const getFrames = () => {
 
                         // Scan for detected objects and trigger uploads. 
                         const fileName = objectsFound[i].image;
-                        const objLabels = objectsFound[i].labels.find(o => o.name === 'person');
-                        if (objLabels === undefined) {
-                            logger.info('Person NOT found in ' + fileName);
+                        const numObjDet = objectsFound[i].labels.length;
+                        if (!numObjDet) {
+                            logger.info('No objects detected in ' + fileName);
                             aryRows[i].alert = 'false';
                             if (zmConfig.uploadFalsePositives === false) {
                                 logger.info('False positives will NOT be uploaded.');
@@ -342,7 +336,12 @@ const getFrames = () => {
                             }
                         } else {
                             if (skip) logger.info('Skipping next upload. frameSkip: '+zmConfig.frameSkip);
-                            logger.info('Person found in ' + fileName);
+                            logger.info(numObjDet+' object(s) detected in '+fileName);
+                            let labels = {'Labels': []};
+                            objectsFound[i].labels.forEach(item => {
+                                labels.Labels.push({'Confidence': item.score, 'Name': item.name});
+                                logger.info('..object detected: '+item.name+ ', score: '+item.score.toFixed(4));
+                            });
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = JSON.stringify(labels);
                             promises.push(uploadImage(i, skip));
