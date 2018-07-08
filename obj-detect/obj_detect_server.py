@@ -81,7 +81,7 @@ class DetectRPC(object):
                     print("Could not derive frame number from image path.")
                     continue
                     
-                if frame_num - old_frame_num  == CON_IMG_SKIP:
+                if frame_num - old_frame_num  <= CON_IMG_SKIP:
                     objects_in_image.append({'image': image_path, 'labels': old_labels})
                     print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
                     continue
