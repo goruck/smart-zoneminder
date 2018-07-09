@@ -314,11 +314,18 @@ const getFrames = () => {
         // Perform local object detection then upload to S3.
         const localObjDet = () => {
             return new Promise((resolve, reject) => {
-                let testImagePaths = [];
-
-                // Add full path of image to alarm frames and build test image path array.
+                // Build set of test image paths.
+                const alarmsFromMonitor = {}; // count of alarm frames from each monitor in set
+                const testImagePaths = [];
                 for (let i = 0; i < maxInit; i++) {
-                    let imageFullPath = buildFilePath(aryRows[i]);
+                    // Determine frames to skip for each one processed.
+                    // NB: alarms from multiple monitors need to be concurrently processed.
+                    const monitor = aryRows[i].monitor_name;
+                    const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
+                    monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 0;
+                    const skip = alarmsFromMonitor[monitor] % (frameSkip + 1);
+                    if (skip) continue;
+                    const imageFullPath = buildFilePath(aryRows[i]);
                     testImagePaths.push(imageFullPath);
                 }
 
@@ -352,19 +359,22 @@ const getFrames = () => {
                     //console.log(util.inspect(objectsFound, false, null));
 
                     // Scan objectsFound array for detected objects and upload true alarms to S3.
-                    let skipObj = {};
-                    let promises = [];
-                    for (let i = 0; i < maxInit; ++i) {
-                        // Frames to skip for each one processed.
-                        // Alarms from multiple monitors need to be concurrently processed.
-                        const monitor = aryRows[i].monitor_name;
-                        const monitorExists = skipObj.hasOwnProperty(monitor);
-                        monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
-                        const skip = skipObj[monitor] % (frameSkip + 1);
+                    //let alarmsFromMonitor = {}; // count of alarm frames from each monitor in set
+                    const promises = [];
+                    let skipped = 0;
+                    for (let i = 0; i < maxInit; i++) {
+                        // Determine frames to skip processing. 
+                        const skip = i % (frameSkip + 1);
+                        if (skip) {
+                            logger.info('Skipping next upload. frameSkip: '+frameSkip);
+                            promises.push(uploadImage(i, skip));
+                            skipped++;
+                            continue;
+                        }
 
                         // Scan for detected objects and trigger uploads. 
-                        const fileName = objectsFound[i].image;
-                        const numObjDet = objectsFound[i].labels.length;
+                        const fileName = objectsFound[i - skipped].image;
+                        const numObjDet = objectsFound[i - skipped].labels.length;
                         if (!numObjDet) {
                             logger.info('No objects detected in ' + fileName);
                             aryRows[i].alert = 'false';
@@ -373,20 +383,20 @@ const getFrames = () => {
                                 // Mark as uploaded in zm db but don't actually upload image.
                                 promises.push(uploadImage(i, true));
                             } else {
-                                if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
-                                promises.push(uploadImage(i, skip));
+                                //if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
+                                promises.push(uploadImage(i, false));
                             }
                         } else {
-                            if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
+                            //if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
                             logger.info(numObjDet+' object(s) detected in '+fileName);
-                            let labels = {'Labels': []};
-                            objectsFound[i].labels.forEach(item => {
+                            const labels = {'Labels': []};
+                            objectsFound[i - skipped].labels.forEach(item => {
                                 labels.Labels.push({'Confidence': item.score, 'Name': item.name, 'Box': item.box});
                                 logger.info('..object detected: '+item.name+ ', score: '+item.score.toFixed(4));
                             });
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = JSON.stringify(labels);
-                            promises.push(uploadImage(i, skip));
+                            promises.push(uploadImage(i, false));
                         }
                     }
 
@@ -406,8 +416,8 @@ const getFrames = () => {
         // TODO - combine with local object detect and simplify. 
         const remoteObjDet = () => {
             return new Promise((resolve, reject) => {
-                let promises = [];
-                let skipObj = {};
+                const promises = [];
+                const skipObj = {};
                 for (let i = 0; i < maxInit; i++) {
                     const monitor = aryRows[i].monitor_name;
                     const monitorExists = skipObj.hasOwnProperty(monitor);
