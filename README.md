@@ -63,14 +63,14 @@ This lead to the requirement of a five second or less upload time to a secure AW
 This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).
 
 3. **Make it much easier to access ZoneMinder information.**
-This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example because an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search.
+This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example, when an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search.
 
 4. **Have low implementation and operating costs.**
 This lead to the requirement to leverage existing components where possible and make economical use of the AWS services. This also led to the option of using local Tensorflow based object detection since using Rekognition at scale is not inexpensive wrt the goals of this project. An operating cost of less than $10 per year is the goal.
 
 5. **Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa.**
 
-6. **Learn about, and show others how to use, ZoneMinder, Alexa and the AWS Services.**
+6. **Learn about, and show others how to use, Tensorflow, ZoneMinder, Alexa and the AWS Services.**
 
 # System Architecture
 The figure below shows the smart-zoneminder system architecture.
@@ -90,7 +90,7 @@ You need to have ZoneMinder installed on a local linux machine to use smart-zone
 
 I have the monitor function set to [Mocord](http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html) which means that the camera streams will be continuously recorded, with motion being marked as an alarm within an event (which is a 600 second block of continuously recorded video). ZoneMinder stores the camera streams as JPEGs for each video frame in the event. I chose this mode because I wanted to have a record of all the video as well as the alarms. ZoneMinder does provide for a means ("filters") to upload an event to an external server when certain conditions are met, such as an alarm occurring. Its possible to use such a filter instead of the uploader I created but I didn't want to upload 600 s worth of images every time an alarm occurred and the filter would have been slow, worse case being almost 600 s if an alarm happened at the start of an event.
 
-Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very useful but it takes some trial and error to get it right given each situation is so different. Zoneminder is configured to analyze the feeds for motion at 5 FPS which also helps to limit Rekognition costs but it comes at the expense of possibly missing a high speed object moving through the camera's FOV (however unlikely in my situation). Since I was still concerned about Rekognition costs I also included the option to run local Tensorflow-based object detection instead. This comes at the expense of slightly higher detection times (with my current HW which includes a Nvidia Geforce GTX 1080Ti GPU) but completely avoids Rekogntion costs. 
+Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very useful but it takes some trial and error to get it right given each situation is so different. Zoneminder is configured to analyze the feeds for motion at 5 FPS which also helps to limit Rekognition costs but it comes at the expense of possibly missing a high speed object moving through the camera's FOV (however unlikely in my situation). Since I was still concerned about Rekognition costs I also included the option to run local Tensorflow-based object detection instead. This comes at the expense of slightly higher detection times (with my current HW which uses a Nvidia Geforce GTX 1080Ti GPU for Tensorflow) but completely avoids Rekogntion costs. 
 
 Currently smart-zoneminder naively sends every alarm frame detected by ZoneMinder to the cloud. This is expensive. Clearly there are more optimal ways to process the alarms locally in terms of more advanced motion detection algorithms and exploiting the temporal coherence between alarm frames that would limit cloud costs without some of the current restrictions. This is an area for future study by the project. 
 
@@ -99,7 +99,7 @@ I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
 ### Tensorflow
-This project uses Tensorflow for local object and face detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide.
+This project uses Tensorflow (with GPU support) for local object and face detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco_2018_01_28* model which can be found in the [Tensorflow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo).
 
 ### Apache
 If you installed ZoneMinder successfully then apache should be up and running but a few modifications are required for this project. The Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that is used to display clips of alarm videos requires the video file to be hosted at an Internet-accessible HTTPS endpoint. HTTPS is required, and the domain hosting the files must present a valid, trusted SSL certificate. Self-signed certificates cannot be used. Since the video clip is generated on the local server Apache needs to serve the video file in this manner. This means that you need to setup a HTTPS virtual host with a publicly accessible directory on your local machine. Note that you can also leverage this to access the ZoneMinder web interface in a secure manner externally. Here are the steps I followed to configure Apache to use HTTPS and serve the alarm video clip.
@@ -168,7 +168,11 @@ You'll need an [S3 bucket](https://aws.amazon.com/documentation/s3/) where your 
 ```
 
 ### Clone smart-zoneminder
-To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running `git clone https://github.com/goruck/smart-zoneminder`.
+To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running:
+
+```bash
+$ git clone https://github.com/goruck/smart-zoneminder
+```
 
 ## Alarm Uploader (zm-s3-upload)
 The Alarm Uploader, [zm-s3-upload](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found either directly sends them to an S3 bucket or first runs local object detection on the image and marks them as having been uploaded. The local object detection is enabled by setting the runLocalObjDet flag to "true" in [zm-s3-upload-config.json
@@ -176,8 +180,8 @@ The Alarm Uploader, [zm-s3-upload](https://github.com/goruck/smart-zoneminder/bl
 
 Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/README.md) for installation instructions.
 
-## Local Object Detection (obj_det_server)
-The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine usng the Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. It will skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
+## Local Object Detection (obj_detect_server)
+The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
 
 Please see the Object Detection Server's [README](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/README.md) for installation instructions. 
 
@@ -214,7 +218,7 @@ The AWS Lambda function in the rekognition-evaluate-labels folder evaluates whet
 Please see the function's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/rekognition-evaluate-labels/README.md) for installation instructions.
 
 ### Archive S3 Image (s3-archive-image)
-The AWS Lambda function in the s3-archive-image folder uses the evaluated Rekognition labels to move alarm frame images from the S3 upload folder to either the falsepositives folder (no person was found in the image) or the alerts folder (a person was found).
+The AWS Lambda function in the s3-archive-image folder uses the evaluated Rekognition or Tensorflow object detection labels to move alarm frame images from the S3 upload folder to either the falsepositives folder (no person or object was found in the image) or the alerts folder (a person or object was found).
 
 Please see the function's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/s3-archive-image/README.md) for installation instructions.
 
@@ -250,3 +254,48 @@ The alarm uploader was inspired by Brian Roy's [Zoneminder-Alert-Image-Upload-to
 Thank you Brian and Mark!
 
 # Appendix
+
+## Sample console output from zm-s3-upload.
+
+```text
+info: 4 un-uploaded frames found in: 30 milliseconds
+info: Running with local object detection enabled.
+info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01108-capture.jpg
+info: ..object detected: person, score: 0.9784
+info: ..object detected: potted plant, score: 0.6585
+info: Skipping next upload. frameSkip: 1
+info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01110-capture.jpg
+info: ..object detected: person, score: 0.9784
+info: ..object detected: potted plant, score: 0.6585
+info: Skipping next upload. frameSkip: 1
+info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01108-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1108-17-13-53-330.jpg
+info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01110-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1110-17-13-53-760.jpg
+info: 4 image(s) have been processed.
+info: Ready for new alarm frames...
+info: 6 un-uploaded frames found in: 40 milliseconds
+info: Running with local object detection enabled.
+info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01112-capture.jpg
+info: ..object detected: person, score: 0.9734
+info: ..object detected: potted plant, score: 0.7050
+info: Skipping next upload. frameSkip: 1
+info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01114-capture.jpg
+info: ..object detected: person, score: 0.9734
+info: ..object detected: potted plant, score: 0.7050
+info: Skipping next upload. frameSkip: 1
+info: 1 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01131-capture.jpg
+info: ..object detected: potted plant, score: 0.7050
+info: Skipping next upload. frameSkip: 1
+info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01112-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1112-17-13-54-230.jpg
+info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01114-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1114-17-13-54-720.jpg
+info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01131-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1131-17-13-59-810.jpg
+info: 6 image(s) have been processed.
+info: Ready for new alarm frames...
+info: 1 un-uploaded frames found in: 29 milliseconds
+info: Running with local object detection enabled.
+info: 1 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01133-capture.jpg
+info: ..object detected: potted plant, score: 0.5938
+info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01133-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1133-17-13-59-270.jpg
+info: 1 image(s) have been processed.
+info: Ready for new alarm frames...
+
+```

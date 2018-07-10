@@ -1,15 +1,14 @@
 # obj-detect
-The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine usng the Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. It will skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
+The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
 
 # Installation
 1. Clone this git repo to your local machine running Zoneminder and cd to it.
+
 2. Fetch dependencies.
 ```bash
-$ pip3 install -r requirements.txt
+$ pip3 install --user -r requirements.txt
 ```
-3. Edit obj_det_server.py and change path names in the shebang and models to suit your configuration.
-```python
-#!/home/lindo/develop/tensorflow/bin/python3.6
 
-PATH_BASE = '/home/lindo/develop/tensorflow/models/research/object_detection/'
-```
+3. Create the file '/tmp/zmq.pipe' for an IPC socket tha the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket. 
+
+4. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in the obj_detect_server.py file.
