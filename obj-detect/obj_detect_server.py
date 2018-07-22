@@ -1,7 +1,12 @@
 # Detect objects using tensorflow-gpu served by zerorpc.
-# Needs to be called from a zerorpc client with an array of alarm frame image paths.
+#
+# This needs to be called from a zerorpc client with an array of alarm frame image paths.
 # Image paths must be in the form of:
 # '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
+#
+# This program must be run in a tensorflow virtualenv, e.g.,
+# $ /home/lindo/develop/tensorflow/bin/python3.6 ./obj_detect_server.py
+#
 # This is part of the smart-zoneminder project.
 #
 # Copyright (c) 2018 Lindo St. Angel
