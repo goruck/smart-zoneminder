@@ -17,6 +17,7 @@
 const fs = require('fs');
 const AWS = require('./node_modules/aws-sdk');
 const s3 = new AWS.S3();
+const util = require('util');
 let isComplete = true; // triggers state machine to get more alarm frames
 
 // Get configuration details. 
@@ -64,6 +65,14 @@ const checkForAlarmsInterval = zmConfig.checkForAlarmsInterval;
 // If no valid alarm frames are found then give up after these many attempts.
 // A working system should find 0 or more alarm frames every checkForAlarmsInterval.
 const checkForAlarmsAttempts = zmConfig.checkForAlarmsAttempts;
+
+// mongodb
+// Log the disposition of all alarm frames to a mongo database?
+const useMongo = zmConfig.useMongo;
+// URL of mongo server.
+const mongoUrl = zmConfig.mongoUrl;
+// mongo collection name.
+const mongoCollection = zmConfig.mongoCollection;
 
 // mysql database connection.
 const mysql = require('./node_modules/mysql');
@@ -209,6 +218,37 @@ const getFrames = () => {
         };
 
         /**
+         * Write documents to a mongo database.
+         * Returns a promise for a mongodb write.
+         * 
+         * @param {array} documents - An array of documents to write to mongo.
+         * @returns {Promise} - Pending write of documents. 
+         */
+        const writeToMongodb = (documents) => {
+            logger.debug('mongodb docs: '+util.inspect(documents, false, null));
+            let db = '';
+            const mongoClient = require('mongodb').MongoClient;
+            const url = mongoUrl;
+            const collectionName = mongoCollection;
+
+            const firstPromise = mongoClient.connect(url).then(conn => {
+                db = conn;
+                const collection = conn.db().collection(collectionName);
+                return collection.insertMany(documents);
+            }).catch((error) => {
+                return Promise.reject(new Error('mongodb error: '+error));
+            });
+                
+            return firstPromise.then(out => {
+                logger.debug('mongodb result: '+util.inspect(out, false, null));
+                logger.info('Wrote '+out.insertedCount+' docs to mongodb.');
+                db.close();
+            }).catch((error) => {
+                return Promise.reject(new Error('mongodb error: '+error));
+            });
+        };
+
+        /**
          * Upload an image to S3 and mark in zm's database.
          * Returns a Promise of a pending upload. 
          * 
@@ -223,7 +263,7 @@ const getFrames = () => {
             // Check for bad image file.
             if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
                 logger.error('Bad upload image: ' + imgData);
-                return new Promise.reject(new Error('Bad upload image: ' + imgData));
+                return Promise.reject(new Error('Bad upload image: ' + imgData));
             }
 
             // Get path to image file name. 
@@ -306,7 +346,7 @@ const getFrames = () => {
                 return false;
             });
             return firstPromise.then(result => {
-                logger.debug('uploadToS3 result: '+result);
+                logger.debug('uploadToS3 result: '+util.inspect(result, false, null));
                 return markAsUploaded(imgData);
             });
         };
@@ -318,6 +358,7 @@ const getFrames = () => {
                 const alarmsFromMonitor = {}; // count of alarm frames from each monitor in set
                 const testImagePaths = [];
                 for (let i = 0; i < maxInit; i++) {
+                    logger.debug('Alarm frame info: '+util.inspect(aryRows[i], false, null));
                     // Determine frames to skip for each one processed.
                     // NB: alarms from multiple monitors need to be concurrently processed.
                     const monitor = aryRows[i].monitor_name;
@@ -355,25 +396,29 @@ const getFrames = () => {
                     // result is an array of objects containing objects detected in image(s).
                     // The ordering of items in the array matches the order that they were submitted. 
                     const objectsFound = result;
-                    //const util = require('util');
-                    //console.log(util.inspect(objectsFound, false, null));
+                    logger.debug('Obj detect results: '+util.inspect(objectsFound, false, null));
 
                     // Scan objectsFound array for detected objects and upload true alarms to S3.
-                    //let alarmsFromMonitor = {}; // count of alarm frames from each monitor in set
                     const promises = [];
                     let skipped = 0;
+                    const mongodbDoc = []; // for local database of all alarm frame disposition.
                     for (let i = 0; i < maxInit; i++) {
-                        // Determine frames to skip processing. 
+                        const labels = {'Labels': []};
+                        const fileName = buildFilePath(aryRows[i]);
+
+                        // Find alarm frames that were never sent for object detection and skip past those. 
                         const skip = i % (frameSkip + 1);
                         if (skip) {
-                            logger.info('Skipping next upload. frameSkip: '+frameSkip);
+                            logger.info('Skipped processing of '+fileName);
+                            if (useMongo) mongodbDoc.push({'image': fileName,
+                                'labels': labels, 'status': 'skipped', 'objDet': 'local'});
                             promises.push(uploadImage(i, skip));
                             skipped++;
                             continue;
                         }
 
                         // Scan for detected objects and trigger uploads. 
-                        const fileName = objectsFound[i - skipped].image;
+                        //const fileName = objectsFound[i - skipped].image;
                         const numObjDet = objectsFound[i - skipped].labels.length;
                         if (!numObjDet) {
                             logger.info('No objects detected in ' + fileName);
@@ -383,22 +428,24 @@ const getFrames = () => {
                                 // Mark as uploaded in zm db but don't actually upload image.
                                 promises.push(uploadImage(i, true));
                             } else {
-                                //if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
                                 promises.push(uploadImage(i, false));
                             }
                         } else {
-                            //if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
-                            logger.info(numObjDet+' object(s) detected in '+fileName);
-                            const labels = {'Labels': []};
                             objectsFound[i - skipped].labels.forEach(item => {
                                 labels.Labels.push({'Confidence': item.score, 'Name': item.name, 'Box': item.box});
-                                logger.info('..object detected: '+item.name+ ', score: '+item.score.toFixed(4));
+                                logger.info(item.name+' ('+item.score.toFixed(2)+')'+' detected in '+fileName);
                             });
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = JSON.stringify(labels);
                             promises.push(uploadImage(i, false));
                         }
+
+                        if (useMongo) mongodbDoc.push({'image': fileName,
+                            'labels': labels, 'status': 'processed', 'objDet': 'local'});
                     }
+
+                    // Log the disposition of all alarms to mongodb.
+                    if (useMongo) promises.push(writeToMongodb(mongodbDoc));
 
                     // Wait until all uploads complete. 
                     Promise.all(promises).then(() => {
@@ -418,14 +465,29 @@ const getFrames = () => {
             return new Promise((resolve, reject) => {
                 const promises = [];
                 const skipObj = {};
+                const labels = {'Labels': []};
+                const mongodbDoc = []; // for local database of all alarm frame disposition.
                 for (let i = 0; i < maxInit; i++) {
+                    logger.debug('Alarm frame info: '+util.inspect(aryRows[i], false, null));
+                    const fileName = buildFilePath(aryRows[i]);
                     const monitor = aryRows[i].monitor_name;
                     const monitorExists = skipObj.hasOwnProperty(monitor);
                     monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
                     const skip = skipObj[monitor] % (frameSkip + 1);
-                    if (skip) logger.info('Skipping next upload. frameSkip: '+frameSkip);
+                    if (skip) {
+                        logger.info('Skipped processing of '+fileName);
+                        mongodbDoc.push({'image': fileName, 'labels': labels,
+                            'status': 'skipped', 'objDet': 'remote'});
+                    } else {
+                        mongodbDoc.push({'image': fileName, 'labels': labels,
+                            'status': 'processed', 'objDet': 'remote'});
+                    }
                     promises.push(uploadImage(i, skip));
                 }
+
+                logger.debug('mongodb docs: '+util.inspect(mongodbDoc, false, null));
+                // insert docs into mongodb here
+
                 Promise.all(promises).then(() => {
                     resolve(true);
                 }).catch((error) => {

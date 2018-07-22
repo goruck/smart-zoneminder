@@ -13,7 +13,10 @@
         "checkForAlarmsInterval": 5000,
         "checkForAlarmsAttempts": 12,
         "zerorpcHeartBeat": 60000,
-        "zerorpcPipe": "ipc:///tmp/zmq.pipe"
+        "zerorpcPipe": "ipc:///tmp/zmq.pipe",
+        "useMongo": true,
+        "mongoUrl": "mongodb://zmuser:zmpass@localhost:27017/zm?authSource=admin",
+        "mongoCollection": "alarms"
     },
     "logConfig": {
         "level": "info",
