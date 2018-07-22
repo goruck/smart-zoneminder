@@ -4,16 +4,12 @@ The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/sm
 # Installation
 1. Clone this git repo to your local machine running Zoneminder and cd to it.
 
-2. Fetch dependencies.
-```bash
-$ pip3 install --user -r requirements.txt
-```
+2. Create the file '/tmp/zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket. 
 
-3. Create the file '/tmp/zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket. 
+3. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in the obj_detect_server.py file.
 
-4. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in the obj_detect_server.py file.
-
-5. obj_detect_server.py must be run in the Tensorflow python virtual environment that was setup previously. Here's a command line example of how to do this (adjust path for your installation):
+4. obj_detect_server.py must be run in the Tensorflow python virtual environment that was setup previously. Here's a command line example of how to do this (adjust path for your installation):
 ```bash
 $ /home/lindo/develop/tensorflow/bin/python3.6 ./obj_detect_server.py
 ```
+Note: the requirements.txt file in this repo is for reference only as it reflects the tensorflow virtualenv configuration. Do not use it to install dependencies in the local directory via pip. You can use it instead to configure the tensorflow virtualenv to match what I used. 
