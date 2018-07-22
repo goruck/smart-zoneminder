@@ -110,7 +110,10 @@ If you installed ZoneMinder successfully then apache should be up and running bu
 4. Create a directory to hold the generated alarm clip and make the permissions for g and o equal to rx. I created this directory at /var/www/loginto.me/public and there `touch` a file called *alarm-video.mp4* and give it rx permissions of u,g, and o. This will allow the generator to write a video by that name to this directory. 
 5. Configure Apache to allow the public directory to be accessed and configure Apache to allow the CGI to be used. You should allow the CGI script only to be accessed externally via HTTPS and only with a password. You can copy the configuration file in apache/smart-zoneminder.conf to your Apache config-available directory, modify it to your needs and enable it in Apache.
 7. Restart Apache.
-8. Allow external access to Apache by opening the right port on your firewall. 
+8. Allow external access to Apache by opening the right port on your firewall.
+
+### MongoDB
+I use a local mongo database to store how every alarm frame was processed by the system. Its important to record the information locally since depending on what options are set not all alarm frames and their associated metadata will be uploaded to AWS. The mongo logging can be toggled on or off by a configuration setting. See [How to Install MongoDB on Ubuntu 18.04](https://www.tecmint.com/install-mongodb-on-ubuntu-18-04/) for instructions on how to install mongo on your system.
 
 ### Amazon Developers Account
 You'll need an [Amazon Developers](https://developer.amazon.com/) account to use the Alexa skills I developed for this project since I haven't published them. 

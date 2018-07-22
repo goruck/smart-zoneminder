@@ -9,6 +9,11 @@ The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/sm
 $ pip3 install --user -r requirements.txt
 ```
 
-3. Create the file '/tmp/zmq.pipe' for an IPC socket tha the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket. 
+3. Create the file '/tmp/zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket. 
 
 4. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in the obj_detect_server.py file.
+
+5. obj_detect_server.py must be run in the Tensorflow python virtual environment that was setup previously. Here's a command line example of how to do this (adjust path for your installation):
+```bash
+$ /home/lindo/develop/tensorflow/bin/python3.6 ./obj_detect_server.py
+```
