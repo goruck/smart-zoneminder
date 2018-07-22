@@ -1,5 +1,9 @@
 # Detect objects using tensorflow-gpu served by zerorpc.
-# Needs to be called from a zerorpc client.
+# Needs to be called from a zerorpc client with an array of alarm frame image paths.
+# Image paths must be in the form of:
+# '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
+# This is part of the smart-zoneminder project.
+#
 # Copyright (c) 2018 Lindo St. Angel
 
 import numpy as np
@@ -31,6 +35,11 @@ CON_IMG_SKIP = config['conseqImagesToSkip']
 
 # Minimum score for valid TF object detection. 
 MIN_SCORE_THRESH = config['minScore']
+
+# Crop image to minimize processing (at some expense of accuracy).
+# In pixels.
+CROP_IMAGE_WIDTH = config['cropImageWidth']
+CROP_IMAGE_HEIGHT = config['cropImageHeight']
 
 # Heartbeat interval for zerorpc client in ms.
 # This must match the zerorpc client config. 
@@ -68,23 +77,26 @@ class DetectRPC(object):
             objects_in_image = []
             old_labels = []
             frame_num = 0
-            (img_width, img_height) = (640, 480)
+            monitor = ''
+            (img_width, img_height) = (CROP_IMAGE_WIDTH, CROP_IMAGE_HEIGHT)
             for image_path in test_image_paths:
                 # If consecutive frames then repeat last label to minimize processing.
                 # Image paths must be in the form of:
                 # '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
-                # TODO: add check of monitor name since only checking frames is not robust.
                 old_frame_num = frame_num
+                old_monitor = monitor
                 try:
                     frame_num = int((image_path.split('/')[-1]).split('-')[0])
+                    monitor = image_path.split('/')[4]
                 except (ValueError, IndexError):
-                    print("Could not derive frame number from image path.")
+                    print("Could not derive information from image path.")
                     continue
                     
-                if frame_num - old_frame_num  <= CON_IMG_SKIP:
-                    objects_in_image.append({'image': image_path, 'labels': old_labels})
-                    print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
-                    continue
+                if monitor == old_monitor:
+                    if frame_num - old_frame_num  <= CON_IMG_SKIP:
+                        objects_in_image.append({'image': image_path, 'labels': old_labels})
+                        print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
+                        continue
 
                 with Image.open(image_path) as image:
                     # Resize to minimize tf processing.
@@ -130,7 +142,7 @@ class DetectRPC(object):
     # Streaming server.
     @zerorpc.stream
     def detect_stream(self, test_image_paths):
-        (img_width, img_height) = (640, 480)
+        (img_width, img_height) = (CROP_IMAGE_WIDTH, CROP_IMAGE_HEIGHT)
         with detection_graph.as_default():
             for image_path in test_image_paths:
                 with Image.open(image_path) as image:
