@@ -476,17 +476,17 @@ const getFrames = () => {
                     const skip = skipObj[monitor] % (frameSkip + 1);
                     if (skip) {
                         logger.info('Skipped processing of '+fileName);
-                        mongodbDoc.push({'image': fileName, 'labels': labels,
+                        if (useMongo) mongodbDoc.push({'image': fileName, 'labels': labels,
                             'status': 'skipped', 'objDet': 'remote'});
                     } else {
-                        mongodbDoc.push({'image': fileName, 'labels': labels,
+                        if (useMongo) mongodbDoc.push({'image': fileName, 'labels': labels,
                             'status': 'processed', 'objDet': 'remote'});
                     }
                     promises.push(uploadImage(i, skip));
                 }
 
-                logger.debug('mongodb docs: '+util.inspect(mongodbDoc, false, null));
-                // insert docs into mongodb here
+                // Log the disposition of all alarms to mongodb.
+                if (useMongo) promises.push(writeToMongodb(mongodbDoc));
 
                 Promise.all(promises).then(() => {
                     resolve(true);
