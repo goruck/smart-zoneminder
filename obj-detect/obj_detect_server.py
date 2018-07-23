@@ -132,11 +132,16 @@ class DetectRPC(object):
                 # Get labels and scores of detected objects.
                 labels = []
                 object_dict = {}
+                (im_width, im_height) = image.size # use original image size for box coords
                 for index, value in enumerate(classes[0]):
                     if scores[0, index] > MIN_SCORE_THRESH:
                         object_dict = category_index.get(value)
                         object_dict['score'] = float(scores[0, index])
-                        object_dict['box'] = boxes[0, index].tolist()
+                        ymin = boxes[0, index][0] * im_height
+                        xmin = boxes[0, index][1] * im_width
+                        ymax = boxes[0, index][2] * im_height
+                        xmax = boxes[0, index][3] * im_width
+                        object_dict['box'] = {'ymin': ymin, 'xmin': xmin, 'ymax': ymax, 'xmax': xmax}
                         labels.append(object_dict)
 
                 old_labels = labels
