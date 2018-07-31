@@ -62,7 +62,11 @@ with detection_graph.as_default():
     serialized_graph = fid.read()
     od_graph_def.ParseFromString(serialized_graph)
     tf.import_graph_def(od_graph_def, name='')
-  sess = tf.Session(graph=detection_graph)
+  # Only grow the memory usage as required.
+  # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
+  config = tf.ConfigProto()
+  config.gpu_options.allow_growth = True
+  sess = tf.Session(config=config, graph=detection_graph)
   sess.run(tf.global_variables_initializer())
 
 # Load label map. 
