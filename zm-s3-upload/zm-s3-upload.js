@@ -66,6 +66,9 @@ const checkForAlarmsInterval = zmConfig.checkForAlarmsInterval;
 // A working system should find 0 or more alarm frames every checkForAlarmsInterval.
 const checkForAlarmsAttempts = zmConfig.checkForAlarmsAttempts;
 
+// Flag to run local face detection / recognition on people detected. 
+const runFaceDetRec = zmConfig.runFaceDetRec;
+
 // mongodb
 // Log the disposition of all alarm frames to a mongo database?
 const useMongo = zmConfig.useMongo;
@@ -345,13 +348,22 @@ const getFrames = () => {
                 if (!skipUpload) return uploadToS3(result);
                 return false;
             });
-            return firstPromise.then(result => {
+
+            const secondPromise = firstPromise.then(result => {
                 logger.debug('uploadToS3 result: '+util.inspect(result, false, null));
                 return markAsUploaded(imgData);
             });
+
+            return secondPromise;
         };
 
-        // Perform local object detection then upload to S3.
+        /**
+         * Perform object detection on images locally.
+         * If enabled, also perform local face detection and recognition.
+         * Parse results and finally upload everything to S3.
+         * 
+         * @returns {Promise} - Pending upload of images to S3. 
+         */
         const localObjDet = () => {
             return new Promise((resolve, reject) => {
                 // Build set of test image paths.
@@ -370,31 +382,64 @@ const getFrames = () => {
                     testImagePaths.push(imageFullPath);
                 }
 
-                // zerorpc connection.
-                // Heartbeat should be greater than the time required to run detection on maxInit frames. 
-                const zerorpc = require('./node_modules/zerorpc');
-                const zerorpcClient = new zerorpc.Client({heartbeatInterval: zerorpcHeartBeat});
-                zerorpcClient.connect(zerorpcPipe);
-
-                const zerorpcP = new Promise((resolve, reject) => {
-                    zerorpcClient.on('error', (error) => {
-                        reject(error);
+                // Perform face detection and recognition via external python script. 
+                const faceDetRec = detectedObjects => {
+                    // Construct args for script.
+                    // The first arg is the script name. 
+                    // Each detected image is a separate arg on the command line. 
+                    const spawnArgs = [];
+                    spawnArgs.push('../face-det-rec/face_det_rec.py');
+                    detectedObjects.forEach(item =>{
+                        spawnArgs.push(JSON.stringify(item));
                     });
 
-                    zerorpcClient.invoke('detect', testImagePaths, (error, data) => {
-                        if (error) {
-                            reject(error);
-                        } else {
+                    return new Promise((resolve, reject) => {
+                        const { spawn } = require('child_process');
+                        const faceDetRecPy = spawn('/home/lindo/.virtualenvs/cv/bin/python', spawnArgs);
+
+                        faceDetRecPy.stdout.on('data', (data) => {
                             resolve(JSON.parse(data.toString()));
-                        }
+                        });
+                
+                        faceDetRecPy.stderr.on('data', (error) => {
+                            reject(JSON.parse(error.toString()));
+                        });
                     });
-                });
+                };
 
-                zerorpcP.then((result) => {
-                    zerorpcClient.close();
+                // zerorpc connection to object detection server. 
+                const objDetect = imagePaths => {
+                    const zerorpc = require('./node_modules/zerorpc');
+                    // Heartbeat must be greater than the time required to run detection on maxInit frames.
+                    const zerorpcClient = new zerorpc.Client({heartbeatInterval: zerorpcHeartBeat});
+                    zerorpcClient.connect(zerorpcPipe);
 
-                    // result is an array of objects containing objects detected in image(s).
-                    // The ordering of items in the array matches the order that they were submitted. 
+                    return new Promise((resolve, reject) => {
+                        zerorpcClient.on('error', (error) => {
+                            reject(error);
+                        });
+
+                        zerorpcClient.invoke('detect', imagePaths, (error, data) => {
+                            zerorpcClient.close();
+                            if (error) {
+                                reject(error);
+                            } else {
+                                resolve(JSON.parse(data.toString()));
+                            }
+                        });
+                    });
+                };
+
+                // Run object detection, then run face detection / recognition if enabled. 
+                // After detection / recognition, parse results and upload to S3. 
+                objDetect(testImagePaths).then((detObjArr) => {
+                    // detObjArr is an array containing objects detected in image(s).
+                    // The ordering of items in the array matches the order that they were submitted.
+                    if (runFaceDetRec) return faceDetRec(detObjArr);
+                    return detObjArr;
+                }).then((result) => {
+                    // result is an array of detected objects and recognized faces (if enabled).
+                    // The ordering of items in the array matched the order that they were submitted. 
                     const objectsFound = result;
                     logger.debug('Obj detect results: '+util.inspect(objectsFound, false, null));
 
@@ -418,7 +463,6 @@ const getFrames = () => {
                         }
 
                         // Scan for detected objects and trigger uploads. 
-                        //const fileName = objectsFound[i - skipped].image;
                         const numObjDet = objectsFound[i - skipped].labels.length;
                         if (!numObjDet) {
                             logger.info('No objects detected in ' + fileName);
@@ -432,8 +476,11 @@ const getFrames = () => {
                             }
                         } else {
                             objectsFound[i - skipped].labels.forEach(item => {
-                                labels.Labels.push({'Confidence': item.score, 'Name': item.name, 'Box': item.box});
-                                logger.info(item.name+' ('+item.score.toFixed(2)+')'+' detected in '+fileName);
+                                const labelData = {'Confidence': item.score, 'Name': item.name, 'Box': item.box};
+                                // If a person was detected then add (any) face data. 
+                                if (typeof(item.faces) !== 'undefined') labelData.Faces = item.faces;
+                                labels.Labels.push(labelData);
+                                logger.info('Processed '+fileName+'\n'+util.inspect(labelData, false, null));
                             });
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = JSON.stringify(labels);
@@ -447,14 +494,15 @@ const getFrames = () => {
                     // Log the disposition of all alarms to mongodb.
                     if (useMongo) promises.push(writeToMongodb(mongodbDoc));
 
-                    // Wait until all uploads complete. 
+                    // Wait until all uploads complete.
                     Promise.all(promises).then(() => {
                         resolve(true);
                     }).catch((error) => {
                         reject(new Error('upload error: '+error));
                     });
+
                 }).catch((error) => {
-                    reject(new Error('zerorpc error: ' + error));
+                    reject(new Error('detect error: '+error));
                 });
             }); 
         }; // end localObjDet
@@ -496,8 +544,9 @@ const getFrames = () => {
             }); 
         }; // end remoteObjDet
 
-        if (runLocalObjDet === true) {
+        if (runLocalObjDet) {
             logger.info('Running with local object detection enabled.');
+            if (runFaceDetRec) logger.info('Running with local face det / rec enabled.');
             localObjDet().then(() => {
                 logger.info(maxInit + ' image(s) have been processed.');
                 logger.info('Ready for new alarm frames...');

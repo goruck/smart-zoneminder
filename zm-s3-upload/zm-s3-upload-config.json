@@ -8,6 +8,7 @@
         "IMGBASEPATH": "/nvr/zoneminder/events",
         "MAXCONCURRENTUPLOAD": 10,
         "runLocalObjDet": true,
+        "runFaceDetRec": true,
         "uploadFalsePositives": false,
         "frameSkip": 1,
         "checkForAlarmsInterval": 5000,
