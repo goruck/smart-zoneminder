@@ -402,7 +402,7 @@ const getFrames = () => {
                         });
                 
                         faceDetRecPy.stderr.on('data', (error) => {
-                            reject(JSON.parse(error.toString()));
+                            reject(error.toString());
                         });
                     });
                 };
@@ -435,13 +435,14 @@ const getFrames = () => {
                 objDetect(testImagePaths).then((detObjArr) => {
                     // detObjArr is an array containing objects detected in image(s).
                     // The ordering of items in the array matches the order that they were submitted.
+                    logger.debug('Obj detect results: '+util.inspect(detObjArr, false, null));
                     if (runFaceDetRec) return faceDetRec(detObjArr);
                     return detObjArr;
                 }).then((result) => {
                     // result is an array of detected objects and recognized faces (if enabled).
                     // The ordering of items in the array matched the order that they were submitted. 
                     const objectsFound = result;
-                    logger.debug('Obj detect results: '+util.inspect(objectsFound, false, null));
+                    logger.debug('face + obj detect results: '+util.inspect(objectsFound, false, null));
 
                     // Scan objectsFound array for detected objects and upload true alarms to S3.
                     const promises = [];
@@ -475,12 +476,13 @@ const getFrames = () => {
                                 promises.push(uploadImage(i, false));
                             }
                         } else {
+                            logger.info('Processed '+fileName);
                             objectsFound[i - skipped].labels.forEach(item => {
                                 const labelData = {'Confidence': item.score, 'Name': item.name, 'Box': item.box};
                                 // If a person was detected then add (any) face data. 
-                                if (typeof(item.faces) !== 'undefined') labelData.Faces = item.faces;
+                                if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
                                 labels.Labels.push(labelData);
-                                logger.info('Processed '+fileName+'\n'+util.inspect(labelData, false, null));
+                                logger.info('Image labels: '+util.inspect(labelData, false, null));
                             });
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = JSON.stringify(labels);

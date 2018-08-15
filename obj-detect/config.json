@@ -5,7 +5,7 @@
         "labelPath": "data/mscoco_label_map.pbtxt",
         "conseqImagesToSkip": 0,
         "numClasses": 90,
-        "minScore": 0.55,
+        "minScore": 0.8,
         "cropImageWidth": 640,
         "cropImageHeight": 480,
         "zerorpcHeartBeat": 60000,

@@ -41,21 +41,20 @@ for obj in objects_detected:
 	json_obj = json.loads(obj)
 	img = cv2.imread(json_obj['image'])
 
-	# initialize the list of names for each face detected
-	names = []
 	for label in json_obj['labels']:
+		# If the object detected is a person then try to identify face. 
 		if label['name'] == 'person':
+			# If no face is detected name will be set to None (null in json).
+			name = None
+
 			# First bound the roi using the coord info passed in.
 			# The roi is area around person(s) detected in image.
-
 			# (x1, y1) are the top left roi coordinates.
 			# (x2, y2) are the bottom right roi coordinates.
 			y2 = int(label['box']['ymin'])
 			x1 = int(label['box']['xmin'])
 			y1 = int(label['box']['ymax'])
 			x2 = int(label['box']['xmax'])
-
-			#cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,0), 2)
 			roi = img[y2:y1, x1:x2, :]
 
 			# Covert from cv2 format.
@@ -64,16 +63,19 @@ for obj in objects_detected:
 			# detect the (x, y)-coordinates of the bounding boxes corresponding
 			# to each face in the input image, then compute the facial embeddings
 			# for each face
-			box = face_recognition.face_locations(rgb, number_of_times_to_upsample=1, model='cnn')
+			box = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
+				model='cnn')
 
 			encodings = face_recognition.face_encodings(rgb, box)
 
 			# loop over the facial embeddings
 			for encoding in encodings:
 				# attempt to match each face in the input image to our known encodings
-				matches = face_recognition.compare_faces(data["encodings"],
+				matches = face_recognition.compare_faces(data['encodings'],
 					encoding)
-				name = "Unknown"
+
+				# If a face is detected but has no match set name to Unknown.
+				name = 'Unknown'
 
 				# check to see if we have found a match
 				if True in matches:
@@ -86,7 +88,7 @@ for obj in objects_detected:
 					# loop over the matched indexes and maintain a count for
 					# each recognized face face
 					for i in matchedIdxs:
-						name = data["names"][i]
+						name = data['names'][i]
 						counts[name] = counts.get(name, 0) + 1
 
 					# determine the recognized face with the largest number of
@@ -94,11 +96,8 @@ for obj in objects_detected:
 					# select first entry in the dictionary)
 					name = max(counts, key=counts.get)
 
-				# update the list of names
-				names.append(name)
-
-			# Add face label.
-			label['faces'] = names
+			# Add face name to label metadata.
+			label['face'] = name
 
 	# Add processed image to output list. 
 	objects_detected_faces.append(json_obj)
