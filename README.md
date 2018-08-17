@@ -1,7 +1,7 @@
 *This entire project (including the Readme) is under construction.*
 
 # smart-zoneminder
-smart-zoneminder enables fast object detection and upload of [ZoneMinder](https://www.zoneminder.com/) alarm frame images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [Tensorflow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene, object and face detection. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
+smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [Tensorflow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) is used to identify people detected in the alarm images. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
 
 # Table of Contents
 1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
@@ -99,7 +99,10 @@ I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
 ### Tensorflow
-This project uses Tensorflow (with GPU support) for local object and face detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco_2018_01_28* model which can be found in the [Tensorflow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo).
+This project uses Tensorflow (with GPU support) for local object detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco_2018_01_28* model which can be found in the [Tensorflow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo).
+
+### dlib, face_recognition and OpenCV
+[ageitgey's face_recognition API](https://github.com/ageitgey/face_recognition) is used for face recognition. I followed the [linux installation guide](https://gist.github.com/ageitgey/629d75c1baac34dfa5ca2a1928a7aeaf) to install the API and dlib with GPU support on my local machine in a Python virtual environment. OpenCV is used to preprocess the image for face recognition, I used [OpenCV 3 Tutorials, Resources, and Guides](https://www.pyimagesearch.com/opencv-tutorials-resources-guides/) to install OpenCV 3.4.2 with GPU support on my local machine. A high-level overview of how the face recognition works can be found [here](https://medium.com/@ageitgey/machine-learning-is-fun-part-4-modern-face-recognition-with-deep-learning-c3cffc121d78) and [here](https://www.pyimagesearch.com/2018/06/18/face-recognition-with-opencv-python-and-deep-learning/).
 
 ### Apache
 If you installed ZoneMinder successfully then apache should be up and running but a few modifications are required for this project. The Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that is used to display clips of alarm videos requires the video file to be hosted at an Internet-accessible HTTPS endpoint. HTTPS is required, and the domain hosting the files must present a valid, trusted SSL certificate. Self-signed certificates cannot be used. Since the video clip is generated on the local server Apache needs to serve the video file in this manner. This means that you need to setup a HTTPS virtual host with a publicly accessible directory on your local machine. Note that you can also leverage this to access the ZoneMinder web interface in a secure manner externally. Here are the steps I followed to configure Apache to use HTTPS and serve the alarm video clip.
@@ -178,15 +181,24 @@ $ git clone https://github.com/goruck/smart-zoneminder
 ```
 
 ## Alarm Uploader (zm-s3-upload)
-The Alarm Uploader, [zm-s3-upload](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found either directly sends them to an S3 bucket or first runs local object detection on the image and marks them as having been uploaded. The local object detection is enabled by setting the runLocalObjDet flag to "true" in [zm-s3-upload-config.json
-](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload-config.json). The Alarm Uploader also attaches metadata to the alarm frame image such as alarm score, event ID, frame number, date, and others. The metadata is used later on by the cloud services to process the image. The Alarm Uploader will concurrently upload alarm frames to optimize overall upload time. The default value is ten concurrent uploads. Upload speed will vary depending on your Internet bandwidth, image size and other factors but typically frames will be uploaded to S3 in less than a few hundred milliseconds. 
+The Alarm Uploader, [zm-s3-upload](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found either directly sends them to an S3 bucket or first runs local object detection and or face recognition on the image and marks them as having been uploaded. The local object detection is enabled by setting the *runLocalObjDet* flag to "true" and face recognition is enabled by setting the *runFaceDetRec* flag to "true" in [zm-s3-upload-config.json
+](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload-config.json).
+
+The Alarm Uploader also attaches metadata to the alarm frame image such as alarm score, event ID, frame number, date, and others. The metadata is used later on by the cloud services to process the image. The Alarm Uploader will concurrently upload alarm frames to optimize overall upload time. The default value is ten concurrent uploads. Upload speed will vary depending on your Internet bandwidth, image size and other factors but typically frames will be uploaded to S3 in less than a few hundred milliseconds.
+
+The Alarm Uploader can be configured to skip alarm frames to minimize processing time, upload bandwidth and cloud storage. This is controlled by the *frameSkip* parameter in  the configuration json. 
 
 Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/README.md) for installation instructions.
 
 ## Local Object Detection (obj_detect_server)
-The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
+The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. Another benefit is that the server when started will load into memory the model and initialize it, thus saving time when an inference is actually run. The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
 
-Please see the Object Detection Server's [README](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/README.md) for installation instructions. 
+Please see the Object Detection Server's [README](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/README.md) for installation instructions.
+
+## Face Recognition (face-det-rec)
+The Face Detection and Recognition module, [face-det-rec](https://github.com/goruck/smart-zoneminder/tree/master/face-det-rec) is run as a Python program from the Alarm Uploader and it uses dlib and the face_recognition API as described above. You need to first encode examples of faces you want recognized by using another program in the same directory.
+
+Please see the Face Recognition's [README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md) for installation instructions.
 
 ## Alarm Clip Generator (gen-vid)
 The Alarm Clip Generator, [gen-vid](https://github.com/goruck/smart-zoneminder/blob/master/cgi/gen-vid.py), is a python script run in Apache's CGI on the local server that generates an MP4 video of an alarm event given its Event ID, starting Frame ID and ending Frame ID. The script is initiated via the CGI by the Alexa skill handler and the resulting video is played back on an Echo device with a screen upon a user's request.
@@ -261,44 +273,67 @@ Thank you Brian and Mark!
 ## Sample console output from zm-s3-upload.
 
 ```text
-info: 4 un-uploaded frames found in: 30 milliseconds
-info: Running with local object detection enabled.
-info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01108-capture.jpg
-info: ..object detected: person, score: 0.9784
-info: ..object detected: potted plant, score: 0.6585
-info: Skipping next upload. frameSkip: 1
-info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01110-capture.jpg
-info: ..object detected: person, score: 0.9784
-info: ..object detected: potted plant, score: 0.6585
-info: Skipping next upload. frameSkip: 1
-info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01108-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1108-17-13-53-330.jpg
-info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01110-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1110-17-13-53-760.jpg
-info: 4 image(s) have been processed.
 info: Ready for new alarm frames...
-info: 6 un-uploaded frames found in: 40 milliseconds
+info: 19 un-uploaded frames found in: 36 milliseconds
 info: Running with local object detection enabled.
-info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01112-capture.jpg
-info: ..object detected: person, score: 0.9734
-info: ..object detected: potted plant, score: 0.7050
-info: Skipping next upload. frameSkip: 1
-info: 2 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01114-capture.jpg
-info: ..object detected: person, score: 0.9734
-info: ..object detected: potted plant, score: 0.7050
-info: Skipping next upload. frameSkip: 1
-info: 1 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01131-capture.jpg
-info: ..object detected: potted plant, score: 0.7050
-info: Skipping next upload. frameSkip: 1
-info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01112-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1112-17-13-54-230.jpg
-info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01114-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1114-17-13-54-720.jpg
-info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01131-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1131-17-13-59-810.jpg
-info: 6 image(s) have been processed.
-info: Ready for new alarm frames...
-info: 1 un-uploaded frames found in: 29 milliseconds
-info: Running with local object detection enabled.
-info: 1 object(s) detected in /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01133-capture.jpg
-info: ..object detected: potted plant, score: 0.5938
-info: The file: /nvr/zoneminder/events/BackPorch/18/07/09/17/10/00/01133-capture.jpg will be saved to: BackPorch/2018-7-9/hour-17/New_Event-ID_508514-Frame_1133-17-13-59-270.jpg
-info: 1 image(s) have been processed.
-info: Ready for new alarm frames...
+info: Running with local face det / rec enabled.
+info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00873-capture.jpg
+info: Image labels: { Confidence: 0.9994339346885681,
+  Name: 'person',
+  Box: 
+   { ymin: 257.41777896881104,
+     xmin: 850.916862487793,
+     ymax: 773.3503174781799,
+     xmax: 1038.574333190918 },
+  Face: 'nico_st_angel' }
+info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00874-capture.jpg
+info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00875-capture.jpg
+info: Image labels: { Confidence: 0.9996906518936157,
+  Name: 'person',
+  Box: 
+   { ymin: 250.09660363197327,
+     xmin: 836.7828941345215,
+     ymax: 774.9302244186401,
+     xmax: 1083.0389785766602 },
+  Face: 'nico_st_angel' }
+info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00877-capture.jpg
+info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00878-capture.jpg
+info: Image labels: { Confidence: 0.9991200566291809,
+  Name: 'person',
+  Box: 
+   { ymin: 393.3701455593109,
+     xmin: 781.582088470459,
+     ymax: 956.7480111122131,
+     xmax: 1079.7370147705078 },
+  Face: 'nico_st_angel' }
+info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00879-capture.jpg
+info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00880-capture.jpg
+info: Image labels: { Confidence: 0.9997510313987732,
+  Name: 'person',
+  Box: 
+   { ymin: 531.6450262069702,
+     xmin: 635.1659774780273,
+     ymax: 1060.2527403831482,
+     xmax: 1027.7736282348633 },
+  Face: 'nikki_st_angel' }
+info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00881-capture.jpg
+info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00882-capture.jpg
+info: Image labels: { Confidence: 0.9932160973548889,
+  Name: 'person',
+  Box: 
+   { ymin: 687.431845664978,
+     xmin: 711.1233901977539,
+     ymax: 1071.694142818451,
+     xmax: 1208.5906219482422 },
+  Face: 'Unknown' }
+info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00883-capture.jpg
+info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00873-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_873-19-27-8-700.jpg
+info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00878-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_878-19-27-11-310.jpg
+info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00880-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_880-19-27-12-360.jpg
+info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00882-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_882-19-27-13-410.jpg
+info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00875-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_875-19-27-9-750.jpg
+info: Wrote 10 docs to mongodb.
+info: 10 image(s) have been processed.
+
 
 ```
