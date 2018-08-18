@@ -10,7 +10,7 @@ Thanks to Adrian Rosebrock and his [pyimagesearch project](https://www.pyimagese
 
 2. Create a directory for each person's face images that you want recognized, named for the person's face, in a directory called "dataset". 
 
-3. Place 20 so images of the person's face in each directory you created above.
+3. Place 20 or so images of the person's face in each directory you created above.
 
 4. Run the face encoder program, encode_faces.py, using the images in the directories created above. See the "Encoding the faces using OpenCV and deep learning" in the guide mentioned above. 
 

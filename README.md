@@ -62,15 +62,17 @@ This lead to the requirement of a five second or less upload time to a secure AW
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.**
 This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).
 
-3. **Make it much easier to access ZoneMinder information.**
+3. **Determine if a person detected in an Alarm image if familiar or not.** This lead to the requirement to perform real-time face recognition on people detected in ZoneMinder images. 
+
+4. **Make it much easier to access ZoneMinder information.**
 This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example, when an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search.
 
-4. **Have low implementation and operating costs.**
+5. **Have low implementation and operating costs.**
 This lead to the requirement to leverage existing components where possible and make economical use of the AWS services. This also led to the option of using local Tensorflow based object detection since using Rekognition at scale is not inexpensive wrt the goals of this project. An operating cost of less than $10 per year is the goal.
 
-5. **Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa.**
+6. **Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa.**
 
-6. **Learn about, and show others how to use, Tensorflow, ZoneMinder, Alexa and the AWS Services.**
+7. **Learn about, and show others how to use, Tensorflow, Face Recognition, ZoneMinder, Alexa and the AWS Services.**
 
 # System Architecture
 The figure below shows the smart-zoneminder system architecture.
@@ -173,7 +175,7 @@ You'll need an [S3 bucket](https://aws.amazon.com/documentation/s3/) where your 
 }
 ```
 
-### Clone smart-zoneminder
+### smart-zoneminder
 To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running:
 
 ```bash
