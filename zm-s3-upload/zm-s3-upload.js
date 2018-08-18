@@ -25,65 +25,65 @@ const configObj = JSON.parse(fs.readFileSync('./zm-s3-upload-config.json'));
 const zmConfig = configObj.zms3Config;
 
 // Zoneminder's mysql database connection config.
-const DBHOST = zmConfig.DBHOST;
-const DBUSR = zmConfig.DBUSR;
-const DBPWD = zmConfig.DBPWD;
-const DBNAME = zmConfig.DBNAME;
+const DB_HOST = zmConfig.DBHOST;
+const DB_USR = zmConfig.DBUSR;
+const DB_PWD = zmConfig.DBPWD;
+const DB_NAME = zmConfig.DBNAME;
 
 // Limit of records returned by mysql queries.
-const MAXRECS = zmConfig.MAXRECS;
+const MAX_RECS = zmConfig.MAXRECS;
 
 // Filesystem path to where ZoneMinder events are stored.
-const IMGBASEPATH = zmConfig.IMGBASEPATH;
+const IMG_BASE_PATH = zmConfig.IMGBASEPATH;
 
 // The maximum allowable concurrent uploads to S3.
 // This also sets the number of images submitted for local object detection.
-const MAXCONCURRENTUPLOAD = zmConfig.MAXCONCURRENTUPLOAD;
+const MAX_CONCURRENT_UPLOAD = zmConfig.MAXCONCURRENTUPLOAD;
 
 // Heartbeat interval for zerorpc client in ms.
-// This should be greater than the time required to run local detection on MAXCONCURRENTUPLOAD frames.
+// This should be greater than the time required to run local detection on MAX_CONCURRENT_UPLOAD frames.
 // This must match the zerorpc server config. 
-const zerorpcHeartBeat = zmConfig.zerorpcHeartBeat;
+const ZERORPC_HEARTBEAT = zmConfig.zerorpcHeartBeat;
 
 // IPC (or TCP) socket for zerorpc.
 // This must match the zerorpc server config.
-const zerorpcPipe = zmConfig.zerorpcPipe;
+const ZERORPC_PIPE = zmConfig.zerorpcPipe;
 
 // Number of frames to skip for each one processed.
 // Meant to save processing and upload time (possibly with lower accuracy).
-const frameSkip = zmConfig.frameSkip;
+const FRAME_SKIP = zmConfig.frameSkip;
 
 // Flag to upload false positives to S3. 
-const uploadFalsePositives = zmConfig.uploadFalsePositives;
+const UPLOAD_FALSE_POSITIVES = zmConfig.uploadFalsePositives;
 
 // Flag to run local (Tensorflow) instead of remote (Amazon Rekognition) object detection.
-const runLocalObjDet = zmConfig.runLocalObjDet;
+const RUN_LOCAL_OBJ_DET = zmConfig.runLocalObjDet;
 
 // How often to check for ZoneMinder alarm frames (in ms).
-const checkForAlarmsInterval = zmConfig.checkForAlarmsInterval;
+const CHECK_FOR_ALARMS_INTERVAL = zmConfig.checkForAlarmsInterval;
 
 // If no valid alarm frames are found then give up after these many attempts.
-// A working system should find 0 or more alarm frames every checkForAlarmsInterval.
-const checkForAlarmsAttempts = zmConfig.checkForAlarmsAttempts;
+// A working system should find 0 or more alarm frames every CHECK_FOR_ALARMS_INTERVAL.
+const CHECK_FOR_ALARMS_ATTEMPTS = zmConfig.checkForAlarmsAttempts;
 
 // Flag to run local face detection / recognition on people detected. 
-const runFaceDetRec = zmConfig.runFaceDetRec;
+const RUN_FACE_DET_REC = zmConfig.runFaceDetRec;
 
 // mongodb
 // Log the disposition of all alarm frames to a mongo database?
-const useMongo = zmConfig.useMongo;
+const USE_MONGO = zmConfig.useMongo;
 // URL of mongo server.
-const mongoUrl = zmConfig.mongoUrl;
+const MONGO_URL = zmConfig.mongoUrl;
 // mongo collection name.
-const mongoCollection = zmConfig.mongoCollection;
+const MONGO_COLLECTION = zmConfig.mongoCollection;
 
 // mysql database connection.
 const mysql = require('./node_modules/mysql');
 const client = mysql.createConnection({
-    host     : DBHOST,
-    user     : DBUSR,
-    password : DBPWD,
-    database : DBNAME
+    host     : DB_HOST,
+    user     : DB_USR,
+    password : DB_PWD,
+    database : DB_NAME
 });
 
 // Set mysql query constants to find ZoneMinder alarm frames.
@@ -117,7 +117,7 @@ const getFrames = () => {
     let q1s = new Date();
     q1s = q1s.getTime();
 
-    const query = client.query(zmQuery, [FTYPE, MAXRECS]);
+    const query = client.query(zmQuery, [FTYPE, MAX_RECS]);
 
     query.on('error', (err) => {
         logger.error('mysql query error: ' + err.stack);
@@ -132,7 +132,7 @@ const getFrames = () => {
     aryRows = new Array();
 
     query.on('result', (row) => {
-        row.image_base_path = IMGBASEPATH;
+        row.image_base_path = IMG_BASE_PATH;
         aryRows[idx] = row;
         idx++;
     });
@@ -151,8 +151,8 @@ const getFrames = () => {
 
         // Determine maximum number of concurrent S3 uploads. 
         let maxInit = 0;
-        (aryRows.length < MAXCONCURRENTUPLOAD) ?
-            maxInit = aryRows.length : maxInit = MAXCONCURRENTUPLOAD;
+        (aryRows.length < MAX_CONCURRENT_UPLOAD) ?
+            maxInit = aryRows.length : maxInit = MAX_CONCURRENT_UPLOAD;
 
         logger.debug('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete);
 
@@ -231,8 +231,8 @@ const getFrames = () => {
             logger.debug('mongodb docs: '+util.inspect(documents, false, null));
             let db = '';
             const mongoClient = require('mongodb').MongoClient;
-            const url = mongoUrl;
-            const collectionName = mongoCollection;
+            const url = MONGO_URL;
+            const collectionName = MONGO_COLLECTION;
 
             const firstPromise = mongoClient.connect(url).then(conn => {
                 db = conn;
@@ -376,7 +376,7 @@ const getFrames = () => {
                     const monitor = aryRows[i].monitor_name;
                     const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
                     monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 0;
-                    const skip = alarmsFromMonitor[monitor] % (frameSkip + 1);
+                    const skip = alarmsFromMonitor[monitor] % (FRAME_SKIP + 1);
                     if (skip) continue;
                     const imageFullPath = buildFilePath(aryRows[i]);
                     testImagePaths.push(imageFullPath);
@@ -411,8 +411,8 @@ const getFrames = () => {
                 const objDetect = imagePaths => {
                     const zerorpc = require('./node_modules/zerorpc');
                     // Heartbeat must be greater than the time required to run detection on maxInit frames.
-                    const zerorpcClient = new zerorpc.Client({heartbeatInterval: zerorpcHeartBeat});
-                    zerorpcClient.connect(zerorpcPipe);
+                    const zerorpcClient = new zerorpc.Client({heartbeatInterval: ZERORPC_HEARTBEAT});
+                    zerorpcClient.connect(ZERORPC_PIPE);
 
                     return new Promise((resolve, reject) => {
                         zerorpcClient.on('error', (error) => {
@@ -436,7 +436,7 @@ const getFrames = () => {
                     // detObjArr is an array containing objects detected in image(s).
                     // The ordering of items in the array matches the order that they were submitted.
                     logger.debug('Obj detect results: '+util.inspect(detObjArr, false, null));
-                    if (runFaceDetRec) return faceDetRec(detObjArr);
+                    if (RUN_FACE_DET_REC) return faceDetRec(detObjArr);
                     return detObjArr;
                 }).then((result) => {
                     // result is an array of detected objects and recognized faces (if enabled).
@@ -453,10 +453,10 @@ const getFrames = () => {
                         const fileName = buildFilePath(aryRows[i]);
 
                         // Find alarm frames that were never sent for object detection and skip past those. 
-                        const skip = i % (frameSkip + 1);
+                        const skip = i % (FRAME_SKIP + 1);
                         if (skip) {
                             logger.info('Skipped processing of '+fileName);
-                            if (useMongo) mongodbDoc.push({'image': fileName,
+                            if (USE_MONGO) mongodbDoc.push({'image': fileName,
                                 'labels': labels, 'status': 'skipped', 'objDet': 'local'});
                             promises.push(uploadImage(i, skip));
                             skipped++;
@@ -468,7 +468,7 @@ const getFrames = () => {
                         if (!numObjDet) {
                             logger.info('No objects detected in ' + fileName);
                             aryRows[i].alert = 'false';
-                            if (uploadFalsePositives === false) {
+                            if (UPLOAD_FALSE_POSITIVES === false) {
                                 logger.info('False positives will NOT be uploaded.');
                                 // Mark as uploaded in zm db but don't actually upload image.
                                 promises.push(uploadImage(i, true));
@@ -489,12 +489,12 @@ const getFrames = () => {
                             promises.push(uploadImage(i, false));
                         }
 
-                        if (useMongo) mongodbDoc.push({'image': fileName,
+                        if (USE_MONGO) mongodbDoc.push({'image': fileName,
                             'labels': labels, 'status': 'processed', 'objDet': 'local'});
                     }
 
                     // Log the disposition of all alarms to mongodb.
-                    if (useMongo) promises.push(writeToMongodb(mongodbDoc));
+                    if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
 
                     // Wait until all uploads complete.
                     Promise.all(promises).then(() => {
@@ -523,20 +523,20 @@ const getFrames = () => {
                     const monitor = aryRows[i].monitor_name;
                     const monitorExists = skipObj.hasOwnProperty(monitor);
                     monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
-                    const skip = skipObj[monitor] % (frameSkip + 1);
+                    const skip = skipObj[monitor] % (FRAME_SKIP + 1);
                     if (skip) {
                         logger.info('Skipped processing of '+fileName);
-                        if (useMongo) mongodbDoc.push({'image': fileName, 'labels': labels,
+                        if (USE_MONGO) mongodbDoc.push({'image': fileName, 'labels': labels,
                             'status': 'skipped', 'objDet': 'remote'});
                     } else {
-                        if (useMongo) mongodbDoc.push({'image': fileName, 'labels': labels,
+                        if (USE_MONGO) mongodbDoc.push({'image': fileName, 'labels': labels,
                             'status': 'processed', 'objDet': 'remote'});
                     }
                     promises.push(uploadImage(i, skip));
                 }
 
                 // Log the disposition of all alarms to mongodb.
-                if (useMongo) promises.push(writeToMongodb(mongodbDoc));
+                if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
 
                 Promise.all(promises).then(() => {
                     resolve(true);
@@ -546,9 +546,9 @@ const getFrames = () => {
             }); 
         }; // end remoteObjDet
 
-        if (runLocalObjDet) {
+        if (RUN_LOCAL_OBJ_DET) {
             logger.info('Running with local object detection enabled.');
-            if (runFaceDetRec) logger.info('Running with local face det / rec enabled.');
+            if (RUN_FACE_DET_REC) logger.info('Running with local face det / rec enabled.');
             localObjDet().then(() => {
                 logger.info(maxInit + ' image(s) have been processed.');
                 logger.info('Ready for new alarm frames...');
@@ -582,12 +582,12 @@ const processAlarms = () => {
         var countNotReady = 0;
         isComplete = false;
         getFrames();
-        setTimeout(processAlarms, checkForAlarmsInterval);
+        setTimeout(processAlarms, CHECK_FOR_ALARMS_INTERVAL);
     } else {
         logger.debug('Not ready for more frames yet...');
         countNotReady++;
-        setTimeout(processAlarms, checkForAlarmsInterval);
-        if(countNotReady > checkForAlarmsAttempts) {
+        setTimeout(processAlarms, CHECK_FOR_ALARMS_INTERVAL);
+        if(countNotReady > CHECK_FOR_ALARMS_ATTEMPTS) {
             logger.error('Could not restart processing.');
             process.exit(1);
         }
