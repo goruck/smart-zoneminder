@@ -136,7 +136,6 @@ class DetectRPC(object):
                 # Get labels and scores of detected objects.
                 labels = []
                 (im_width, im_height) = image.size # use original image size for box coords
-                print('***processing image***')
                 for index, value in enumerate(classes[0]):
                     if scores[0, index] > MIN_SCORE_THRESH:
                         object_dict = {}
