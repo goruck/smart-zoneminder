@@ -478,7 +478,11 @@ const getFrames = () => {
                         } else {
                             logger.info('Processed '+fileName);
                             objectsFound[i - skipped].labels.forEach(item => {
-                                const labelData = {'Confidence': item.score, 'Name': item.name, 'Box': item.box};
+                                const labelData = {
+                                    'Confidence': (100 * item.score),
+                                    'Name': item.name,
+                                    'Box': item.box
+                                };
                                 // If a person was detected then add (any) face data. 
                                 if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
                                 labels.Labels.push(labelData);
