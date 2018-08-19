@@ -123,6 +123,34 @@
                         "to show alarm clip from {Location}",
                         "for alarm clip from {Location}"
                     ]
+                },
+                {
+                    "name": "Faces",
+                    "slots": [
+                        {
+                            "name": "Name",
+                            "type": "AMAZON.US_FIRST_NAME"
+                        },
+                        {
+                            "name": "Location",
+                            "type": "Location"
+                        }
+                    ],
+                    "samples": [
+                        "show {Name} from the {Location}",
+                        "for my {Name} from the {Location}",
+                        "to show my {Name} from the {Location}",
+                        "to show {Name} from the {Location}",
+                        "for my {Name} from {Location}",
+                        "for my {Name}",
+                        "to show my {Name}",
+                        "to show my {Name} from {Location}",
+                        "for {Name}",
+                        "for {Name} from {Location}",
+                        "to show {Name}",
+                        "to show {Name} from {Location}",
+                        "show {Name} from {Location}"
+                    ]
                 }
             ],
             "types": [
@@ -166,6 +194,66 @@
                                 "synonyms": [
                                     "porch"
                                 ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "AMAZON.US_FIRST_NAME",
+                    "values": [
+                        {
+                            "name": {
+                                "value": "polly"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "eva"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "niccolo"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "nico"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "daughter"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mother"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "son"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "father"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mom"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "dad"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "lindo"
                             }
                         }
                     ]
