@@ -1,4 +1,26 @@
 {
+  "faces":[
+    {
+      "databaseName": "lindo_st_angel",
+      "friendlyNames": ["lindo", "window", "dad", "father"]
+    },
+    {
+      "databaseName": "nikki_st_angel",
+      "friendlyNames": ["nikki", "nicky", "nicolette", "mom", "mother"]
+    },
+    {
+      "databaseName": "nico_st_angel",
+      "friendlyNames": ["nico", "nikko", "niko", "son", "sun", "niccolo"]
+    },
+    {
+      "databaseName": "eva_st_angel",
+      "friendlyNames": ["eva", "daughter"]
+    },
+    {
+      "databaseName": "dog",
+      "friendlyNames": ["polly", "pauli", "dog", "pet"]
+    }
+  ],
   "cameras":[
     {
       "endpointId": "1",

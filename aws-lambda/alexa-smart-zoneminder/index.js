@@ -62,7 +62,7 @@ var handlers = {
             // Use .forEach() to iterate since it creates its own function closure.
             // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
             cameraConfigArray.forEach((element) => {
-                findLatestAlarms(element.zoneminderName, 1, (err, data) => {
+                findLatestAlarms(element.zoneminderName, null, null, 1, (err, data) => {
                     if (err) {
                         log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                         this.response.speak('Sorry, I cannot complete the request.');
@@ -158,7 +158,7 @@ var handlers = {
                 return;
             }
 
-            findLatestAlarms(zoneminderCameraName, 1, (err, data) => {
+            findLatestAlarms(zoneminderCameraName, null, null, 1, (err, data) => {
                 if (err) {
                     log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                     this.response.speak('Sorry, I cannot complete the request.');
@@ -241,7 +241,7 @@ var handlers = {
             return;
         }
 
-        findLatestAlarms(zoneminderCameraName, 10, (err, data) => {
+        findLatestAlarms(zoneminderCameraName, null, null, 10, (err, data) => {
             if (err) {
                 log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                 this.response.speak('Sorry, I cannot complete the request.');
@@ -382,7 +382,7 @@ var handlers = {
             return;
         }
 
-        findLatestAlarms(zoneminderCameraName, 100, (err, data) => {
+        findLatestAlarms(zoneminderCameraName, null, null, 100, (err, data) => {
             if (err) {
                 log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                 this.response.speak('Sorry, I cannot complete the request.');
@@ -471,6 +471,138 @@ var handlers = {
             });
         });
     },
+    // Show a person based on face recognition.
+    'Faces': function() {
+        log('INFO', `Faces Event: ${JSON.stringify(this.event)}`);
+
+        // Check if user has a display.
+        if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
+            speechOutput = 'Sorry, I need a display to do that.';
+            this.response.speak(speechOutput);
+            this.emit(':responseReady');
+            return;
+        }
+
+        // Get camera name and face name from slots.
+        const cameraName = this.event.request.intent.slots.Location.value;
+        log('INFO', `User supplied camera name: ${cameraName}`);
+        if (typeof(cameraName) === 'undefined') {
+            log('ERROR', 'cameraName is undefined.');
+            this.response.speak('Sorry, I cannot complete the request.');
+            this.emit(':responseReady');
+            return;
+        }
+        let faceName = this.event.request.intent.slots.Name.value;
+        log('INFO', `User supplied face name: ${faceName}`);
+        if (typeof(faceName) === 'undefined') {
+            log('ERROR', 'faceName is undefined.');
+            this.response.speak('Sorry, I cannot complete the request.');
+            this.emit(':responseReady');
+            return;
+        }
+
+        // Check if user supplied a valid camera name and if so map to zoneminder name.
+        const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
+        log('INFO', `ZM camera name: ${zoneminderCameraName}`);
+        if (zoneminderCameraName === '') {
+            log('ERROR', `Bad camera name: ${cameraName}`);
+            this.response.speak('Sorry, I cannot find that camera name.');
+            this.emit(':responseReady');
+            return;
+        }
+
+        // Check if user supplied a valid name and if so map to a database name.
+        const databaseName = alexaFaceNameToDatabaseName(faceName.toLowerCase());
+        log('INFO', `database face name: ${databaseName}`);
+
+        let findFaceName = null;
+        let findObjectName = null;
+
+        if (databaseName === 'Unknown') {
+            // Look for Unknown faces in database. 
+            faceName = 'stranger';
+            findFaceName = databaseName;
+        } else if (databaseName === 'dog') {
+            // Temp hack to show the dog.
+            findObjectName = databaseName;
+        } else {
+            findFaceName = databaseName;
+        }
+
+        findLatestAlarms(zoneminderCameraName, findFaceName, findObjectName, 10, (err, data) => {
+            if (err) {
+                log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
+                this.response.speak('Sorry, I cannot complete the request.');
+                this.emit(':responseReady');
+                return;
+            }
+
+            if (data.length === 0) {
+                this.response.speak('No alarms were found.');
+                this.emit(':responseReady');
+                return;
+            }
+
+            let jsonData = {};
+            let token = 1;
+            listItems = [];
+            const S3Path = 'https://s3-' + configObj.awsRegion +
+                '.amazonaws.com/' + configObj.zmS3Bucket + '/';
+
+            data.forEach((item) => {
+                log('INFO', `S3Key: ${item.S3Key}
+                    ZmEventDateTime: ${item.ZmEventDateTime} Labels ${item.Labels}`);
+                const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
+                const imageUrl = S3Path + item.S3Key;
+              
+                jsonData = {
+                    'token': token.toString(),
+                    'image': {
+                        'contentDescription': cameraName,
+                        'sources': [
+                            {
+                                'url': imageUrl
+                            }
+                        ]
+                    },
+                    'textContent': {
+                        'primaryText': {
+                            'text': datetime,
+                            'type': 'PlainText'
+                        },
+                        'secondaryText': {
+                            'text': '',
+                            'type': 'PlainText'
+                        },
+                        'tertiaryText': {
+                            'text': '',
+                            'type': 'PlainText'
+                        }
+                    }
+                };
+
+                listItems.push(jsonData);
+
+                token++;
+            });
+
+            const content = {
+                hasDisplaySpeechOutput: 'Showing most recent alarms from '+cameraName+' for '+faceName,
+                templateToken: 'ShowImageList',
+                askOrTell: ':ask',
+                listItems: listItems,
+                hint: 'select number 1',
+                title: 'Most recent alarms from '+cameraName+' for '+faceName+'.',
+                sessionAttributes: this.attributes
+            };
+
+            /*if (USE_IMAGES_FLAG) {
+                content['backgroundImageUrl'] = S3Path + S3Key;
+            }*/
+
+            renderTemplate.call(this, content);
+        });
+    },
     'AMAZON.HelpIntent': function () {
         console.log('Help event: ' + JSON.stringify(this.event));
         if (supportsDisplay.call(this) || isSimulator.call(this)) {
@@ -542,40 +674,79 @@ function alexaCameraToZoneminderCamera(alexaCameraName) {
 }
 
 /**
- * Callback for latest alarms.
+ * Mapping from Alexa returned face names to database face names.
+ */
+function alexaFaceNameToDatabaseName(alexaFaceName) {
+    const faceNamesArray = configObj.faces;
+
+    // If a match was not found then look for Unknown faces in database.
+    let databaseFaceName = 'Unknown';
+
+    faceNamesArray.forEach((element) => {
+        // True if a valid value was passed.
+        let isValidFace = element.friendlyNames.indexOf(alexaFaceName) > -1;
+        if (isValidFace) {
+            databaseFaceName = element.databaseName;
+        }
+    });
+
+    return databaseFaceName;
+}
+
+/**
+ * Callback for findLatestAlarms.
  *
  * @callback latestAlarmCallback
  * @param {string} err - An error message.
- * @param {array} truePositiveAlarms - An array holding true pos alarms.
+ * @param {array} foundAlarms - An array holding found alarms.
  * 
  */
-
 /**
- * Find most recent true positive alarm frames for a given camera name.
+ * Find most recent alarm frames for a given camera name.
  * 
- * @param {string} cameraName - Zone minder monitor name.
- * @param {int} nuberofAlarms - Number of alarm frames to find.
- * @param {latestAlarmCallback} callback - A callback fn.
+ * @param {string} cameraName - ZoneMinder monitor name to search over.
+ * @param {string} faceName - Name of a person to search for.
+ * @param {string} objectName - Name of an object to search for.
+ * @param {int} numberOfAlarms - Number of alarm frames to find.
+ * @param {latestAlarmCallback} callback - callback fn, returns array of found alarms.
  */
-function findLatestAlarms(cameraName, numberOfAlarams, callback) {
+function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, callback) {
     const docClient = new AWS.DynamoDB.DocumentClient(
         {apiVersion: '2012-10-08', region: configObj.awsRegion}
     );
 
+    // Base query looks for true false positives from a named camera.
+    // If faceName or objectName is null then any person or object will queried for. 
+    let filterExpression = 'Alert = :state';
+    let projectionExpression = 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId';
+    const expressionAttributeValues = {
+        ':name': cameraName,
+        ':state': 'true'
+    };
+
+    // If a face name was provided then add it to query.
+    // If provided objectName is ignored (it has to be a person).
+    if (faceName !== null) {
+        projectionExpression += ', Labels';
+        filterExpression += ' AND contains(Labels, :face)';
+        expressionAttributeValues[':face'] = faceName;
+    } else if (objectName !== null) {
+        projectionExpression += ', Labels';
+        filterExpression += ' AND contains(Labels, :object)';
+        expressionAttributeValues[':object'] = objectName;
+    }
+
     let params = {
         TableName: 'ZmAlarmFrames',
         ScanIndexForward: false, // Descending sort order.
-        ProjectionExpression: 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId',
+        ProjectionExpression: projectionExpression,
         KeyConditionExpression: 'ZmCameraName = :name',
-        FilterExpression: 'Alert = :state',
-        ExpressionAttributeValues: {
-            ':name': cameraName,
-            ':state': 'true'
-        }
+        FilterExpression: filterExpression,
+        ExpressionAttributeValues: expressionAttributeValues
     };
 
-    let truePositiveAlarms = [];
-    let truePositiveAlarmCount = 0;
+    let foundAlarms = [];
+    let foundAlarmCount = 0;
                     
     function queryExecute() {
         docClient.query(params, (err, data) => {
@@ -583,21 +754,22 @@ function findLatestAlarms(cameraName, numberOfAlarams, callback) {
                 return callback(err, null);
             }
       
-            // Look for true positive alarms (Alert = true).
+            // If a query was successful then add to list.
             for (const item of data.Items) {
-                truePositiveAlarms.push(item);
-                truePositiveAlarmCount++;
-                if (truePositiveAlarmCount === numberOfAlarams) {
-                    return callback(null, truePositiveAlarms);
+                foundAlarms.push(item);
+                foundAlarmCount++;
+                if (foundAlarmCount === numberOfAlarms) {
+                    return callback(null, foundAlarms);
                 }
             }
 
-            // Query again if there are more records else return what was found so far (if anything).
+            // Query again if there are more records.
+            // Else return what was found so far (if anything).
             if (data.LastEvaluatedKey) {
                 params.ExclusiveStartKey = data.LastEvaluatedKey;
                 queryExecute();
             } else {
-                return callback(null, truePositiveAlarms);
+                return callback(null, foundAlarms);
             }
         });
     }    
