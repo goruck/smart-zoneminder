@@ -6,15 +6,17 @@
     },
     {
       "databaseName": "nikki_st_angel",
-      "friendlyNames": ["nikki", "nicky", "nicolette", "mom", "mother"]
+      "friendlyNames": ["nikki", "nicky", "nicolette", "mom",
+        "mother"]
     },
     {
       "databaseName": "nico_st_angel",
-      "friendlyNames": ["nico", "nikko", "niko", "son", "sun", "niccolo"]
+      "friendlyNames": ["nico", "nikko", "niko", "son", "sun",
+        "niccolo", "brother"]
     },
     {
       "databaseName": "eva_st_angel",
-      "friendlyNames": ["eva", "daughter"]
+      "friendlyNames": ["eva", "daughter", "sister"]
     },
     {
       "databaseName": "dog",
