@@ -129,7 +129,7 @@
                     "slots": [
                         {
                             "name": "Name",
-                            "type": "AMAZON.US_FIRST_NAME"
+                            "type": "Names"
                         },
                         {
                             "name": "Location",
@@ -157,6 +157,11 @@
                 {
                     "name": "Location",
                     "values": [
+                        {
+                            "name": {
+                                "value": "back porch"
+                            }
+                        },
                         {
                             "name": {
                                 "value": "play room door",
@@ -199,31 +204,21 @@
                     ]
                 },
                 {
-                    "name": "AMAZON.US_FIRST_NAME",
+                    "name": "Names",
                     "values": [
                         {
                             "name": {
+                                "value": "pet"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "dog"
+                            }
+                        },
+                        {
+                            "name": {
                                 "value": "polly"
-                            }
-                        },
-                        {
-                            "name": {
-                                "value": "eva"
-                            }
-                        },
-                        {
-                            "name": {
-                                "value": "niccolo"
-                            }
-                        },
-                        {
-                            "name": {
-                                "value": "nico"
-                            }
-                        },
-                        {
-                            "name": {
-                                "value": "daughter"
                             }
                         },
                         {
@@ -233,17 +228,57 @@
                         },
                         {
                             "name": {
-                                "value": "son"
-                            }
-                        },
-                        {
-                            "name": {
                                 "value": "father"
                             }
                         },
                         {
                             "name": {
+                                "value": "niccolo"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "brother"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "sister"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "daughter"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "eva"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "son"
+                            }
+                        },
+                        {
+                            "name": {
                                 "value": "mom"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "nico"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "nicolette"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "nikki"
                             }
                         },
                         {
