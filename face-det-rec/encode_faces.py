@@ -34,11 +34,12 @@ for (i, imagePath) in enumerate(imagePaths):
 		len(imagePaths)))
 	name = imagePath.split(os.path.sep)[-2]
 
-	# load the input image and convert it from RGB (OpenCV ordering)
-	# to dlib ordering (RGB)
+	# load the input image
 	image = cv2.imread(imagePath)
 
 	# resize image if W > 800 or H > 600
+	# and convert it from RGB (OpenCV ordering)
+	# to dlib ordering (RGB)
 	IMG_W_MAX = 800
 	IMG_H_MAX = 600
 	(img_h, img_w) = image.shape[0:2]
@@ -63,9 +64,13 @@ for (i, imagePath) in enumerate(imagePaths):
 
 	# detect the (x, y)-coordinates of the bounding boxes
 	# corresponding to each face in the input image
-	# added number_of_times_to_upsample=0 since default crashes system
+	# Do not increase upsample beyond 1 else you'll run out of memory.
 	boxes = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
 		model=args["detection_method"])
+
+	if len(boxes) == 0:
+	 print('*** no face found! ***')
+	 continue
 
 	# compute the facial embedding for the face
 	encodings = face_recognition.face_encodings(rgb, boxes)
