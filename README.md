@@ -19,13 +19,13 @@ Hera are a few of the things you can do with smart-zoneminder.
 **Note: smart-zoneminder currently does not support live streaming of camera feeds.** I recommend that you use [alexa-ip-cam](https://github.com/goruck/alexa-ip-cam) for streaming your cameras feeds live on Echo devices. 
 
 ## Ask Alexa to show an alarm from a camera on a specific date and time
-Note that if the user does not provide a date then the most recent alarm will be shown.
+Note that if the user does not provide a date then the most recent alarm will be shown. By default alarms caused by people (vs objects) will be shown. 
 
 User: "Alexa, ask zone minder to show alarm from front porch"
 
 Alexa: "Showing last alarm from front porch camera"
 
-![Alt text](/img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
+![Alt text](./img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
 
 ## Ask Alexa to show last N alarms from a specific camera on a specific date and time
 Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is omitted the most recent alarms will be returned.
@@ -34,7 +34,7 @@ User: "Alexa, ask zone minder to show alarms from front porch"
 
 Alexa: "Showing last alarms from front porch camera"
 
-![Alt text](/img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
+![Alt text](./img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
 
 ## Ask Alexa to show the last alarm from all cameras
 
@@ -44,12 +44,30 @@ Alexa: "Showing last alarm from play room door camera"
 
 Result: Image of last alarm frame from all cameras will be displayed on an Echo device with a screen or user will hear about the alarm from Alexa on devices without a screen.
 
+## Ask Alexa to show a person by name from a camera on a specific data and time.
+Note that if the user does not provide a date then the most recent ten alarms will be shown.
+
+User: "Alexa, ask zone minder to show the Lindo from play room"
+
+Alexa: "Showing last alarm from front porch camera"
+
+![Alt text](./img/show-lindo-playroom.png?raw=true "show named person example.")
+
+## Ask Alexa to show an object from a camera on a specific date and time.
+Note that if the user does not provide a date then the most recent ten alarms will be shown. In this example the object dog has been associated with its given name.
+
+User: "Alexa, ask zone minder to show the dog from back yard"
+
+Alexa: "Showing last alarm from front porch camera"
+
+![Alt text](./img/show-polly-backyard.png?raw=true "show object example.")
+
 ## Ask Alexa to play a video of an alarm from a camera on a specific date and time.
 Note that if the user does not provide a date then a video of the last alarm will be played. 
 
 User: "Alexa, ask zone minder to play alarm from front porch"
 
-Alexa: "Showing last alarm clip from front porch camera"
+Alexa: "Showing most recent alarms for Polly from back yard."
 
 Result: Video of last alarm clip from this camera will play on an Echo device with a screen.
 
@@ -77,7 +95,7 @@ This lead to the requirement to leverage existing components where possible and 
 # System Architecture
 The figure below shows the smart-zoneminder system architecture.
 
-![Alt text](/img/sz-blk-dia.jpg?raw=true "smart-zoneminder system architecture diagram.")
+![Alt text](./img/sz-blk-dia.jpg?raw=true "smart-zoneminder system architecture diagram.")
 
 # System Components and Installation
 The information below details each major component in the architecture, the interconnects between the other components and how to install them both locally and in the cloud.
