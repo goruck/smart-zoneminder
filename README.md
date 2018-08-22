@@ -49,7 +49,7 @@ Note that if the user does not provide a date then the most recent ten alarms wi
 
 User: "Alexa, ask zone minder to show the Lindo from play room"
 
-Alexa: "Showing last alarm from front porch camera"
+Alexa: "Showing most recent alarms from playroom for Lindo"
 
 ![Alt text](./img/show-lindo-playroom.png?raw=true "show named person example.")
 
@@ -58,7 +58,7 @@ Note that if the user does not provide a date then the most recent ten alarms wi
 
 User: "Alexa, ask zone minder to show the dog from back yard"
 
-Alexa: "Showing last alarm from front porch camera"
+Alexa: "Showing most recent alarms from backyard for Polly"
 
 ![Alt text](./img/show-polly-backyard.png?raw=true "show object example.")
 
