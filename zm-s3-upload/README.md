@@ -18,9 +18,19 @@ Inspired by Brian Roy's original [work](https://github.com/briantroy/Zoneminder-
 $ npm install
 ```
 
-3. Modify the configuration parameters in [zm-s3-upload-config.json](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload-config.json) per your ZoneMinder installation. The config parameters are documented in the [zm-s3-upload.js](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js) app. 
+3. Modify the configuration parameters in [zm-s3-upload-config.json](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload-config.json) per your ZoneMinder installation. The config parameters are documented in the [zm-s3-upload.js](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js) app.
 
-4. Run the [zms3db.sql](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zms3db.sql) script on your ZoneMinder mySql database to create the upload table.
+4. Create a file called **aws-creds.json** that contains AWS S3 keys created in the step above. An example of the file contents is shown below.
+```json
+{
+    "AWSCreds": {
+        "accessKeyId": "YOUR_ACCESS_KEY",
+        "secretAccessKey": "YOUR_SECRET_KET"
+    }
+}
+```
+
+5. Run the [zms3db.sql](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zms3db.sql) script on your ZoneMinder mySql database to create the upload table.
 ```bash
 $ mysql -uUSER -pPASS zm < zms3db.sql > output.txt
 ```
