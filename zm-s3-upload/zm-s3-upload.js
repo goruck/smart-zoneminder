@@ -15,10 +15,13 @@
 
 // Globals.
 const fs = require('fs');
-const AWS = require('./node_modules/aws-sdk');
-const s3 = new AWS.S3();
 const util = require('util');
 let isComplete = true; // triggers state machine to get more alarm frames
+
+// AWS config.
+const awsCreds = JSON.parse(fs.readFileSync('./aws-creds.json'));
+const AWS = require('./node_modules/aws-sdk');
+const s3 = new AWS.S3(awsCreds);
 
 // Get configuration details. 
 const configObj = JSON.parse(fs.readFileSync('./zm-s3-upload-config.json'));
