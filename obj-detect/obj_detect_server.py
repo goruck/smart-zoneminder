@@ -101,11 +101,20 @@ class DetectRPC(object):
                     print("Could not derive information from image path.")
                     continue
                     
+                # Only apply skip logic if frames are from the same monitor. 
                 if monitor == old_monitor:
-                    if frame_num - old_frame_num  <= CON_IMG_SKIP:
-                        objects_in_image.append({'image': image_path, 'labels': old_labels})
-                        print('Consecutive frame {}, skipping detect and copying previous labels.'.format(frame_num))
-                        continue
+                    # Only apply skip logic if alarm frames are from the same event.
+                    # Intra-event frames are monotonically increasing.
+                    frame_diff = frame_num - old_frame_num
+                    if frame_diff > 0:
+                        # Skip CON_IMG_SKIP frames after the first one. 
+                        if frame_diff  <= CON_IMG_SKIP:
+                            objects_in_image.append({'image': image_path, 'labels': old_labels})
+                            print('monitor {} old_monitor {} frame_num {} old_frame_num {}'
+                                .format(monitor,old_monitor,frame_num,old_frame_num))
+                            print('Consecutive frame {}, skipping detect and copying previous labels.'
+                                .format(frame_num))
+                            continue
 
                 with Image.open(image_path) as image:
                     # Resize to minimize tf processing.
