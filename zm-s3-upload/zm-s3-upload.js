@@ -149,7 +149,7 @@ const getFrames = () => {
             isComplete = true;
             return;
         } else {
-            logger.info(aryRows.length+' un-uploaded frames found in: '+dur+' milliseconds');
+            logger.info(`${aryRows.length} un-uploaded frames found in: ${dur} milliseconds`);
         }
 
         // Determine maximum number of concurrent S3 uploads. 
@@ -157,7 +157,7 @@ const getFrames = () => {
         (aryRows.length < MAX_CONCURRENT_UPLOAD) ?
             maxInit = aryRows.length : maxInit = MAX_CONCURRENT_UPLOAD;
 
-        logger.debug('aryRows len: '+aryRows.length+' maxInit: '+maxInit+' isComplete: '+isComplete);
+        logger.debug(`aryRows len: ${aryRows.length} maxInit: ${maxInit} isComplete: ${isComplete}`);
 
         // Build S3 path and key.
         const buildS3PathKey= (imgData) => {
@@ -231,7 +231,7 @@ const getFrames = () => {
          * @returns {Promise} - Pending write of documents. 
          */
         const writeToMongodb = (documents) => {
-            logger.debug('mongodb docs: '+util.inspect(documents, false, null));
+            logger.debug(`mongodb docs: ${util.inspect(documents, false, null)}`);
             let db = '';
             const mongoClient = require('mongodb').MongoClient;
             const url = MONGO_URL;
@@ -246,8 +246,8 @@ const getFrames = () => {
             });
                 
             return firstPromise.then(out => {
-                logger.debug('mongodb result: '+util.inspect(out, false, null));
-                logger.info('Wrote '+out.insertedCount+' docs to mongodb.');
+                logger.debug(`mongodb result: ${util.inspect(out, false, null)}`);
+                logger.info(`Wrote ${out.insertedCount} docs to mongodb.`);
                 db.close();
             }).catch((error) => {
                 return Promise.reject(new Error('mongodb error: '+error));
@@ -268,7 +268,7 @@ const getFrames = () => {
 
             // Check for bad image file.
             if (typeof(imgData) === 'undefined' || typeof(imgData.frame_timestamp) === 'undefined') {
-                logger.error('Bad upload image: ' + imgData);
+                logger.error(`Bad upload image: ${imgData}`);
                 return Promise.reject(new Error('Bad upload image: ' + imgData));
             }
 
@@ -293,18 +293,24 @@ const getFrames = () => {
                 return new Promise((resolve, reject) => {
                     client.query(uploadInsertQuery, aryBind, (error) => {
                         if (error) {
-                            logger.error('markAsUpload error: ' + error.stack);
+                            logger.error(`markAsUpload error: ${error.stack}`);
                             reject(error);
                         } else {
-                            logger.debug('Insert Query Complete. FrameID: ' +
-                                        imgData.frameid + ' EventID: ' + imgData.eventid);
+                            logger.debug(`Insert Query Complete. FrameID: ${imgData.frameid} EventID: ${imgData.eventid}`);
                             resolve(true);
                         }
                     });
                 });
             };
 
-            const uploadToS3 = data => {
+            /**
+            * Upload image and metadata to an S3 bucket.
+            * 
+            * @param {Buffer} data - the data to be uploaded.
+            * @param {Object} imgData - alarm metadata from ZoneMinder.
+            * 
+            */
+            const uploadToS3 = (data, imgData) => {
                 // Build S3 path and key.
                 const S3PathKey = buildS3PathKey(imgData);
                 logger.info('The file: ' + fileName + ' will be saved to: ' + S3PathKey);
@@ -348,7 +354,7 @@ const getFrames = () => {
 
             // Chain promises and return the last one. 
             const firstPromise = getImage(fileName).then(result => {
-                if (!skipUpload) return uploadToS3(result);
+                if (!skipUpload) return uploadToS3(result, imgData);
                 return false;
             });
 
@@ -584,9 +590,10 @@ const getFrames = () => {
 
 // State machine to fetch more alarm frames. 
 const processAlarms = () => {
+    let countNotReady = 0;
     if(isComplete) {
         logger.debug('Getting more frames to process.');
-        var countNotReady = 0;
+        countNotReady = 0;
         isComplete = false;
         getFrames();
         setTimeout(processAlarms, CHECK_FOR_ALARMS_INTERVAL);
