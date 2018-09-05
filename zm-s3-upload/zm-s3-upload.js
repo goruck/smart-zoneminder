@@ -17,6 +17,7 @@
 const fs = require('fs');
 const util = require('util');
 let isComplete = true; // triggers state machine to get more alarm frames
+let countNotReady = 0; // keeps track of checking for alarm attempts
 
 // AWS config.
 const awsCreds = JSON.parse(fs.readFileSync('./aws-creds.json'));
@@ -590,7 +591,6 @@ const getFrames = () => {
 
 // State machine to fetch more alarm frames. 
 const processAlarms = () => {
-    let countNotReady = 0;
     if(isComplete) {
         logger.debug('Getting more frames to process.');
         countNotReady = 0;
