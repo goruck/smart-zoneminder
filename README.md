@@ -162,7 +162,7 @@ When the settings are as you want them, choose Create.
 ### S3
 You'll need an [S3 bucket](https://aws.amazon.com/documentation/s3/) where your images can be uploaded for processing and archived. You can create the bucket either through the AWS cli or the console, here's how to do it via the console.
 
-Thanks to [Paul Branston](https://github.com/pbran) for great suggestions to set the S3 permissions set correctly. Also see this [blog](http://mikeferrier.com/2011/10/27/granting-access-to-a-single-s3-bucket-using-amazon-iam/) for additional related information. 
+Thanks to [Paul Branston](https://github.com/pbran) for great suggestions to set secure S3 permissions. Also see this [blog](http://mikeferrier.com/2011/10/27/granting-access-to-a-single-s3-bucket-using-amazon-iam/) for additional related information. 
 
 1. Sign in to the AWS Management Console and open the Amazon S3 console at https://console.aws.amazon.com/s3/.
 2. Choose Create bucket.
@@ -173,7 +173,7 @@ Thanks to [Paul Branston](https://github.com/pbran) for great suggestions to set
 7. Directly under the /archive directory, create the /alerts and /falsepositives subdirectories, again by using choosing Create folder.
 8. Now you need to limit access to the bucket, so start by log into to the AWS IAM AWS console.
 9. Create a new user.
-10. Set a password for the new user. Your user will also have an AWS access and secret key created. API clients (eg zm-s2-upload) need to use these keys and will have the same permissions as the user would in the AWS console. Save the AWS access key and the secret key which will be used in a step below. 
+10. Set a password for the new user. Your user will also have an AWS access and secret key created. API clients (e.g., zm-s2-upload) need to use these keys and will have the same permissions as the user would in the AWS console. Save the AWS access key and the secret key which will be used in a step below. 
 11. Add permissions so that only this user has access to the bucket. My permissions to do that are shown below.
 ```json
 {
@@ -197,6 +197,23 @@ Thanks to [Paul Branston](https://github.com/pbran) for great suggestions to set
     ]
 }
 ```
+Note that the Alexa devices require a public URI for all images and videos that these devices display. Since this project currently stores all images in an S3 bucket this means that the Alexa skills will only work if the bucket is open to the world. **FOR TEST PURPOSES ONLY** you can open your bucket by replacing the JSON in step 11 above with the following.
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Action": "s3:GetObject",
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::zm-alarm-frames/*",
+      "Principal": "*"
+    }
+  ]
+}
+```
+
+I am working on a better solution that will leverage the Alexa Smart Home Camera APIs that will mitigate these security concerns. Stay tuned!
 
 ### smart-zoneminder
 To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running:
