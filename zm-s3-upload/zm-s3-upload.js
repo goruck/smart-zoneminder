@@ -333,7 +333,8 @@ const getFrames = () => {
                         'zmEventId': imgData.eventid.toString(),
                         'zmFrameId': imgData.frameid.toString(),
                         'zmFrameDatetime': dtFrameMs.toISOString(),
-                        'zmScore': imgData.score.toString()
+                        'zmScore': imgData.score.toString(),
+                        'zmLocalEventPath': fileName.toString()
                     }
                 };
 

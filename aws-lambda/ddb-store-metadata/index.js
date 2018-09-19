@@ -21,6 +21,7 @@ exports.handler = (event, context, callback) => {
     const zmEventId = event.metadata.zmeventid;
     const zmFrameId = event.metadata.zmframeid;
     const zmScore = event.metadata.zmscore;
+    const zmLocalEventPath = event.metadata.zmlocaleventpath;
     
     // Parameters for DynamoDB.
     const params = {
@@ -32,6 +33,7 @@ exports.handler = (event, context, callback) => {
             'ZmEventId'       : parseInt(zmEventId, 10),
             'ZmFrameId'       : parseInt(zmFrameId, 10),
             'ZmScore'         : parseInt(zmScore, 10),
+            'ZmLocalEventPath': zmLocalEventPath,
             'S3Key'           : S3Key,
             'S3DateTime'      : S3DateTime,
             'Alert'           : alertState,

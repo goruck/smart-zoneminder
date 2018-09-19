@@ -27,13 +27,20 @@ if (credsObj === null) {
     process.exit(1); // TODO: find a better way to exit. 
 }
 
+// Define some constants.
+// TODO - clean this up.
 const APP_ID = credsObj.alexaAppId;
-let speechOutput = '';
-let welcomeOutput = 'Please ask zone minder something.';
-let welcomeReprompt = 'Please ask zone minder something.';
 /*If you don't want to use cards in your skill, set the USE_IMAGES_FLAG to false.
 If you set it to true, you will need an image for each item in your data.*/
 const USE_IMAGES_FLAG = true;
+const S3Path = 'https://s3-' + configObj.awsRegion +
+    '.amazonaws.com/' + configObj.zmS3Bucket + '/';
+const localPath = 'https://cam.lsacam.com:9443';
+const USE_LOCAL_PATH = true;
+
+let speechOutput = '';
+let welcomeOutput = 'Please ask zone minder something.';
+let welcomeReprompt = 'Please ask zone minder something.';
 
 // Holds json for items to be displayed on screen, used by several handlers. 
 let listItems = [];
@@ -74,8 +81,9 @@ var handlers = {
                         // Get latest alarm from this camera.
                         const S3Key = data[0].S3Key;
                         const ZmEventDateTime = data[0].ZmEventDateTime;
+                        const ZmLocalEventPath = data[0].ZmLocalEventPath;
                         queryResultArray.push({'S3Key': S3Key, 'ZmEventDateTime': ZmEventDateTime,
-                            'zoneminderName': element.zoneminderName});
+                            'zoneminderName': element.zoneminderName, 'ZmLocalEventPath': ZmLocalEventPath});
                     }
 
                     queryCount++;
@@ -105,6 +113,7 @@ var handlers = {
                     // Get alarm with latest datetime.
                     const maxArrElem = queryResultArray.length - 1;
                     const S3Key = queryResultArray[maxArrElem].S3Key;
+                    const ZmLocalEventPath = queryResultArray[maxArrElem].ZmLocalEventPath;
                     const ZmEventDateTime = queryResultArray[maxArrElem].ZmEventDateTime;
                     const ZmCameraName = queryResultArray[maxArrElem].zoneminderName;
                              
@@ -118,6 +127,7 @@ var handlers = {
                     }
 
                     log('INFO', `S3 Key of latest alarm image: ${S3Key} from ${ZmEventDateTime}`);
+                    log('INFO', `Local Path of latest alarm image: ${ZmLocalEventPath} from ${ZmEventDateTime}`);
 
                     // Check for valid image.
                     if (typeof S3Key === 'undefined') {
@@ -126,9 +136,6 @@ var handlers = {
                         this.emit(':responseReady');
                         return;
                     }
-
-                    const S3Path = 'https://s3-' + configObj.awsRegion +
-                        '.amazonaws.com/' + configObj.zmS3Bucket + '/';
 
                     const content = {
                         hasDisplaySpeechOutput: 'Showing most recent alarm from '+ZmCameraName+' camera.',
@@ -139,7 +146,11 @@ var handlers = {
                     };
 
                     if (USE_IMAGES_FLAG) {
-                        content['backgroundImageUrl'] = S3Path + S3Key;
+                        if (USE_LOCAL_PATH) {
+                            content['backgroundImageUrl'] = localPath + ZmLocalEventPath;
+                        } else {
+                            content['backgroundImageUrl'] = S3Path + S3Key;
+                        }
                     }
 
                     renderTemplate.call(this, content);
@@ -174,6 +185,7 @@ var handlers = {
                 }
 
                 const S3Key = data[0].S3Key;
+                const ZmLocalEventPath = data[0].ZmLocalEventPath;
                 const ZmEventDateTime = data[0].ZmEventDateTime;
 
                 // Check if user has a display and if not just return alarm info w/o image.
@@ -186,6 +198,7 @@ var handlers = {
                 }
 
                 log('INFO', `S3 Key of latest alarm image: ${S3Key} from ${ZmEventDateTime}`);
+                log('INFO', `Local Path of latest alarm image: ${ZmLocalEventPath} from ${ZmEventDateTime}`);
 
                 // Check for valid image.
                 if (typeof S3Key === 'undefined') {
@@ -194,9 +207,6 @@ var handlers = {
                     this.emit(':responseReady');
                     return;
                 }
-
-                const S3Path = 'https://s3-' + configObj.awsRegion +
-                    '.amazonaws.com/' + configObj.zmS3Bucket + '/';
 
                 const content = {
                     hasDisplaySpeechOutput: 'Showing most recent alarm from '+cameraName+' camera.',
@@ -207,7 +217,11 @@ var handlers = {
                 };
 
                 if (USE_IMAGES_FLAG) {
-                    content['backgroundImageUrl'] = S3Path + S3Key;
+                    if (USE_LOCAL_PATH) {
+                        content['backgroundImageUrl'] = localPath + ZmLocalEventPath;
+                    } else {
+                        content['backgroundImageUrl'] = S3Path + S3Key;
+                    }
                 }
 
                 renderTemplate.call(this, content);
@@ -258,13 +272,16 @@ var handlers = {
             let jsonData = {};
             let token = 1;
             listItems = [];
-            const S3Path = 'https://s3-' + configObj.awsRegion +
-                '.amazonaws.com/' + configObj.zmS3Bucket + '/';
 
             data.forEach((item) => {
                 //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
                 const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
-                const imageUrl = S3Path + item.S3Key;
+                let imageUrl = '';
+                if (USE_LOCAL_PATH) {
+                    imageUrl = localPath + item.ZmLocalEventPath;
+                } else {
+                    imageUrl = S3Path + item.S3Key;
+                }
               
                 jsonData = {
                     'token': token.toString(),
@@ -546,14 +563,17 @@ var handlers = {
             let jsonData = {};
             let token = 1;
             listItems = [];
-            const S3Path = 'https://s3-' + configObj.awsRegion +
-                '.amazonaws.com/' + configObj.zmS3Bucket + '/';
 
             data.forEach((item) => {
                 log('INFO', `S3Key: ${item.S3Key}
                     ZmEventDateTime: ${item.ZmEventDateTime} Labels ${item.Labels}`);
                 const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
-                const imageUrl = S3Path + item.S3Key;
+                let imageUrl = '';
+                if (USE_LOCAL_PATH) {
+                    imageUrl = localPath + item.ZmLocalEventPath;
+                } else {
+                    imageUrl = S3Path + item.S3Key;
+                }
               
                 jsonData = {
                     'token': token.toString(),
@@ -718,7 +738,7 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
     // Base query looks for true false positives from a named camera.
     // If faceName or objectName is null then any person or object will queried for. 
     let filterExpression = 'Alert = :state';
-    let projectionExpression = 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId';
+    let projectionExpression = 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId, ZmLocalEventPath';
     const expressionAttributeValues = {
         ':name': cameraName,
         ':state': 'true'

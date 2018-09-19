@@ -12,7 +12,7 @@ import mysql.connector as mysqldb
 from subprocess import check_call, CalledProcessError
 
 # Define where to save generated video clip.
-OUT_PATH = '/var/www/loginto.me/public/'
+OUT_PATH = '/var/www/lsacam.com/private/'
 
 # Define where Zoneminder keeps event images.
 IMAGE_BASE = '/nvr/zoneminder/events/'
