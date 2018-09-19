@@ -213,7 +213,22 @@ Note that the Alexa devices require a public URI for all images and videos that 
 }
 ```
 
-I am working on a better solution that will leverage the Alexa Smart Home Camera APIs that will mitigate these security concerns. Stay tuned!
+Alternatively, you can serve the ZoneMinder event files locally and point a public URI to the files that the Alexa devices on your local network can access. This avoids the risk of a S3 bucket being open to the world but comes at the (slight) expense of serving up those files but since Apache is already being used the effort is minimal. The lambda hander for the Alexa skill can be configured to point to either the S3 bucket or the local network for image access. 
+
+Here's how to enable local access.
+
+1. Setup a DNS entry for the Apache private IP address on your LAN. I use GoDaddy but any DNS host should work, just create a A record for the Apache server's IP address and give it a hostname. Putting Private IP's into public DNS is discouraged, but since this is for personal use its fine.
+2. Get an SSL cert and use Domain Name Validation to secure the domain. I use LetsEncrypt.
+3. Create a site configuration file for an Apace Virtual Host for the domain and create a Directory entry to serve the ZoneMinder event files. Here's mine.
+```xml
+Alias /nvr /nvr
+<Directory "/nvr">
+  DirectoryIndex disabled
+  Options Indexes FollowSymLinks
+  AuthType None
+  Require all granted
+</Directory>
+```
 
 ### smart-zoneminder
 To use smart-zoneminder you will need to clone my GitHub repo to your local machine by running:
