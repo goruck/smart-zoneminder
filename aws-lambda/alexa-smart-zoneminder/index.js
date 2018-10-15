@@ -30,134 +30,68 @@ if (credsObj === null) {
 // Define some constants.
 // TODO - clean this up.
 const APP_ID = credsObj.alexaAppId;
-/*If you don't want to use cards in your skill, set the USE_IMAGES_FLAG to false.
-If you set it to true, you will need an image for each item in your data.*/
-const USE_IMAGES_FLAG = true;
 const S3Path = 'https://s3-' + configObj.awsRegion +
     '.amazonaws.com/' + configObj.zmS3Bucket + '/';
 const localPath = 'https://cam.lsacam.com:9443';
 const USE_LOCAL_PATH = true;
 
-let speechOutput = '';
-let welcomeOutput = 'Please ask zone minder something.';
-let welcomeReprompt = 'Please ask zone minder something.';
+// Help messages.
+const helpMessages = ['Show Last Event',
+    'Show Last Video',
+    'Show Event from front porch',
+    'Show Events from back porch Monday at 10 AM',
+    'Show Video from back yard',
+    'Show Videos from East last week Friday at 3 PM'];
 
-// Holds json for items to be displayed on screen, used by several handlers. 
+// Holds list items that can be selected on the display or by voice.
 let listItems = [];
 
 //==============================================================================
 //========================== Event Handlers  ===================================
 //==============================================================================
-var handlers = {
+const handlers = {
     'LaunchRequest': function () {
-        this.emit(':ask', welcomeOutput, welcomeReprompt);
+        log('INFO', `LaunchRequest Event: ${JSON.stringify(this.event)}`);
+
+        let sessionAttributes = this.event.session.attributes;
+
+        const welcomeOutput = 'Welcome to zoneminder!';
+        const welcomeReprompt = `Say Show Last Event to view last alarm or say Show 
+            Video to see a recording. You can also say Help to see example commands.`;
+
+        // Check if user has a display.
+        if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
+            this.emit(':ask', welcomeOutput, welcomeReprompt);
+            return;
+        }
+
+        const content = {
+            templateToken: 'ShowText',
+            title: welcomeOutput,
+            hasDisplaySpeechOutput: welcomeOutput,
+            hasDisplayRepromptText: welcomeReprompt,
+            bodyText: welcomeReprompt,
+            backButton: 'HIDDEN',
+            hint: 'help',
+            askOrTell: ':ask',
+            sessionAttributes: sessionAttributes
+        };
+
+        renderTemplate.call(this, content);
     },
     // Show last alarm from a camera or all cameras.
     'LastAlarm': function() {
         log('INFO', `LastAlarm Event: ${JSON.stringify(this.event)}`);
 
-        const cameraName = this.event.request.intent.slots.Location.value;
+        let sessionAttributes = this.event.session.attributes;
 
+        const cameraName = this.event.request.intent.slots.Location.value;
         log('INFO', `User supplied camera name: ${cameraName}`);
 
-        // If user did not give a camera name then report latest alarm of all cameras.
-        if (typeof cameraName === 'undefined') {
-            const cameraConfigArray = configObj.cameras;
-            let queryResultArray = [];
-            let queryCount = 0;
-
-            // Use .forEach() to iterate since it creates its own function closure.
-            // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
-            cameraConfigArray.forEach((element) => {
-                findLatestAlarms(element.zoneminderName, null, null, 1, (err, data) => {
-                    if (err) {
-                        log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
-                        this.response.speak('Sorry, I cannot complete the request.');
-                        this.emit(':responseReady');
-                        return;
-                    }
-
-                    if (data.length !== 0) {
-                        // Get latest alarm from this camera.
-                        const S3Key = data[0].S3Key;
-                        const ZmEventDateTime = data[0].ZmEventDateTime;
-                        const ZmLocalEventPath = data[0].ZmLocalEventPath;
-                        queryResultArray.push({'S3Key': S3Key, 'ZmEventDateTime': ZmEventDateTime,
-                            'zoneminderName': element.zoneminderName, 'ZmLocalEventPath': ZmLocalEventPath});
-                    }
-
-                    queryCount++;
-
-                    if (queryCount < cameraConfigArray.length) { return; }
-
-                    // All queries finished, check if any alarms were found.
-                    if (queryResultArray.length === 0) {
-                        this.response.speak('No alarms were found.');
-                        this.emit(':responseReady');
-                        return;
-                    }
-
-                    // Sort all alarms by datetime in decending order.
-                    queryResultArray.sort((a, b) => {
-                        const dateTimeA = new Date(a.ZmEventDateTime);
-                        const dateTimeB = new Date(b.ZmEventDateTime);
-                            
-                        if (dateTimeA < dateTimeB) { return -1; }
-
-                        if (dateTimeA > dateTimeB) { return 1; }
-
-                        // datetimes must be equal
-                        return 0;
-                    });
-
-                    // Get alarm with latest datetime.
-                    const maxArrElem = queryResultArray.length - 1;
-                    const S3Key = queryResultArray[maxArrElem].S3Key;
-                    const ZmLocalEventPath = queryResultArray[maxArrElem].ZmLocalEventPath;
-                    const ZmEventDateTime = queryResultArray[maxArrElem].ZmEventDateTime;
-                    const ZmCameraName = queryResultArray[maxArrElem].zoneminderName;
-                             
-                    // Check if user has a display and if not just return alarm info w/o image.
-                    if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-                        speechOutput = 'Last alarm was from '+ZmCameraName+' on '+
-                            timeConverter(Date.parse(ZmEventDateTime));
-                        this.response.speak(speechOutput);
-                        this.emit(':responseReady');
-                        return;
-                    }
-
-                    log('INFO', `S3 Key of latest alarm image: ${S3Key} from ${ZmEventDateTime}`);
-                    log('INFO', `Local Path of latest alarm image: ${ZmLocalEventPath} from ${ZmEventDateTime}`);
-
-                    // Check for valid image.
-                    if (typeof S3Key === 'undefined') {
-                        log('ERROR', 'Bad image file');
-                        this.response.speak('Sorry, I cannot complete the request.');
-                        this.emit(':responseReady');
-                        return;
-                    }
-
-                    const content = {
-                        hasDisplaySpeechOutput: 'Showing most recent alarm from '+ZmCameraName+' camera.',
-                        bodyTemplateContent: timeConverter(Date.parse(ZmEventDateTime)),
-                        templateToken: 'ShowImage',
-                        askOrTell: ':tell',
-                        sessionAttributes: this.attributes
-                    };
-
-                    if (USE_IMAGES_FLAG) {
-                        if (USE_LOCAL_PATH) {
-                            content['backgroundImageUrl'] = localPath + ZmLocalEventPath;
-                        } else {
-                            content['backgroundImageUrl'] = S3Path + S3Key;
-                        }
-                    }
-
-                    renderTemplate.call(this, content);
-
-                    return;
-                });
-            });
+        // Determine if user wants latest alarm from a specific camera or from all cameras.
+        let cameraConfigArray = [];
+        if (typeof cameraName === 'undefined') { // latest alarm from all cameras
+            cameraConfigArray = configObj.cameras;
         } else {
             // Check if user supplied a valid camera name and if so map to zoneminder name.
             const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
@@ -168,8 +102,16 @@ var handlers = {
                 this.emit(':responseReady');
                 return;
             }
+            cameraConfigArray = [{zoneminderName: zoneminderCameraName}];
+        }
 
-            findLatestAlarms(zoneminderCameraName, null, null, 1, (err, data) => {
+        let queryResultArray = [];
+        let queryCount = 0;
+
+        // Use .forEach() to iterate since it creates its own function closure.
+        // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
+        const forEachCall = cameraConfigArray.forEach((element) => {
+            findLatestAlarms(element.zoneminderName, null, null, 1, (err, data) => {
                 if (err) {
                     log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                     this.response.speak('Sorry, I cannot complete the request.');
@@ -177,21 +119,60 @@ var handlers = {
                     return;
                 }
 
+                if (data.length !== 0) {
+                    // Get latest alarm data from this camera.
+                    let alarmData = data[0];
+                    alarmData.zoneminderName = element.zoneminderName;
+                    queryResultArray.push(alarmData);
+                }
 
-                if (data.length === 0) {
+                queryCount++;
+
+                if (queryCount < cameraConfigArray.length) return;
+
+                // All queries finished, check if any alarms were found.
+                if (queryResultArray.length === 0) {
                     this.response.speak('No alarms were found.');
                     this.emit(':responseReady');
                     return;
                 }
 
-                const S3Key = data[0].S3Key;
-                const ZmLocalEventPath = data[0].ZmLocalEventPath;
-                const ZmEventDateTime = data[0].ZmEventDateTime;
+                // Sort all alarms by datetime in descending order.
+                queryResultArray.sort((a, b) => {
+                    const dateTimeA = new Date(a.ZmEventDateTime);
+                    const dateTimeB = new Date(b.ZmEventDateTime);
+                            
+                    if (dateTimeA < dateTimeB) return -1;
 
+                    if (dateTimeA > dateTimeB) return 1;
+
+                    // datetimes must be equal
+                    return 0;
+                });
+
+                // Get alarm with latest datetime.
+                const maxArrElem = queryResultArray.length - 1;
+                const S3Key = queryResultArray[maxArrElem].S3Key;
+                const ZmLocalEventPath = queryResultArray[maxArrElem].ZmLocalEventPath;
+                const ZmEventDateTime = queryResultArray[maxArrElem].ZmEventDateTime;
+                const ZmCameraName = queryResultArray[maxArrElem].zoneminderName;
+                const ZmEventId = queryResultArray[maxArrElem].ZmEventId;
+                const ZmFrameId = queryResultArray[maxArrElem].ZmFrameId;
+
+                // Save alarm data to session attributes.
+                sessionAttributes = {
+                    S3Key: S3Key,
+                    ZmLocalEventPath: ZmLocalEventPath,
+                    ZmEventDateTime: ZmEventDateTime,
+                    ZmCameraName: ZmCameraName,
+                    ZmEventId: ZmEventId,
+                    ZmFrameId: ZmFrameId
+                };
+                             
                 // Check if user has a display and if not just return alarm info w/o image.
                 if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-                    speechOutput = 'Last alarm from '+cameraName+' was on '+
-                        timeConverter(Date.parse(ZmEventDateTime));
+                    const speechOutput = 'Last alarm was from '+ZmCameraName+' on '+
+                            timeConverter(Date.parse(ZmEventDateTime));
                     this.response.speak(speechOutput);
                     this.emit(':responseReady');
                     return;
@@ -209,34 +190,42 @@ var handlers = {
                 }
 
                 const content = {
-                    hasDisplaySpeechOutput: 'Showing most recent alarm from '+cameraName+' camera.',
+                    hasDisplaySpeechOutput: `Showing most recent alarm from ${ZmCameraName} camera.`,
+                    hasDisplayRepromptText: 'You can ask zone minder for something else.',
                     bodyTemplateContent: timeConverter(Date.parse(ZmEventDateTime)),
+                    title: `${ZmCameraName}`,
                     templateToken: 'ShowImage',
-                    askOrTell: ':tell',
-                    sessionAttributes: this.attributes
+                    askOrTell: ':ask',
+                    sessionAttributes: sessionAttributes
                 };
 
-                if (USE_IMAGES_FLAG) {
-                    if (USE_LOCAL_PATH) {
-                        content['backgroundImageUrl'] = localPath + ZmLocalEventPath;
-                    } else {
-                        content['backgroundImageUrl'] = S3Path + S3Key;
-                    }
+                if (USE_LOCAL_PATH) {
+                    content['backgroundImageUrl'] = localPath + ZmLocalEventPath;
+                } else {
+                    content['backgroundImageUrl'] = S3Path + S3Key;
                 }
 
                 renderTemplate.call(this, content);
-
-                return;
             });
-        }
+        });
+
+        // Direct Alexa to say a wait message to user since operation may take a while.
+        // This may reduce user perceived latency. 
+        const waitMessage = 'Please wait.';
+        const directiveServiceCall = callDirectiveService(this.event, waitMessage);
+        Promise.all([directiveServiceCall, forEachCall]).then(() => {
+            log('INFO', 'Generated images with interstitial content.');
+        });
     },
     // Show a list of recent alarms on the screen for user selection.
     'Alarms': function() {
         log('INFO', `Alarm Events: ${JSON.stringify(this.event)}`);
 
+        let sessionAttributes = this.event.session.attributes;
+
         // Check if user has a display.
         if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-            speechOutput = 'Sorry, I need a display to do that.';
+            const speechOutput = 'Sorry, I need a display to do that.';
             this.response.speak(speechOutput);
             this.emit(':responseReady');
             return;
@@ -245,90 +234,133 @@ var handlers = {
         const cameraName = this.event.request.intent.slots.Location.value;
         log('INFO', `User supplied camera name: ${cameraName}`);
 
-        // Check if user supplied a valid camera name and if so map to zoneminder name.
-        const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
-        log('INFO', `ZM camera name: ${zoneminderCameraName}`);
-        if (zoneminderCameraName === '') {
-            log('ERROR', `Bad camera name: ${cameraName}`);
-            this.response.speak('Sorry, I cannot find that camera name.');
-            this.emit(':responseReady');
-            return;
+        // Determine if user wants latest alarms from a specific camera or from all cameras.
+        let cameraConfigArray = [];
+        let numberOfAlarmsToFind = 0;
+        if (typeof cameraName === 'undefined') { // latest alarms from all cameras
+            cameraConfigArray = configObj.cameras;
+            numberOfAlarmsToFind = 1;
+        } else {
+            // Check if user supplied a valid camera name and if so map to zoneminder name.
+            const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
+            log('INFO', `ZM camera name: ${zoneminderCameraName}`);
+            if (zoneminderCameraName === '') {
+                log('ERROR', `Bad camera name: ${cameraName}`);
+                this.response.speak('Sorry, I cannot find that camera name.');
+                this.emit(':responseReady');
+                return;
+            }
+            cameraConfigArray = [{zoneminderName: zoneminderCameraName}];
+            numberOfAlarmsToFind = 10;
         }
 
-        findLatestAlarms(zoneminderCameraName, null, null, 10, (err, data) => {
-            if (err) {
-                log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
-                this.response.speak('Sorry, I cannot complete the request.');
-                this.emit(':responseReady');
-                return;
-            }
-
-            if (data.length === 0) {
-                this.response.speak('No alarms were found.');
-                this.emit(':responseReady');
-                return;
-            }
-
-            let jsonData = {};
-            let token = 1;
-            listItems = [];
-
-            data.forEach((item) => {
-                //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
-                const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
-                let imageUrl = '';
-                if (USE_LOCAL_PATH) {
-                    imageUrl = localPath + item.ZmLocalEventPath;
-                } else {
-                    imageUrl = S3Path + item.S3Key;
+        let queryCount = 0;
+        let queryResultArray = [];
+        const forEachCall = cameraConfigArray.forEach((element) => {
+            findLatestAlarms(element.zoneminderName, null, null, numberOfAlarmsToFind, (err, data) => {
+                if (err) {
+                    log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
+                    this.response.speak('Sorry, I cannot complete the request.');
+                    this.emit(':responseReady');
+                    return;
                 }
-              
-                jsonData = {
-                    'token': token.toString(),
-                    'image': {
-                        'contentDescription': cameraName,
-                        'sources': [
-                            {
-                                'url': imageUrl
-                            }
-                        ]
-                    },
-                    'textContent': {
-                        'primaryText': {
-                            'text': datetime,
-                            'type': 'PlainText'
-                        },
-                        'secondaryText': {
-                            'text': '',
-                            'type': 'PlainText'
-                        },
-                        'tertiaryText': {
-                            'text': '',
-                            'type': 'PlainText'
-                        }
+
+                // Get latest alarm data from this camera.
+                data.forEach(item => {
+                    let alarmData = item;
+                    alarmData.zoneminderName = element.zoneminderName;
+                    queryResultArray.push(alarmData);
+                });
+
+                queryCount++;
+
+                if (queryCount < cameraConfigArray.length) return;
+
+                // All queries finished, check if any alarms were found.
+                if (queryResultArray.length === 0) {
+                    this.response.speak('No alarms were found.');
+                    this.emit(':responseReady');
+                    return;
+                }
+
+                // Sort all alarms by datetime in descending order.
+                queryResultArray.sort((a, b) => {
+                    const dateTimeA = new Date(a.ZmEventDateTime);
+                    const dateTimeB = new Date(b.ZmEventDateTime);
+                            
+                    if (dateTimeA < dateTimeB) return -1;
+
+                    if (dateTimeA > dateTimeB) return 1;
+
+                    // datetimes must be equal
+                    return 0;
+                });
+
+                let token = 1;
+                listItems = [];
+                queryResultArray.forEach((item) => {
+                    //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
+                    const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
+                    let imageUrl = '';
+                    if (USE_LOCAL_PATH) {
+                        imageUrl = localPath + item.ZmLocalEventPath;
+                    } else {
+                        imageUrl = S3Path + item.S3Key;
                     }
+              
+                    let listItem = {
+                        'templateData': {
+                            'token': token.toString(),
+                            'image': {
+                                'contentDescription': item.zoneminderName,
+                                'sources': [
+                                    {
+                                        'url': imageUrl
+                                    }
+                                ]
+                            },
+                            'textContent': {
+                                'primaryText': {
+                                    'text': item.zoneminderName,
+                                    'type': 'PlainText'
+                                },
+                                'secondaryText': {
+                                    'text': datetime,
+                                    'type': 'PlainText'
+                                },
+                                'tertiaryText': {
+                                    'text': '',
+                                    'type': 'PlainText'
+                                }
+                            }
+                        },
+                        'alarmData': item
+                    };
+                    listItems.push(listItem);
+                    token++;
+                });
+
+                const content = {
+                    hasDisplaySpeechOutput: 'Showing most recent alarms',
+                    hasDisplayRepromptText: 'You can ask to see an alarm by number, or touch it.',
+                    templateToken: 'ShowImageList',
+                    askOrTell: ':ask',
+                    listItems: listItems.map(obj => obj.templateData), // only include templateData
+                    hint: 'select number 1',
+                    title: 'Most recent alarms.',
+                    sessionAttributes: sessionAttributes
                 };
-
-                listItems.push(jsonData);
-
-                token++;
+        
+                renderTemplate.call(this, content);
             });
+        });
 
-            const content = {
-                hasDisplaySpeechOutput: 'Showing most recent alarms from '+cameraName,
-                templateToken: 'ShowImageList',
-                askOrTell: ':ask',
-                listItems: listItems,
-                hint: 'select number 1',
-                title: 'Most recent alarms from '+cameraName+'.',
-                sessionAttributes: this.attributes
-            };
-
-            /*if (USE_IMAGES_FLAG) {
-                content['backgroundImageUrl'] = S3Path + S3Key;
-            }*/
-
-            renderTemplate.call(this, content);
+        // Direct Alexa to say a wait message to user since operation may take a while.
+        // This may reduce user perceived latency. 
+        const waitMessage = 'Please wait.';
+        const directiveServiceCall = callDirectiveService(this.event, waitMessage);
+        Promise.all([directiveServiceCall, forEachCall]).then(() => {
+            log('INFO', 'Generated images with interstitial content.');
         });
     },
     // Handle user selecting an item on the screen by touch.
@@ -336,16 +368,16 @@ var handlers = {
         log('INFO', `ElementSelected: ${JSON.stringify(this.event)}`);
 
         const item = parseInt(this.event.request.token, 10);
-        const itemUrl = listItems[item - 1].image.sources[0].url;
-        const itemDateTime = listItems[item - 1].textContent.primaryText.text;
-
+        const itemUrl = listItems[item - 1].templateData.image.sources[0].url;
+        const itemDateTime = listItems[item - 1].templateData.textContent.primaryText.text;
         const content = {
             hasDisplaySpeechOutput: 'Showing selected alarm.',
+            hasDisplayRepromptText: 'You can ask zone minder for something else.',
             bodyTemplateContent: itemDateTime,
             backgroundImageUrl: itemUrl,
             templateToken: 'ShowImage',
-            askOrTell: ':tell',
-            sessionAttributes: this.attributes
+            askOrTell: ':ask',
+            sessionAttributes: listItems[item - 1].alarmData // Save attributes to generate video later.
         };
 
         renderTemplate.call(this, content);
@@ -354,40 +386,110 @@ var handlers = {
     'SelectItem': function() {
         log('INFO', `SelectItem: ${JSON.stringify(this.event)}`);
 
-        let item = undefined;
-
         if (isNaN(this.event.request.intent.slots.number.value)) {
             log('ERROR', `Bad value. ${this.event.request.intent.slots.number.value}`);
             this.response.speak('Sorry, I cannot complete the request.');
             this.emit(':responseReady');
             return;
-        } else {
-            item = parseInt(this.event.request.intent.slots.number.value, 10);
         }
 
-        const itemUrl = listItems[item - 1].image.sources[0].url;
-        const itemDateTime = listItems[item - 1].textContent.primaryText.text;
-
+        const item = parseInt(this.event.request.intent.slots.number.value, 10);
+        const itemUrl = listItems[item - 1].templateData.image.sources[0].url;
+        const itemDateTime = listItems[item - 1].templateData.textContent.primaryText.text;
         const content = {
             hasDisplaySpeechOutput: 'Showing selected alarm.',
+            hasDisplayRepromptText: 'You can ask zone minder for something else.',
             bodyTemplateContent: itemDateTime,
             backgroundImageUrl: itemUrl,
             templateToken: 'ShowImage',
-            askOrTell: ':tell',
-            sessionAttributes: this.attributes
+            askOrTell: ':ask',
+            sessionAttributes: listItems[item - 1].alarmData // Save attributes to generate video later.
         };
 
         renderTemplate.call(this, content);
     },
     // Show video of an alarm.
-    //'AMAZON.PlaybackAction<object@VideoCreativeWork>': function() {
     'AlarmClip': function() {
         log('INFO', `AMAZON.PlaybackAction: ${JSON.stringify(this.event)}`);
 
-        //let cameraName = this.event.request.intent.slots['object.name'].value;
+        let sessionAttributes = this.event.session.attributes;
+
+        // Callback to pass to https call that generates alarm clip on server. 
+        const showClipCallback = (err, resStr) => {
+            if (err) {
+                log('ERROR', `PlayBack httpsReq: ${err}`);
+                this.response.speak('sorry, I can\'t complete the request');
+                this.emit(':responseReady');
+                return;
+            }
+
+            const result = safelyParseJSON(resStr);
+            if (result === null || result.success === false) {
+                log('ERROR', `Playback result: ${JSON.stringify(result)}`);
+                this.response.speak('sorry, I cannot complete the request');
+                this.emit(':responseReady');
+                return;
+            }
+
+            const content = {
+                hasDisplaySpeechOutput: 'Showing clip of selected alarm.',
+                uri: credsObj.alarmVideoPath,
+                title: 'Alarm Video',
+                templateToken: 'ShowVideo',
+                sessionAttributes: {} // clear session attributes
+            };
+
+            renderTemplate.call(this, content);
+        };
+
+        // Check if session attributes were set.
+        // If they were then an alarm was just viewed and user wants to see video.
+        // If not then skip this and process request normally. 
+        if (Object.keys(sessionAttributes).length !== 0) {
+            // Session contains latest alarm frame, event ID and datetime.
+            const lastEvent = sessionAttributes.ZmEventId;
+            const ZmEventDateTime = sessionAttributes.ZmEventDateTime;
+            const lastFrame = sessionAttributes.ZmFrameId;
+            // Number of frames before last frame to show in video. 
+            const IN_SESSION_PRE_FRAMES = 100;
+            let startFrame = 0;
+            if (lastFrame > IN_SESSION_PRE_FRAMES) {
+                startFrame = lastFrame - IN_SESSION_PRE_FRAMES;
+            }
+            // Number of frames after last frame to show in video.
+            const IN_SESSION_POST_FRAMES = 100;
+            const endFrame = lastFrame + IN_SESSION_POST_FRAMES;
+
+            log('INFO', 'Showing video in session.');
+            log('INFO', `Event ID of latest alarm image: ${lastEvent} from ${ZmEventDateTime}`);
+            log('INFO', `Start Frame of latest alarm image: ${startFrame}`);
+            log('INFO', `End Frame of latest alarm image: ${endFrame}`);
+
+            const method   = 'GET';
+            const path     = '/cgi/gen-vid.py?event='+lastEvent.toString()+
+                             '&start_frame='+startFrame.toString()+'&end_frame='+endFrame.toString();
+            const postData = '';
+            const text     = true;
+            const user     = credsObj.cgiUser;
+            const pass     = credsObj.cgiPass;
+            const httpsCall = httpsReq(method, path, postData, text, user, pass, showClipCallback);
+
+            // Direct Alexa to say a wait message to user since operation may take a while.
+            // This may reduce user perceived latency.
+            const waitMessage = 'Please wait.';
+            const directiveServiceCall = callDirectiveService(this.event, waitMessage);
+            Promise.all([directiveServiceCall, httpsCall]).then(() => {
+                log('INFO', 'Generated video with interstitial content.');
+            });
+
+            return;
+        }
+
+        // Delegate to Alexa for camera location slot confirmation.
+        let delegateState = delegateToAlexa.call(this);
+        if (delegateState == null) return;
 
         const cameraName = this.event.request.intent.slots.Location.value;
-        console.log(cameraName);
 
         // Check if user supplied a valid camera name and if so map to zoneminder name.
         const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
@@ -399,7 +501,9 @@ var handlers = {
             return;
         }
 
-        findLatestAlarms(zoneminderCameraName, null, null, 100, (err, data) => {
+        // How far back to go to find first alarm for given camera. 
+        const NUM_RECORDS_TO_QUERY = 100;
+        findLatestAlarms(zoneminderCameraName, null, null, NUM_RECORDS_TO_QUERY, (err, data) => {
             if (err) {
                 log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                 this.response.speak('Sorry, I cannot complete the request.');
@@ -415,7 +519,7 @@ var handlers = {
 
             // Check if user has a display and if not return error message.
             if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-                speechOutput = 'Sorry, I cannot play video on this device';
+                const speechOutput = 'Sorry, I cannot play video on this device';
                 this.response.speak(speechOutput);
                 this.emit(':responseReady');
                 return;
@@ -433,23 +537,29 @@ var handlers = {
                 }
             });
 
-            // Pad clip.
+            // Pad clip to make sure it not too short. 
             if (startFrame < 20) {
-                startFrame-= startFrame;
+                startFrame -= startFrame;
             } else {
-                startFrame-= 20;
+                startFrame -= 20;
             }
 
             if (endFrame < 20) {
-                endFrame+= endFrame;
+                endFrame += endFrame;
             } else {
-                endFrame+= 20;
+                endFrame += 20;
+            }
+
+            // Limit clip to make sure its not too long. 
+            if ((endFrame - startFrame) > 500) {
+                endFrame = startFrame + 500;
+                log('INFO', 'Limited duration of clip to 500 frames.');
             }
 
             const ZmEventDateTime = data[0].ZmEventDateTime;
             log('INFO', `Event ID of latest alarm image: ${lastEvent} from ${ZmEventDateTime}`);
-            log('INFO', `Start Frame of latest alarm image: ${startFrame} from ${ZmEventDateTime}`);
-            log('INFO', `End Frame of latest alarm image: ${endFrame} from ${ZmEventDateTime}`);
+            log('INFO', `Start Frame of latest alarm image: ${startFrame}`);
+            log('INFO', `End Frame of latest alarm image: ${endFrame}`);
 
             const method   = 'GET';
             const path     = '/cgi/gen-vid.py?event='+lastEvent.toString()+
@@ -458,33 +568,14 @@ var handlers = {
             const text     = true;
             const user     = credsObj.cgiUser;
             const pass     = credsObj.cgiPass;
+            const httpsCall = httpsReq(method, path, postData, text, user, pass, showClipCallback);
 
-            httpsReq (method, path, postData, text, user, pass, (err, resStr) => {
-                if (err) {
-                    console.log('ERROR PlayBack httpsReq: ' + err);
-                    this.response.speak('sorry, I can\'t complete the request');
-                    this.emit(':responseReady');
-                    return;
-                }
-
-                const result = safelyParseJSON(resStr);
-                if (result === null || result.success === false) {
-                    log('ERROR', `Playback result: ${JSON.stringify(result)}`);
-                    this.response.speak('sorry, I cannot complete the request');
-                    this.emit(':responseReady');
-                    return;
-                }
-
-                const content = {
-                    hasDisplaySpeechOutput: 'Showing clip of selected alarm.',
-                    uri: credsObj.alarmVideoPath,
-                    title: 'Alarm Video',
-                    templateToken: 'ShowVideo',
-                    sessionAttributes: this.attributes
-                };
-
-                renderTemplate.call(this, content);
-        
+            // Direct Alexa to say a wait message to user since operation may take a while.
+            // This may reduce user perceived latency.
+            const waitMessage = 'Please wait.';
+            const directiveServiceCall = callDirectiveService(this.event, waitMessage);
+            Promise.all([directiveServiceCall, httpsCall]).then(() => {
+                log('INFO', 'Generated video with interstitial content.');
             });
         });
     },
@@ -492,9 +583,11 @@ var handlers = {
     'Faces': function() {
         log('INFO', `Faces Event: ${JSON.stringify(this.event)}`);
 
+        let sessionAttributes = this.event.session.attributes;
+
         // Check if user has a display.
         if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-            speechOutput = 'Sorry, I need a display to do that.';
+            const speechOutput = 'Sorry, I need a display to do that.';
             this.response.speak(speechOutput);
             this.emit(':responseReady');
             return;
@@ -503,7 +596,7 @@ var handlers = {
         // Get camera name and face name from slots.
         const cameraName = this.event.request.intent.slots.Location.value;
         log('INFO', `User supplied camera name: ${cameraName}`);
-        if (typeof(cameraName) === 'undefined') {
+        if (typeof cameraName === undefined) {
             log('ERROR', 'cameraName is undefined.');
             this.response.speak('Sorry, I cannot complete the request.');
             this.emit(':responseReady');
@@ -607,65 +700,79 @@ var handlers = {
             });
 
             const content = {
-                hasDisplaySpeechOutput: 'Showing most recent alarms from '+cameraName+' for '+faceName,
+                hasDisplaySpeechOutput: `Showing most recent alarms from ${cameraName} for ${faceName}`,
+                hasDisplayRepromptText: 'You can ask zone minder for something else.',
                 templateToken: 'ShowImageList',
                 askOrTell: ':ask',
                 listItems: listItems,
                 hint: 'select number 1',
-                title: 'Most recent alarms from '+cameraName+' for '+faceName+'.',
-                sessionAttributes: this.attributes
+                title: `Most recent alarms from ${cameraName} for ${faceName}.`,
+                sessionAttributes: sessionAttributes
             };
-
-            /*if (USE_IMAGES_FLAG) {
-                content['backgroundImageUrl'] = S3Path + S3Key;
-            }*/
 
             renderTemplate.call(this, content);
         });
     },
     'AMAZON.HelpIntent': function () {
         console.log('Help event: ' + JSON.stringify(this.event));
-        if (supportsDisplay.call(this) || isSimulator.call(this)) {
-            let content = {
-                'hasDisplaySpeechOutput' : welcomeReprompt,
-                'title' : 'Help Information.',
-                'textContent' : welcomeReprompt,
-                'templateToken' : 'SingleItemView',
-                'askOrTell': ':ask',
-                'sessionAttributes' : this.attributes
-            };
-            renderTemplate.call(this, content);
-        } else {
-            this.emit(':ask', welcomeReprompt);
+
+        // If user does not have a display then only provide audio help. 
+        if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
+            const helpOutput = `Here are some example commands ${helpMessages.join(' ')}`;
+            const helpReprompt = 'Please say a command.';
+            this.emit(':ask', helpOutput, helpReprompt);
+            return;
         }
+
+        const helpText = `Here are some example commands: ${helpMessages.join()}`;
+
+        const content = {
+            templateToken: 'ShowText',
+            title: 'zoneminder help',
+            bodyText: helpText,
+            hasDisplaySpeechOutput: 'Here are some example commands you can say.',
+            hasDisplayRepromptText: 'Please say a command.',
+            backButton: 'HIDDEN',
+            hint: 'help',
+            askOrTell: ':ask',
+            sessionAttributes: this.attributes
+        };
+
+        renderTemplate.call(this, content);
     },
     'AMAZON.CancelIntent': function () {
         console.log('Cancel event: ' + JSON.stringify(this.event));
-        speechOutput = 'goodbye';
-        this.emit(':tell', speechOutput);
+        const speechOutput = 'goodbye';
+        this.response.speak(speechOutput);
+        this.emit(':responseReady');
+        return;
     },
     'AMAZON.StopIntent': function () {
         console.log('Stop event: ' + JSON.stringify(this.event));
-        speechOutput = 'goodbye';
-        this.emit(':tell', speechOutput);
+        const speechOutput = 'goodbye';
+        this.response.speak(speechOutput);
+        this.emit(':responseReady');
+        return;
     },
     'SessionEndedRequest': function () {
         console.log('Session ended event: ' + JSON.stringify(this.event));
-        speechOutput = 'goodbye';
-        this.emit(':tell', speechOutput);
+        const speechOutput = 'goodbye';
+        this.response.speak(speechOutput);
+        this.emit(':responseReady');
+        return;
     },
     'Unhandled': function() {
         console.log('Unhandled event: ' + JSON.stringify(this.event));
-        speechOutput = 'goodbye';
-        this.emit(':tell', speechOutput);
-    },
+        const speechOutput = 'Something went wrong. Goodbye.';
+        this.response.speak(speechOutput);
+        this.emit(':responseReady');
+        return;
+    }
 };
 
 exports.handler = (event, context) => {
-    var alexa = Alexa.handler(event, context);
+    const alexa = Alexa.handler(event, context);
     alexa.appId = APP_ID;
-    // To enable string internationalization (i18n) features, set a resources object.
-    //alexa.resources = languageStrings;
     alexa.registerHandlers(handlers);
     alexa.execute();
 };
@@ -745,7 +852,7 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
     };
 
     // If a face name was provided then add it to query.
-    // If provided objectName is ignored (it has to be a person).
+    // If face provided then objectName is ignored (it has to be a person).
     if (faceName !== null) {
         projectionExpression += ', Labels';
         filterExpression += ' AND contains(Labels, :face)';
@@ -798,6 +905,22 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
 }
 
 //==============================================================================
+//============= Alexa Progressive Response Helper Functions  ===================
+//==============================================================================
+function callDirectiveService(event, message) {
+    // Instantiate Alexa Directive Service
+    const ds = new Alexa.services.DirectiveService();
+    // Extract Variables
+    const requestId = event.request.requestId;
+    const endpoint = event.context.System.apiEndpoint;
+    const token = event.context.System.apiAccessToken;
+    // Instantiate Progressive Response Directive
+    const directive = new Alexa.directives.VoicePlayerSpeakDirective(requestId, message);
+    // Store functions as data in queue
+    return ds.enqueue(directive, endpoint, token);
+}
+
+//==============================================================================
 //==================== Alexa Delegate Helper Functions  ========================
 //==============================================================================
 function delegateToAlexa() {
@@ -806,7 +929,7 @@ function delegateToAlexa() {
 
     if (this.event.request.dialogState === 'STARTED') {
         //console.log("in dialog state STARTED");
-        var updatedIntent = this.event.request.intent;
+        const updatedIntent = this.event.request.intent;
         //optionally pre-fill slots: update the intent object with slot values for which
         //you have defaults, then return Dialog.Delegate with this updated intent
         // in the updatedIntent property
@@ -894,7 +1017,7 @@ function isSimulator() {
 }
 
 function renderTemplate (content) {
-    console.log('renderTemplate' + content.templateToken);
+    log('INFO', `renderTemplate ${content.templateToken}`);
 
     let response = {};
    
@@ -908,13 +1031,8 @@ function renderTemplate (content) {
                     'type': 'SSML',
                     'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
                 },
-                'reprompt': {
-                    'outputSpeech': {
-                        'type': 'SSML',
-                        'ssml': ''
-                    }
-                },
-                'card': null,
+                'reprompt': null,
+                'card': null, // TODO: get cards to work.
                 'directives': [
                     {
                         'type': 'VideoApp.Launch',
@@ -939,9 +1057,9 @@ function renderTemplate (content) {
                 'directives': [
                     {
                         'type': 'Display.RenderTemplate',
-                        'backButton': 'HIDDEN',
                         'template': {
                             'type': 'ListTemplate2',
+                            'backButton': 'VISIBLE',
                             'title': content.title,
                             'token': content.templateToken,
                             'listItems': content.listItems
@@ -962,29 +1080,66 @@ function renderTemplate (content) {
                 'reprompt': {
                     'outputSpeech': {
                         'type': 'SSML',
-                        'ssml': ''
+                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
                     }
                 },
+                'card': null, // TODO: get cards to work.
                 'shouldEndSession': content.askOrTell === ':tell'
             },
             'sessionAttributes': content.sessionAttributes
         };
 
         if(content.backgroundImageUrl) {
-            // When we have images, create a sources object.
-
             let sources = [
                 {
-                    'size': 'SMALL',
-                    'url': content.backgroundImageUrl
-                },
-                {
-                    'size': 'LARGE',
                     'url': content.backgroundImageUrl
                 }
             ];
+            response['response']['directives'][0]['template']['backgroundImage'] = {};
+            response['response']['directives'][0]['template']['backgroundImage']['sources'] = sources;
+        }
 
-                // Add the image sources object to the response.
+        // Send the response to Alexa.
+        this.context.succeed(response);
+        break;
+    case 'ShowTextList':
+        response = {
+            'version': '1.0',
+            'response': {
+                'directives': [
+                    {
+                        'type': 'Display.RenderTemplate',
+                        'template': {
+                            'type': 'ListTemplate1',
+                            'backButton': 'HIDDEN',
+                            'title': content.title,
+                            'token': content.templateToken,
+                            'listItems': content.listItems
+                        }
+                    }
+                ],
+                'outputSpeech': {
+                    'type': 'SSML',
+                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
+                },
+                'reprompt': {
+                    'outputSpeech': {
+                        'type': 'SSML',
+                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
+                    }
+                },
+                'card': null, // TODO: get cards to work.
+                'shouldEndSession': content.askOrTell === ':tell'
+            },
+            'sessionAttributes': content.sessionAttributes
+        };
+
+        if(content.backgroundImageUrl) {
+            let sources = [
+                {
+                    'url': content.backgroundImageUrl
+                }
+            ];
             response['response']['directives'][0]['template']['backgroundImage'] = {};
             response['response']['directives'][0]['template']['backgroundImage']['sources'] = sources;
         }
@@ -993,23 +1148,16 @@ function renderTemplate (content) {
         this.context.succeed(response);
         break;
     case 'ShowImage':
-        //  "hasDisplaySpeechOutput" : response + " " + EXIT_SKILL_MESSAGE,
-        //  "bodyTemplateContent" : getFinalScore(this.attributes["quizscore"], this.attributes["counter"]),
-        //  "templateToken" : "FinalScoreView",
-        //  "askOrTell": ":tell",
-        //  "hint":"start a quiz",
-        //  "sessionAttributes" : this.attributes
-        //  "backgroundImageUrl"
         response = {
             'version': '1.0',
             'response': {
                 'directives': [
                     {
                         'type': 'Display.RenderTemplate',
-                        'backButton': 'HIDDEN',
                         'template': {
                             'type': 'BodyTemplate6',
-                            //"title": content.title,
+                            'backButton': 'VISIBLE',
+                            'title': content.title,
                             'token': content.templateToken,
                             'textContent': {
                                 'primaryText': {
@@ -1018,7 +1166,8 @@ function renderTemplate (content) {
                                 }
                             }
                         }
-                    },{
+                    },
+                    {
                         'type': 'Hint',
                         'hint': {
                             'type': 'PlainText',
@@ -1033,174 +1182,29 @@ function renderTemplate (content) {
                 'reprompt': {
                     'outputSpeech': {
                         'type': 'SSML',
-                        'ssml': ''
+                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
                     }
                 },
-                'shouldEndSession': content.askOrTell== ':tell',
-
+                'card': null, // TODO: get cards to work.
+                'shouldEndSession': content.askOrTell === ':tell',
             },
             'sessionAttributes': content.sessionAttributes
-
         };
 
         if(content.backgroundImageUrl) {
-            //when we have images, create a sources object
-
             let sources = [
                 {
-                    'size': 'SMALL',
-                    'url': content.backgroundImageUrl
-                },
-                {
-                    'size': 'LARGE',
                     'url': content.backgroundImageUrl
                 }
             ];
-            //add the image sources object to the response
-            response['response']['directives'][0]['template']['backgroundImage']={};
-            response['response']['directives'][0]['template']['backgroundImage']['sources']=sources;
+            response['response']['directives'][0]['template']['backgroundImage'] = {};
+            response['response']['directives'][0]['template']['backgroundImage']['sources'] = sources;
         }
-
-
 
         //Send the response to Alexa
         this.context.succeed(response);
         break;
-
-    case 'ItemDetailsView':
-        response = {
-            'version': '1.0',
-            'response': {
-                'directives': [
-                    {
-                        'type': 'Display.RenderTemplate',
-                        'template': {
-                            'type': 'BodyTemplate3',
-                            'title': content.bodyTemplateTitle,
-                            'token': content.templateToken,
-                            'textContent': {
-                                'primaryText': {
-                                    'type': 'RichText',
-                                    'text': '<font size = \'5\'>'+content.bodyTemplateContent+'</font>'
-                                }
-                            },
-                            'backButton': 'HIDDEN'
-                        }
-                    }
-                ],
-                'outputSpeech': {
-                    'type': 'SSML',
-                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
-                },
-                'reprompt': {
-                    'outputSpeech': {
-                        'type': 'SSML',
-                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
-                    }
-                },
-                'shouldEndSession': content.askOrTell== ':tell',
-                'card': {
-                    'type': 'Simple',
-                    'title': content.simpleCardTitle,
-                    'content': content.simpleCardContent
-                }
-            },
-            'sessionAttributes': content.sessionAttributes
-
-        };
-
-        if(content.imageSmallUrl && content.imageLargeUrl) {
-            //when we have images, create a sources object
-            //TODO switch template to one without picture?
-            let sources = [
-                {
-                    'size': 'SMALL',
-                    'url': content.imageSmallUrl
-                },
-                {
-                    'size': 'LARGE',
-                    'url': content.imageLargeUrl
-                }
-            ];
-            //add the image sources object to the response
-            response['response']['directives'][0]['template']['image']={};
-            response['response']['directives'][0]['template']['image']['sources']=sources;
-        }
-        //Send the response to Alexa
-        console.log('ready to respond (ItemDetailsView): '+JSON.stringify(response));
-        this.context.succeed(response);
-        break;
-    case 'MultipleChoiceListView':
-        console.log ('listItems '+JSON.stringify(content.listItems));
-        response = {
-            'version': '1.0',
-            'response': {
-                'directives': [
-                    {
-                        'type': 'Display.RenderTemplate',
-                        'template': {
-                            'type': 'ListTemplate1',
-                            'title': content.listTemplateTitle,
-                            'token': content.templateToken,
-                            'listItems':content.listItems,
-                            'backgroundImage': {
-                                'sources': [
-                                    {
-                                        'size': 'SMALL',
-                                        'url': content.backgroundImageSmallUrl
-                                    },
-                                    {
-                                        'size': 'LARGE',
-                                        'url': content.backgroundImageLargeUrl
-                                    }
-                                ]
-                            },
-                            'backButton': 'HIDDEN'
-                        }
-                    }
-                ],
-                'outputSpeech': {
-                    'type': 'SSML',
-                    'ssml': '<speak>'+content.hasDisplaySpeechOutput+'</speak>'
-                },
-                'reprompt': {
-                    'outputSpeech': {
-                        'type': 'SSML',
-                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
-                    }
-                },
-                'shouldEndSession': content.askOrTell== ':tell',
-                'card': {
-                    'type': 'Simple',
-                    'title': content.simpleCardTitle,
-                    'content': content.simpleCardContent
-                }
-            },
-            'sessionAttributes': content.sessionAttributes
-
-        };
-
-        if(content.backgroundImageLargeUrl) {
-            //when we have images, create a sources object
-            //TODO switch template to one without picture?
-            let sources = [
-                {
-                    'size': 'SMALL',
-                    'url': content.backgroundImageLargeUrl
-                },
-                {
-                    'size': 'LARGE',
-                    'url': content.backgroundImageLargeUrl
-                }
-            ];
-            //add the image sources object to the response
-            response['response']['directives'][0]['template']['backgroundImage']={};
-            response['response']['directives'][0]['template']['backgroundImage']['sources']=sources;
-        }
-        console.log('ready to respond (MultipleChoiceList): '+JSON.stringify(response));
-        this.context.succeed(response);
-        break;
-    case 'SingleItemView':
+    case 'ShowText':
         response = {
             'version': '1.0',
             'response': {
@@ -1209,15 +1213,22 @@ function renderTemplate (content) {
                         'type': 'Display.RenderTemplate',
                         'template': {
                             'type': 'BodyTemplate1',
+                            'backButton': content.backButton,
                             'title': content.title,
                             'token': content.templateToken,
                             'textContent': {
                                 'primaryText': {
                                     'type': 'RichText',
-                                    'text': '<font size = \'7\'>'+content.textContent+'</font>'
+                                    'text': '<font size = \'7\'>'+content.bodyText+'</font>'
                                 }
-                            },
-                            'backButton': 'HIDDEN'
+                            }
+                        }
+                    },
+                    {
+                        'type': 'Hint',
+                        'hint': {
+                            'type': 'PlainText',
+                            'text': content.hint
                         }
                     }
                 ],
@@ -1228,21 +1239,32 @@ function renderTemplate (content) {
                 'reprompt': {
                     'outputSpeech': {
                         'type': 'SSML',
-                        'ssml': ''
+                        'ssml': '<speak>'+content.hasDisplayRepromptText+'</speak>'
                     }
                 },
-                'shouldEndSession': content.askOrTell== ':tell',
+                'card': null, // TODO: get cards to work.
+                'shouldEndSession': content.askOrTell === ':tell',
             },
             'sessionAttributes': content.sessionAttributes
         };
-        console.log('ready to respond (SingleItemView): '+JSON.stringify(response));
+
+        if(content.backgroundImageUrl) {
+            let sources = [
+                {
+                    'url': content.backgroundImageUrl
+                }
+            ];
+            response['response']['directives'][0]['template']['backgroundImage'] = {};
+            response['response']['directives'][0]['template']['backgroundImage']['sources'] = sources;
+        }
+
+        //Send the response to Alexa
         this.context.succeed(response);
         break;
     default:
-        this.response.speak('Thanks for playing, goodbye');
+        this.response.speak('Thanks for using zone minder, goodbye');
         this.emit(':responseReady');
     }
-
 }
 
 //==============================================================================
