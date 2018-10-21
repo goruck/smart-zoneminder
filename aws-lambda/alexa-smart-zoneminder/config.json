@@ -20,7 +20,8 @@
     },
     {
       "databaseName": "dog",
-      "friendlyNames": ["polly", "pauli", "dog", "pet"]
+      "friendlyNames": ["polly", "pauli", "dog", "pet", "pauly",
+        "poly"]
     }
   ],
   "cameras":[

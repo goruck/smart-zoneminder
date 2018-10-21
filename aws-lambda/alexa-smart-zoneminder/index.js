@@ -12,6 +12,7 @@
 'use strict';
 const fs = require('fs');
 const Alexa = require('alexa-sdk');
+const AWS = require('aws-sdk');
 
 // Get configuration. 
 let file = fs.readFileSync('./config.json');
@@ -30,18 +31,18 @@ if (credsObj === null) {
 // Define some constants.
 // TODO - clean this up.
 const APP_ID = credsObj.alexaAppId;
-const S3Path = 'https://s3-' + configObj.awsRegion +
+const S3_PATH = 'https://s3-' + configObj.awsRegion +
     '.amazonaws.com/' + configObj.zmS3Bucket + '/';
-const localPath = 'https://cam.lsacam.com:9443';
+const LOCAL_PATH = 'https://cam.lsacam.com:9443';
 const USE_LOCAL_PATH = true;
 
 // Help messages.
 const helpMessages = ['Show Last Event',
     'Show Last Video',
-    'Show Event from front porch',
-    'Show Events from back porch Monday at 10 AM',
+    'Show Front Porch Event',
+    'Show Back Porch Events from 1 week ago',
     'Show Video from back yard',
-    'Show Videos from East last week Friday at 3 PM'];
+    'Show Front Gate Events of Lindo from 1 month ago'];
 
 // Holds list items that can be selected on the display or by voice.
 let listItems = [];
@@ -56,8 +57,7 @@ const handlers = {
         let sessionAttributes = this.event.session.attributes;
 
         const welcomeOutput = 'Welcome to zoneminder!';
-        const welcomeReprompt = `Say Show Last Event to view last alarm or say Show 
-            Video to see a recording. You can also say Help to see example commands.`;
+        const welcomeReprompt = 'You can say Help to see example commands.';
 
         // Check if user has a display.
         if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
@@ -79,20 +79,26 @@ const handlers = {
 
         renderTemplate.call(this, content);
     },
-    // Show last alarm from a camera or all cameras.
+    // Show the last alarm from a camera or all cameras.
     'LastAlarm': function() {
         log('INFO', `LastAlarm Event: ${JSON.stringify(this.event)}`);
 
         let sessionAttributes = this.event.session.attributes;
 
+        const personOrThing = this.event.request.intent.slots.PersonOrThing.value;
+        log('INFO', `User supplied person or thing: ${personOrThing}`);
+
+        // Determine if user wants to view an alarm due to a specific person or thing.
+        // Default is to check for general alarm (not due to a specific person or thing).
+        const {findFaceName, findObjectName} = determineFaceAndObjectName(personOrThing);
+        log('INFO', `findFaceName: ${findFaceName}, findObjectName: ${findObjectName}`);
+
         const cameraName = this.event.request.intent.slots.Location.value;
         log('INFO', `User supplied camera name: ${cameraName}`);
 
         // Determine if user wants latest alarm from a specific camera or from all cameras.
-        let cameraConfigArray = [];
-        if (typeof cameraName === 'undefined') { // latest alarm from all cameras
-            cameraConfigArray = configObj.cameras;
-        } else {
+        let cameraConfigArray = configObj.cameras; // default is to check all cameras
+        if (typeof cameraName !== 'undefined') { // check specific camera if given
             // Check if user supplied a valid camera name and if so map to zoneminder name.
             const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
             log('INFO', `ZM camera name: ${zoneminderCameraName}`);
@@ -105,13 +111,29 @@ const handlers = {
             cameraConfigArray = [{zoneminderName: zoneminderCameraName}];
         }
 
+        // Set starting query one week in the past.
+        const dateTime = new Date();
+        const offset = 604800; // 1 week in seconds
+        dateTime.setTime(dateTime.getTime() - (offset * 1000));
+
+        const params = {
+            cameraName: '',
+            faceName: findFaceName,
+            objectName: findObjectName,
+            numberOfAlarms: 1,
+            queryStartDateTime: dateTime.toISOString(),
+            sortOrder: 'descending', // from latest to earliest
+            skipFrame: true // return only 1st frame of event
+        };
+
         let queryResultArray = [];
         let queryCount = 0;
 
         // Use .forEach() to iterate since it creates its own function closure.
         // See https://stackoverflow.com/questions/11488014/asynchronous-process-inside-a-javascript-for-loop.
         const forEachCall = cameraConfigArray.forEach((element) => {
-            findLatestAlarms(element.zoneminderName, null, null, 1, (err, data) => {
+            params.cameraName = element.zoneminderName;
+            findLatestAlarms(params, (err, data) => {
                 if (err) {
                     log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                     this.response.speak('Sorry, I cannot complete the request.');
@@ -168,11 +190,16 @@ const handlers = {
                     ZmEventId: ZmEventId,
                     ZmFrameId: ZmFrameId
                 };
+
+                // Construct speech and text output.
+                let output = `alarm from ${ZmCameraName} camera `;
+                // Append alarm cause to output if given.
+                if (findFaceName || findObjectName) output += `caused by ${personOrThing.toLowerCase()} `;
+                output += `on ${timeConverter(Date.parse(ZmEventDateTime))}`;
                              
                 // Check if user has a display and if not just return alarm info w/o image.
                 if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-                    const speechOutput = 'Last alarm was from '+ZmCameraName+' on '+
-                            timeConverter(Date.parse(ZmEventDateTime));
+                    const speechOutput = output;
                     this.response.speak(speechOutput);
                     this.emit(':responseReady');
                     return;
@@ -190,9 +217,9 @@ const handlers = {
                 }
 
                 const content = {
-                    hasDisplaySpeechOutput: `Showing most recent alarm from ${ZmCameraName} camera.`,
+                    hasDisplaySpeechOutput: output,
                     hasDisplayRepromptText: 'You can ask zone minder for something else.',
-                    bodyTemplateContent: timeConverter(Date.parse(ZmEventDateTime)),
+                    bodyTemplateContent: output,
                     title: `${ZmCameraName}`,
                     templateToken: 'ShowImage',
                     askOrTell: ':ask',
@@ -200,9 +227,9 @@ const handlers = {
                 };
 
                 if (USE_LOCAL_PATH) {
-                    content['backgroundImageUrl'] = localPath + ZmLocalEventPath;
+                    content['backgroundImageUrl'] = LOCAL_PATH + ZmLocalEventPath;
                 } else {
-                    content['backgroundImageUrl'] = S3Path + S3Key;
+                    content['backgroundImageUrl'] = S3_PATH + S3Key;
                 }
 
                 renderTemplate.call(this, content);
@@ -215,11 +242,13 @@ const handlers = {
         const directiveServiceCall = callDirectiveService(this.event, waitMessage);
         Promise.all([directiveServiceCall, forEachCall]).then(() => {
             log('INFO', 'Generated images with interstitial content.');
+        }).catch(err => {
+            log('ERROR', err);
         });
     },
     // Show a list of recent alarms on the screen for user selection.
     'Alarms': function() {
-        log('INFO', `Alarm Events: ${JSON.stringify(this.event)}`);
+        log('INFO', `Alarms Event: ${JSON.stringify(this.event)}`);
 
         let sessionAttributes = this.event.session.attributes;
 
@@ -231,16 +260,24 @@ const handlers = {
             return;
         }
 
+        const personOrThing = this.event.request.intent.slots.PersonOrThing.value;
+        log('INFO', `User supplied person or thing: ${personOrThing}`);
+
+        // Determine if user wants to view an alarm due to a specific person or thing.
+        // Default is to check for general alarm (not due to a specific person or thing).
+        const {findFaceName, findObjectName} = determineFaceAndObjectName(personOrThing);
+        log('INFO', `findFaceName: ${findFaceName}, findObjectName: ${findObjectName}`);
+
         const cameraName = this.event.request.intent.slots.Location.value;
         log('INFO', `User supplied camera name: ${cameraName}`);
 
-        // Determine if user wants latest alarms from a specific camera or from all cameras.
-        let cameraConfigArray = [];
-        let numberOfAlarmsToFind = 0;
-        if (typeof cameraName === 'undefined') { // latest alarms from all cameras
-            cameraConfigArray = configObj.cameras;
-            numberOfAlarmsToFind = 1;
-        } else {
+        // Determine if user wants latest alarm from a specific camera or from all cameras.
+        // Default is to check all cameras.
+        let cameraConfigArray = configObj.cameras;
+        let numberOfAlarmsToFind = 1;
+        let sortOrder = 'descending'; // latest alarm first
+        let output = 'Showing latest alarms from all cameras ';
+        if (typeof cameraName !== 'undefined') { // specific camera was given...
             // Check if user supplied a valid camera name and if so map to zoneminder name.
             const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
             log('INFO', `ZM camera name: ${zoneminderCameraName}`);
@@ -251,13 +288,50 @@ const handlers = {
                 return;
             }
             cameraConfigArray = [{zoneminderName: zoneminderCameraName}];
-            numberOfAlarmsToFind = 10;
+            // The ListTemplate2 Display Template can only handle up to 65 items. 
+            numberOfAlarmsToFind = 65;
+            sortOrder = 'ascending'; // earliest alarm first
+            output = `Showing oldest alarms first from ${zoneminderCameraName} `;
         }
+
+        // Append alarm cause to output if given.
+        if (findFaceName || findObjectName) output += `caused by ${personOrThing.toLowerCase()}`;
+
+        // Calculate query start time.
+        const someTimeAgo = this.event.request.intent.slots.SomeTimeAgo.value;
+        log('INFO', `User supplied query start: ${someTimeAgo}`);
+        let dateTime = new Date(); // current datetime
+        if (typeof someTimeAgo === 'undefined') {
+            // Default to starting query three days in the past.
+            // Note that if any camera has events older then this then they will not be shown.
+            const offset = 259200; // 3 days in seconds
+            dateTime.setTime(dateTime.getTime() - (offset * 1000));
+        } else {
+            // Calculate query start time from user supplied duration.
+            const duration = parseISO8601Duration(someTimeAgo);
+            const offset = (duration.years * 31536000) + (duration.months * 2600640)
+                + (duration.weeks * 604800) + (duration.days  * 86400)
+                + (duration.hours * 3600) + (duration.minutes * 60) + (duration.seconds);
+            dateTime.setTime(dateTime.getTime() - (offset * 1000));
+        }
+        let queryStartDateTime = dateTime.toISOString();
+        log('INFO', `Calculated query start datetime: ${queryStartDateTime}`);
+
+        const params = {
+            cameraName: '',
+            faceName: findFaceName,
+            objectName: findObjectName,
+            numberOfAlarms: numberOfAlarmsToFind,
+            queryStartDateTime: queryStartDateTime,
+            sortOrder: sortOrder,
+            skipFrame: true // return only 1st frame of event
+        };
 
         let queryCount = 0;
         let queryResultArray = [];
         const forEachCall = cameraConfigArray.forEach((element) => {
-            findLatestAlarms(element.zoneminderName, null, null, numberOfAlarmsToFind, (err, data) => {
+            params.cameraName = element.zoneminderName;
+            findLatestAlarms(params, (err, data) => {
                 if (err) {
                     log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                     this.response.speak('Sorry, I cannot complete the request.');
@@ -303,9 +377,9 @@ const handlers = {
                     const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
                     let imageUrl = '';
                     if (USE_LOCAL_PATH) {
-                        imageUrl = localPath + item.ZmLocalEventPath;
+                        imageUrl = LOCAL_PATH + item.ZmLocalEventPath;
                     } else {
-                        imageUrl = S3Path + item.S3Key;
+                        imageUrl = S3_PATH + item.S3Key;
                     }
               
                     let listItem = {
@@ -341,13 +415,13 @@ const handlers = {
                 });
 
                 const content = {
-                    hasDisplaySpeechOutput: 'Showing most recent alarms',
+                    hasDisplaySpeechOutput: output,
                     hasDisplayRepromptText: 'You can ask to see an alarm by number, or touch it.',
                     templateToken: 'ShowImageList',
                     askOrTell: ':ask',
                     listItems: listItems.map(obj => obj.templateData), // only include templateData
                     hint: 'select number 1',
-                    title: 'Most recent alarms.',
+                    title: output,
                     sessionAttributes: sessionAttributes
                 };
         
@@ -361,15 +435,17 @@ const handlers = {
         const directiveServiceCall = callDirectiveService(this.event, waitMessage);
         Promise.all([directiveServiceCall, forEachCall]).then(() => {
             log('INFO', 'Generated images with interstitial content.');
+        }).catch(err => {
+            log('ERROR', err);
         });
     },
     // Handle user selecting an item on the screen by touch.
     'ElementSelected': function() {
-        log('INFO', `ElementSelected: ${JSON.stringify(this.event)}`);
+        log('INFO', `ElementSelected Event: ${JSON.stringify(this.event)}`);
 
         const item = parseInt(this.event.request.token, 10);
         const itemUrl = listItems[item - 1].templateData.image.sources[0].url;
-        const itemDateTime = listItems[item - 1].templateData.textContent.primaryText.text;
+        const itemDateTime = listItems[item - 1].templateData.textContent.secondaryText.text;
         const content = {
             hasDisplaySpeechOutput: 'Showing selected alarm.',
             hasDisplayRepromptText: 'You can ask zone minder for something else.',
@@ -384,7 +460,7 @@ const handlers = {
     },
     // Handle user selecting an item on the screen by voice.
     'SelectItem': function() {
-        log('INFO', `SelectItem: ${JSON.stringify(this.event)}`);
+        log('INFO', `SelectItem Event: ${JSON.stringify(this.event)}`);
 
         if (isNaN(this.event.request.intent.slots.number.value)) {
             log('ERROR', `Bad value. ${this.event.request.intent.slots.number.value}`);
@@ -395,7 +471,7 @@ const handlers = {
 
         const item = parseInt(this.event.request.intent.slots.number.value, 10);
         const itemUrl = listItems[item - 1].templateData.image.sources[0].url;
-        const itemDateTime = listItems[item - 1].templateData.textContent.primaryText.text;
+        const itemDateTime = listItems[item - 1].templateData.textContent.secondaryText.text;
         const content = {
             hasDisplaySpeechOutput: 'Showing selected alarm.',
             hasDisplayRepromptText: 'You can ask zone minder for something else.',
@@ -410,7 +486,7 @@ const handlers = {
     },
     // Show video of an alarm.
     'AlarmClip': function() {
-        log('INFO', `AMAZON.PlaybackAction: ${JSON.stringify(this.event)}`);
+        log('INFO', `AlarmClip Event: ${JSON.stringify(this.event)}`);
 
         let sessionAttributes = this.event.session.attributes;
 
@@ -501,9 +577,21 @@ const handlers = {
             return;
         }
 
-        // How far back to go to find first alarm for given camera. 
-        const NUM_RECORDS_TO_QUERY = 100;
-        findLatestAlarms(zoneminderCameraName, null, null, NUM_RECORDS_TO_QUERY, (err, data) => {
+        // Set starting query one week in the past.
+        const dateTime = new Date();
+        const offset = 604800; // 1 week in seconds
+        dateTime.setTime(dateTime.getTime() - (offset * 1000));
+
+        const params = {
+            cameraName: zoneminderCameraName,
+            faceName: null,
+            objectName: null,
+            numberOfAlarms: 100,
+            queryStartDateTime: dateTime.toISOString(),
+            sortOrder: 'descending', // latest alarm first
+            skipFrame: false
+        };
+        findLatestAlarms(params, (err, data) => {
             if (err) {
                 log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
                 this.response.speak('Sorry, I cannot complete the request.');
@@ -576,145 +664,15 @@ const handlers = {
             const directiveServiceCall = callDirectiveService(this.event, waitMessage);
             Promise.all([directiveServiceCall, httpsCall]).then(() => {
                 log('INFO', 'Generated video with interstitial content.');
+            }).catch(err => {
+                log('ERROR', err);
             });
-        });
-    },
-    // Show a person based on face recognition.
-    'Faces': function() {
-        log('INFO', `Faces Event: ${JSON.stringify(this.event)}`);
-
-        let sessionAttributes = this.event.session.attributes;
-
-        // Check if user has a display.
-        if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
-            const speechOutput = 'Sorry, I need a display to do that.';
-            this.response.speak(speechOutput);
-            this.emit(':responseReady');
-            return;
-        }
-
-        // Get camera name and face name from slots.
-        const cameraName = this.event.request.intent.slots.Location.value;
-        log('INFO', `User supplied camera name: ${cameraName}`);
-        if (typeof cameraName === undefined) {
-            log('ERROR', 'cameraName is undefined.');
-            this.response.speak('Sorry, I cannot complete the request.');
-            this.emit(':responseReady');
-            return;
-        }
-        let faceName = this.event.request.intent.slots.Name.value;
-        log('INFO', `User supplied face name: ${faceName}`);
-        if (typeof(faceName) === 'undefined') {
-            log('ERROR', 'faceName is undefined.');
-            this.response.speak('Sorry, I cannot complete the request.');
-            this.emit(':responseReady');
-            return;
-        }
-
-        // Check if user supplied a valid camera name and if so map to zoneminder name.
-        const zoneminderCameraName = alexaCameraToZoneminderCamera(cameraName.toLowerCase());
-        log('INFO', `ZM camera name: ${zoneminderCameraName}`);
-        if (zoneminderCameraName === '') {
-            log('ERROR', `Bad camera name: ${cameraName}`);
-            this.response.speak('Sorry, I cannot find that camera name.');
-            this.emit(':responseReady');
-            return;
-        }
-
-        // Check if user supplied a valid name and if so map to a database name.
-        const databaseName = alexaFaceNameToDatabaseName(faceName.toLowerCase());
-        log('INFO', `database face name: ${databaseName}`);
-
-        let findFaceName = null;
-        let findObjectName = null;
-
-        if (databaseName === 'Unknown') {
-            // Look for Unknown faces in database. 
-            faceName = 'stranger';
-            findFaceName = databaseName;
-        } else if (databaseName === 'dog') {
-            // Temp hack to show the dog.
-            findObjectName = databaseName;
-        } else {
-            findFaceName = databaseName;
-        }
-
-        findLatestAlarms(zoneminderCameraName, findFaceName, findObjectName, 10, (err, data) => {
-            if (err) {
-                log('ERROR', `Unable to query. ${JSON.stringify(err, null, 2)}`);
-                this.response.speak('Sorry, I cannot complete the request.');
-                this.emit(':responseReady');
-                return;
-            }
-
-            if (data.length === 0) {
-                this.response.speak('No alarms were found.');
-                this.emit(':responseReady');
-                return;
-            }
-
-            let jsonData = {};
-            let token = 1;
-            listItems = [];
-
-            data.forEach((item) => {
-                log('INFO', `S3Key: ${item.S3Key}
-                    ZmEventDateTime: ${item.ZmEventDateTime} Labels ${item.Labels}`);
-                const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
-                let imageUrl = '';
-                if (USE_LOCAL_PATH) {
-                    imageUrl = localPath + item.ZmLocalEventPath;
-                } else {
-                    imageUrl = S3Path + item.S3Key;
-                }
-              
-                jsonData = {
-                    'token': token.toString(),
-                    'image': {
-                        'contentDescription': cameraName,
-                        'sources': [
-                            {
-                                'url': imageUrl
-                            }
-                        ]
-                    },
-                    'textContent': {
-                        'primaryText': {
-                            'text': datetime,
-                            'type': 'PlainText'
-                        },
-                        'secondaryText': {
-                            'text': '',
-                            'type': 'PlainText'
-                        },
-                        'tertiaryText': {
-                            'text': '',
-                            'type': 'PlainText'
-                        }
-                    }
-                };
-
-                listItems.push(jsonData);
-
-                token++;
-            });
-
-            const content = {
-                hasDisplaySpeechOutput: `Showing most recent alarms from ${cameraName} for ${faceName}`,
-                hasDisplayRepromptText: 'You can ask zone minder for something else.',
-                templateToken: 'ShowImageList',
-                askOrTell: ':ask',
-                listItems: listItems,
-                hint: 'select number 1',
-                title: `Most recent alarms from ${cameraName} for ${faceName}.`,
-                sessionAttributes: sessionAttributes
-            };
-
-            renderTemplate.call(this, content);
         });
     },
     'AMAZON.HelpIntent': function () {
-        console.log('Help event: ' + JSON.stringify(this.event));
+        console.log('Help Event: ' + JSON.stringify(this.event));
+
+        let sessionAttributes = this.event.session.attributes;
 
         // If user does not have a display then only provide audio help. 
         if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
@@ -735,34 +693,34 @@ const handlers = {
             backButton: 'HIDDEN',
             hint: 'help',
             askOrTell: ':ask',
-            sessionAttributes: this.attributes
+            sessionAttributes: sessionAttributes
         };
 
         renderTemplate.call(this, content);
     },
     'AMAZON.CancelIntent': function () {
-        console.log('Cancel event: ' + JSON.stringify(this.event));
+        console.log('Cancel Event: ' + JSON.stringify(this.event));
         const speechOutput = 'goodbye';
         this.response.speak(speechOutput);
         this.emit(':responseReady');
         return;
     },
     'AMAZON.StopIntent': function () {
-        console.log('Stop event: ' + JSON.stringify(this.event));
+        console.log('Stop Event: ' + JSON.stringify(this.event));
         const speechOutput = 'goodbye';
         this.response.speak(speechOutput);
         this.emit(':responseReady');
         return;
     },
     'SessionEndedRequest': function () {
-        console.log('Session ended event: ' + JSON.stringify(this.event));
+        console.log('Session ended Event: ' + JSON.stringify(this.event));
         const speechOutput = 'goodbye';
         this.response.speak(speechOutput);
         this.emit(':responseReady');
         return;
     },
     'Unhandled': function() {
-        console.log('Unhandled event: ' + JSON.stringify(this.event));
+        console.log('Unhandled Event: ' + JSON.stringify(this.event));
         const speechOutput = 'Something went wrong. Goodbye.';
         this.response.speak(speechOutput);
         this.emit(':responseReady');
@@ -778,11 +736,44 @@ exports.handler = (event, context) => {
 };
 
 //==============================================================================
-//===================== Zoneminder Helper Functions  ===========================
+//================== Alarm Processing Helper Functions  ========================
 //==============================================================================
 
 /**
+ * 
+ * Determine if user is asking for an alarm caused by a person or thing.
+ * 
+ * @param {string} personOrThing 
+ */
+function determineFaceAndObjectName(personOrThing) {
+    let faceName = null;
+    let objectName = null;
+    if (typeof personOrThing !== 'undefined') {
+        // If a specific person or thing was given then figure out what it is.
+        if (personOrThing.toLowerCase() === 'stranger') {
+            // User requested to see an alarm caused by a stranger.
+            // Face detection will tag unrecognized people as 'Unknown'.
+            faceName = 'Unknown';
+        } else {
+            // Check if user asked for a specific person.
+            const knownFace = alexaFaceNameToDatabaseName(personOrThing.toLowerCase());
+            if (knownFace !== null) {
+                // User requested to see an alarm caused by a specific person.
+                // Considering our dog to be a person :)
+                faceName === 'dog' ? objectName = 'dog' : faceName = knownFace;
+            } else {
+                // User requested to see an alarm caused by a thing, not a person.
+                objectName = personOrThing.toLowerCase();
+            }
+        }
+    }
+    return {findFaceName: faceName, findObjectName: objectName};
+}
+
+/**
  * Mapping from Alexa returned camera names to zoneminder camera names.
+ * 
+ * @param {*} alexaCameraName 
  */
 function alexaCameraToZoneminderCamera(alexaCameraName) {
     const cameraConfigArray = configObj.cameras;
@@ -802,16 +793,18 @@ function alexaCameraToZoneminderCamera(alexaCameraName) {
 
 /**
  * Mapping from Alexa returned face names to database face names.
+ * 
+ * @param {*} alexaFaceName 
  */
 function alexaFaceNameToDatabaseName(alexaFaceName) {
     const faceNamesArray = configObj.faces;
 
     // If a match was not found then look for Unknown faces in database.
-    let databaseFaceName = 'Unknown';
+    let databaseFaceName = null;
 
     faceNamesArray.forEach((element) => {
         // True if a valid value was passed.
-        let isValidFace = element.friendlyNames.indexOf(alexaFaceName) > -1;
+        const isValidFace = element.friendlyNames.indexOf(alexaFaceName) > -1;
         if (isValidFace) {
             databaseFaceName = element.databaseName;
         }
@@ -821,23 +814,23 @@ function alexaFaceNameToDatabaseName(alexaFaceName) {
 }
 
 /**
- * Callback for findLatestAlarms.
- *
- * @callback latestAlarmCallback
- * @param {string} err - An error message.
- * @param {array} foundAlarms - An array holding found alarms.
- * 
- */
-/**
- * Find most recent alarm frames for a given camera name.
- * 
- * @param {string} cameraName - ZoneMinder monitor name to search over.
- * @param {string} faceName - Name of a person to search for.
- * @param {string} objectName - Name of an object to search for.
- * @param {int} numberOfAlarms - Number of alarm frames to find.
- * @param {latestAlarmCallback} callback - callback fn, returns array of found alarms.
- */
-function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, callback) {
+  * 
+  * Query database for alarm frames matching given parameters. 
+  * 
+  * @param {object} queryParams - An object with query parameters.
+  * @param {string} queryParams.cameraName - oneMinder monitor name to search over.
+  * @param {string} queryParams.faceName - Name of a person to search for.
+  * @param {string} queryParams.objectName - Name of an object to search for.
+  * @param {int} queryParams.numberOfAlarms - Number of alarm frames to find.
+  * @param {string} queryParams.queryStartDateTime - Query start datetime in ISO8601 format.
+  * @param {string} queryParams.sortOrder - Either 'ascending' or 'descending' query results. 
+  * @param {boolean} queryParams.skipFrame - If true return first or last frame in event.
+  * @param {function} callback - An array holding found alarms or an error string.
+  */
+function findLatestAlarms(queryParams, callback) {
+    const {cameraName, faceName, objectName, numberOfAlarms,
+        queryStartDateTime, sortOrder, skipFrame} = queryParams;
+
     const docClient = new AWS.DynamoDB.DocumentClient(
         {apiVersion: '2012-10-08', region: configObj.awsRegion}
     );
@@ -848,7 +841,8 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
     let projectionExpression = 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId, ZmLocalEventPath';
     const expressionAttributeValues = {
         ':name': cameraName,
-        ':state': 'true'
+        ':state': 'true',
+        ':date': queryStartDateTime
     };
 
     // If a face name was provided then add it to query.
@@ -863,17 +857,20 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
         expressionAttributeValues[':object'] = objectName;
     }
 
-    let params = {
+    const params = {
         TableName: 'ZmAlarmFrames',
-        ScanIndexForward: false, // Descending sort order.
+        // ScanIndexForward: false - descending sort order (alarms from latest to earliest)
+        // ScanIndexForward: true - ascending sort order (alarms from earliest to latest)
+        ScanIndexForward: sortOrder === 'ascending',
         ProjectionExpression: projectionExpression,
-        KeyConditionExpression: 'ZmCameraName = :name',
+        KeyConditionExpression: 'ZmCameraName = :name AND ZmEventDateTime > :date',
         FilterExpression: filterExpression,
         ExpressionAttributeValues: expressionAttributeValues
     };
 
     let foundAlarms = [];
     let foundAlarmCount = 0;
+    let lastZmEventId = -1;
                     
     function queryExecute() {
         docClient.query(params, (err, data) => {
@@ -883,6 +880,9 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
       
             // If a query was successful then add to list.
             for (const item of data.Items) {
+                // If skipFrame enabled only add first frame of an event; skip all others.
+                if (skipFrame && (item.ZmEventId === lastZmEventId)) continue;
+                lastZmEventId = item.ZmEventId;
                 foundAlarms.push(item);
                 foundAlarmCount++;
                 if (foundAlarmCount === numberOfAlarms) {
@@ -905,8 +905,15 @@ function findLatestAlarms(cameraName, faceName, objectName, numberOfAlarms, call
 }
 
 //==============================================================================
-//============= Alexa Progressive Response Helper Functions  ===================
+//========================= Alexa Helper Functions =============================
 //==============================================================================
+
+/**
+ * Send the User a Progressive Response.
+ * 
+ * @param {*} event 
+ * @param {*} message 
+ */
 function callDirectiveService(event, message) {
     // Instantiate Alexa Directive Service
     const ds = new Alexa.services.DirectiveService();
@@ -920,9 +927,9 @@ function callDirectiveService(event, message) {
     return ds.enqueue(directive, endpoint, token);
 }
 
-//==============================================================================
-//==================== Alexa Delegate Helper Functions  ========================
-//==============================================================================
+/**
+ * Delegate response to Alexa.
+ */
 function delegateToAlexa() {
     //console.log("in delegateToAlexa");
     //console.log("current dialogState: "+ this.event.request.dialogState);
@@ -947,61 +954,11 @@ function delegateToAlexa() {
     }
 }
 
-//==============================================================================
-//============================ S3 Helper Functions  ============================
-//==============================================================================
-var AWS = require('aws-sdk');
-var s3 = new AWS.S3();
-
-// Get file from S3
-function getS3File(bucketName, fileName, versionId, callback) {
-    var params = {
-        Bucket: bucketName,
-        Key: fileName
-    };
-    if (versionId) {
-        params.VersionId = versionId;
-    }
-    s3.getObject(params, function (err, data) {
-        callback(err, data);
-    });
-}
-
-// Put file into S3
-function putS3File(bucketName, fileName, data, callback) {
-    var expirationDate = new Date();
-    // Assuming a user would not remain active in the same session for over 1 hr.
-    expirationDate = new Date(expirationDate.setHours(expirationDate.getHours() + 1));
-    var params = {
-        Bucket: bucketName,
-        Key: fileName,
-        Body: data,
-        ACL: 'public-read', // TODO: find way to restrict access to this lambda function
-        Expires: expirationDate
-    };
-    s3.putObject(params, function (err, data) {
-        callback(err, data);
-    });
-}
-
-// Upload object to S3
-function uploadS3File(bucketName, fileName, data, callback) {
-    var params = {
-        Bucket: bucketName,
-        Key: fileName,
-        Body: data,
-        ACL: 'public-read', // TODO: find way to restrict access to this lambda function
-    };
-    s3.upload(params, function(err, data) {
-        callback(err, data);
-    });
-}
-
-//==============================================================================
-//===================== Echo Show Helper Functions  ============================
-//==============================================================================
+/**
+ * Determine if device has a screen.
+ */
 function supportsDisplay() {
-    var hasDisplay =
+    const hasDisplay =
     this.event.context &&
     this.event.context.System &&
     this.event.context.System.device &&
@@ -1011,12 +968,21 @@ function supportsDisplay() {
     return hasDisplay;
 }
 
+/**
+ * Determine is simulator is being used.
+ */
 function isSimulator() {
-    var isSimulator = !this.event.context; //simulator doesn't send context
-    return false;
+    const isSimulator = !this.event.context; //simulator doesn't send context
+    return isSimulator;
 }
 
-function renderTemplate (content) {
+/**
+ * 
+ * Generate display templates for Alexa device with a screen.
+ * 
+ * @param {*} content 
+ */
+function renderTemplate(content) {
     log('INFO', `renderTemplate ${content.templateToken}`);
 
     let response = {};
@@ -1268,12 +1234,22 @@ function renderTemplate (content) {
 }
 
 //==============================================================================
-//======================== Misc Helper Functions  ==============================
+//======================== Other Helper Functions  =============================
 //==============================================================================
-/*
- *
+
+/**
+ * 
+ * POST or GET from an https endpoint.
+ * 
+ * @param {*} method 
+ * @param {*} path 
+ * @param {*} postData 
+ * @param {*} text 
+ * @param {*} user 
+ * @param {*} pass 
+ * @param {*} callback 
  */
-var httpsReq = (method, path, postData, text, user, pass, callback) => {
+function httpsReq(method, path, postData, text, user, pass, callback) {
     // If environment variables for host and port exist then override configuration. 
     let HOST = '';
     if (process.env.host) {
@@ -1289,24 +1265,15 @@ var httpsReq = (method, path, postData, text, user, pass, callback) => {
         PORT = credsObj.port;
     }
 
-    /*var CERT = fs.readFileSync('./certs/client.crt'),
-        KEY  = fs.readFileSync('./certs/client.key'),
-        CA   = fs.readFileSync('./certs/ca.crt');*/
-
-    var https = require('https'),
+    const https = require('https'),
         Stream = require('stream').Transform,
         zlib = require('zlib');
 
-    var options = {
+    let options = {
         hostname: HOST,
         port: PORT,
         path: path,
         method: method,
-        //rejectUnauthorized: true,
-        //rejectUnauthorized: false,
-        //key: KEY,
-        //cert: CERT,
-        //ca: CA,
         headers: {
             'Content-Type': (text ? 'application/json' : 'image/png'),
             'Content-Length': postData.length,
@@ -1319,7 +1286,7 @@ var httpsReq = (method, path, postData, text, user, pass, callback) => {
         options.headers.Authorization = auth;
     }
 
-    var req = https.request(options, (result) => {
+    const req = https.request(options, (result) => {
         const data = new Stream();
         data.setEncoding('utf8'); // else a buffer will be returned
 
@@ -1344,8 +1311,6 @@ var httpsReq = (method, path, postData, text, user, pass, callback) => {
             } else {
                 callback(null, data.read());
             }
-
-            //callback(data.read());
         });
     });
 
@@ -1362,13 +1327,16 @@ var httpsReq = (method, path, postData, text, user, pass, callback) => {
     req.end();
 
     req.on('error', (e) => {
-        console.log('ERROR https request: ' + e.message);
+        log('ERROR', 'https request: ' + e.message);
         callback(e.message, null);
     });
-};
+}
 
-/*
+/**
+ * 
  * Converts Unix timestamp (in Zulu) in ms to human understandable date and time of day.
+ * 
+ * @param {*} unix_timestamp 
  */
 function timeConverter(unix_timestamp) {
     //const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1379,27 +1347,29 @@ function timeConverter(unix_timestamp) {
     const tzDiff = 25200000;
     // Create a new JavaScript Date object based on the timestamp.
     // Multiplied by 1000 so that the argument is in milliseconds, not seconds.
-    let date = new Date(unix_timestamp - tzDiff);
+    const date = new Date(unix_timestamp - tzDiff);
     let year = date.getFullYear();
     //var month = months[date.getMonth()];
-    let month = date.getMonth() + 1;
-    let day = date.getDate();
-    let hours = date.getHours();
-    let minutes = '0' + date.getMinutes();
-    let seconds = '0' + date.getSeconds();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hours = date.getHours();
+    const minutes = '0' + date.getMinutes();
+    //const seconds = '0' + date.getSeconds(); // not using
 
     // Will display time in M D HH:MM format
     //var formattedTime = month + " " + day + " " + hours + ":" + minutes.substr(-2);
     // Will display in 2013-10-04 22:23:00 format
-    let formattedTime = year+'-'+month+'-'+day+' '+hours+':'+minutes.substr(-2)+':'+seconds.substr(-2);
+    const formattedTime = year+'-'+month+'-'+day+' '+hours+':'+minutes.substr(-2);
     return formattedTime;
 }
 
-/*
- * Parse ISO8501 duration string.
- * See https://stackoverflow.com/questions/27851832/how-do-i-parse-an-iso-8601-formatted-duration-using-moment-js
- *
- */
+/**
+  * 
+  * Parse ISO8501 duration string.
+  * See https://stackoverflow.com/questions/27851832/how-do-i-parse-an-iso-8601-formatted-duration-using-moment-js
+  * 
+  * @param {*} durationString 
+  */
 function parseISO8601Duration(durationString) {
     // regex to parse ISO8501 duration string.
     // TODO: optimize regex since it matches way more than needed.
@@ -1419,9 +1389,12 @@ function parseISO8601Duration(durationString) {
     };
 }
 
-/*
- * Checks for valid JSON and parses it. 
- */
+/**
+  * 
+  * Checks for valid JSON and parses it.
+  * 
+  * @param {*} json 
+  */
 function safelyParseJSON(json) {
     try {
         return JSON.parse(json);
@@ -1431,64 +1404,13 @@ function safelyParseJSON(json) {
     }
 }
 
-/*
- *
- */
-function randomPhrase(array) {
-    // the argument is an array [] of words or phrases
-    var i = 0;
-    i = Math.floor(Math.random() * array.length);
-    return(array[i]);
-}
-
-/*
- *
- */
-function isSlotValid(request, slotName){
-    var slot = request.intent.slots[slotName];
-    //console.log("request = "+JSON.stringify(request)); //uncomment if you want to see the request
-    var slotValue;
-
-    //if we have a slot, get the text and store it into speechOutput
-    if (slot && slot.value) {
-        //we have a value in the slot
-        slotValue = slot.value.toLowerCase();
-        return slotValue;
-    } else {
-        //we didn't get a value in the slot.
-        return false;
-    }
-}
-
-/*
- * Logger using Template Literals.
- * See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals.
- */
+/**
+  * 
+  * Basic logger.
+  * 
+  * @param {*} title 
+  * @param {*} msg 
+  */
 function log(title, msg) {
     console.log(`[${title}] ${msg}`);
-}
-
-/*
- * Debug - inspect and log object content.
- *
- */
-function inspectLogObj(obj, depth = null) {
-    const util = require('util');
-    console.log(util.inspect(obj, {depth: depth}));
-}
-
-/*
- * Checks if a file is a jpeg image.
- * https://stackoverflow.com/questions/8473703/in-node-js-given-a-url-how-do-i-check-whether-its-a-jpg-png-gif/8475542#8475542
- */
-function isJpg(file) {
-    const jpgMagicNum = 'ffd8ffe0';
-    var magicNumInFile = file.toString('hex',0,4);
-    //console.log("magicNumInFile: " + magicNumInFile);
-  
-    if (magicNumInFile === jpgMagicNum) {
-        return true;
-    } else {
-        return false;
-    }
 }
