@@ -9,13 +9,43 @@
                         {
                             "name": "Location",
                             "type": "Location"
+                        },
+                        {
+                            "name": "PersonOrThing",
+                            "type": "Names"
+                        },
+                        {
+                            "name": "SomeTimeAgo",
+                            "type": "AMAZON.DURATION"
                         }
                     ],
                     "samples": [
-                        "for alarms from {Location}",
-                        "to show alarms from {Location}",
-                        "alarms from {Location}",
-                        "alarms {Location}"
+                        "for all alarms",
+                        "for all events",
+                        "for all",
+                        "for {Location} alarms of {PersonOrThing} from {SomeTimeAgo} ago",
+                        "for {Location} events of {PersonOrThing} from {SomeTimeAgo} ago",
+                        "for events of {PersonOrThing} from {SomeTimeAgo} ago",
+                        "for events of {PersonOrThing}",
+                        "for events",
+                        "for alarms of {PersonOrThing} from {SomeTimeAgo} ago",
+                        "for alarms of {PersonOrThing}",
+                        "for alarms",
+                        "to show alarms of {PersonOrThing} ",
+                        "to show events of {PersonOrThing} ",
+                        "to show {Location} events of {PersonOrThing} from {SomeTimeAgo} ago",
+                        "to show {Location} alarms of {PersonOrThing} from {SomeTimeAgo} ago",
+                        "to show {Location} events from {SomeTimeAgo} ago",
+                        "to show {Location} alarms from {SomeTimeAgo} ago",
+                        "to show events from {SomeTimeAgo} ago",
+                        "to show alarms from {SomeTimeAgo} ago",
+                        "to show {Location} events of {PersonOrThing}",
+                        "to show {Location} events",
+                        "to show {Location} alarms of {PersonOrThing}",
+                        "to show {Location} alarms",
+                        "to show events",
+                        "to show alarms",
+                        "to show all"
                     ]
                 },
                 {
@@ -80,18 +110,35 @@
                         {
                             "name": "Location",
                             "type": "Location"
+                        },
+                        {
+                            "name": "PersonOrThing",
+                            "type": "Names"
                         }
                     ],
                     "samples": [
-                        "last alarm from {Location}",
-                        "for alarm from {Location}",
-                        "for last alarm from {Location}",
-                        "for last alarm {Location}",
-                        "for latest alarm {Location}",
-                        "for latest alarm from {Location}",
-                        "for recent alarm from {Location}",
-                        "for recent alarm {Location}",
-                        "to show last alarm from {Location}"
+                        "for event of {PersonOrThing}",
+                        "to show last alarm of {PersonOrThing}",
+                        "to show last event of {PersonOrThing}",
+                        "to show event of {PersonOrThing}",
+                        "for alarm of {PersonOrThing}",
+                        "for {Location} event of {PersonOrThing}",
+                        "for {Location} alarm of {PersonOrThing}",
+                        "for {Location} alarm",
+                        "for {Location} event",
+                        "for alarm",
+                        "for event",
+                        "to show {Location} event of {PersonOrThing}",
+                        "to show {Location} alarm of {PersonOrThing}",
+                        "to show {Location} event",
+                        "to show {Location} alarm",
+                        "to show alarm",
+                        "to show event",
+                        "for last alarm",
+                        "for last event",
+                        "to show alarm of {PersonOrThing}",
+                        "to show last event",
+                        "to show last alarm"
                     ]
                 },
                 {
@@ -112,44 +159,30 @@
                     "slots": [
                         {
                             "name": "Location",
-                            "type": "Location"
+                            "type": "Location",
+                            "samples": [
+                                "camera name is {Location}",
+                                "the camera name is {Location}",
+                                "{Location} camera",
+                                "{Location}"
+                            ]
                         }
                     ],
                     "samples": [
+                        "to show {Location} video",
+                        "for {Location} video",
+                        "for video from {Location}",
+                        "to show video from {Location}",
+                        "to show {Location} clip",
+                        "for {Location} clip",
+                        "for event clip from {Location}",
+                        "to show event clip from {Location}",
                         "to play clip for {Location}",
                         "to show clip for {Location}",
                         "to play clip from {Location}",
                         "for clip from {Location}",
                         "to show alarm clip from {Location}",
                         "for alarm clip from {Location}"
-                    ]
-                },
-                {
-                    "name": "Faces",
-                    "slots": [
-                        {
-                            "name": "Name",
-                            "type": "Names"
-                        },
-                        {
-                            "name": "Location",
-                            "type": "Location"
-                        }
-                    ],
-                    "samples": [
-                        "show {Name} from the {Location}",
-                        "for my {Name} from the {Location}",
-                        "to show my {Name} from the {Location}",
-                        "to show {Name} from the {Location}",
-                        "for my {Name} from {Location}",
-                        "for my {Name}",
-                        "to show my {Name}",
-                        "to show my {Name} from {Location}",
-                        "for {Name}",
-                        "for {Name} from {Location}",
-                        "to show {Name}",
-                        "to show {Name} from {Location}",
-                        "show {Name} from {Location}"
                     ]
                 }
             ],
@@ -209,11 +242,6 @@
                         {
                             "name": {
                                 "value": "pet"
-                            }
-                        },
-                        {
-                            "name": {
-                                "value": "dog"
                             }
                         },
                         {
@@ -290,10 +318,559 @@
                             "name": {
                                 "value": "lindo"
                             }
+                        },
+                        {
+                            "name": {
+                                "value": "stranger"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "person"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bicycle"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "car"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "motorcycle"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "airplane"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bus"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "train"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "truck"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "boat"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "traffic light"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "fire hydrant"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "street sign"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "stop sign"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "parking meter"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bench"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bird"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cat"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "dog"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "horse"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "sheep"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cow"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "elephant"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bear"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "zebra"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "giraffe"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "hat"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "backpack"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "umbrella"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "shoe"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "eye glasses"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "handbag"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "tie"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "suitcase"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "frisbee"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "skis"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "snowboard"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "sports ball"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "kite"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "baseball bat"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "baseball glove"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "skateboard"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "surfboard"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "tennis racket"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bottle"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "plate"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "wine glass"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cup"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "fork"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "knife"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "spoon"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bowl"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "banana"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "apple"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "sandwich"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "orange"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "broccoli"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "carrot"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "hot dog"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "pizza"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "donut"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cake"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "chair"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "couch"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "potted plant"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "bed"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mirror"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "dining table"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "window"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "desk"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "toilet"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "door"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "tv"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "laptop"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "mouse"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "remote"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "keyboard"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "cell phone"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "microwave"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "oven"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "toaster"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "sink"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "refrigerator"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "blender"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "book"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "clock"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "vase"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "scissors"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "teddy bear"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "hair drier"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "toothbrush"
+                            }
+                        },
+                        {
+                            "name": {
+                                "value": "hair brush"
+                            }
                         }
                     ]
                 }
             ]
-        }
+        },
+        "dialog": {
+            "intents": [
+                {
+                    "name": "Alarms",
+                    "confirmationRequired": false,
+                    "prompts": {},
+                    "slots": [
+                        {
+                            "name": "Location",
+                            "type": "Location",
+                            "confirmationRequired": false,
+                            "elicitationRequired": false,
+                            "prompts": {}
+                        },
+                        {
+                            "name": "PersonOrThing",
+                            "type": "Names",
+                            "confirmationRequired": false,
+                            "elicitationRequired": false,
+                            "prompts": {}
+                        },
+                        {
+                            "name": "SomeTimeAgo",
+                            "type": "AMAZON.DURATION",
+                            "confirmationRequired": false,
+                            "elicitationRequired": false,
+                            "prompts": {}
+                        }
+                    ]
+                },
+                {
+                    "name": "AlarmClip",
+                    "confirmationRequired": false,
+                    "prompts": {},
+                    "slots": [
+                        {
+                            "name": "Location",
+                            "type": "Location",
+                            "confirmationRequired": false,
+                            "elicitationRequired": true,
+                            "prompts": {
+                                "elicitation": "Elicit.Slot.1486990949921.1289280051097"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "LastAlarm",
+                    "confirmationRequired": false,
+                    "prompts": {},
+                    "slots": [
+                        {
+                            "name": "Location",
+                            "type": "Location",
+                            "confirmationRequired": false,
+                            "elicitationRequired": false,
+                            "prompts": {}
+                        },
+                        {
+                            "name": "PersonOrThing",
+                            "type": "Names",
+                            "confirmationRequired": false,
+                            "elicitationRequired": false,
+                            "prompts": {}
+                        }
+                    ]
+                }
+            ]
+        },
+        "prompts": [
+            {
+                "id": "Elicit.Slot.659132885451.623510466874",
+                "variations": [
+                    {
+                        "type": "PlainText",
+                        "value": "Please provide camera name."
+                    }
+                ]
+            },
+            {
+                "id": "Elicit.Slot.1486990949921.1289280051097",
+                "variations": [
+                    {
+                        "type": "PlainText",
+                        "value": "Please provide camera name."
+                    }
+                ]
+            }
+        ]
     }
 }
