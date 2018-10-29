@@ -3,7 +3,7 @@
 # smart-zoneminder
 smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [Tensorflow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) is used to identify people detected in the alarm images. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
 
-You can see videos of smart-zoneminder in action [here](https://photos.app.goo.gl/d1V6V3ayTCtPGX3s7) and [here](https://photos.app.goo.gl/JuYhioDLjXqRWHMU7) and [here](https://photos.app.goo.gl/GKk9x6x3wi98v4tB7)!
+You can see videos of smart-zoneminder in action [here](https://photos.app.goo.gl/U7VXhfoCC3srg25q7) and [here](https://photos.app.goo.gl/W8tGeYygES41jPde9) and [here](https://photos.app.goo.gl/uY8z2Ei9eG622Am2A)!
 
 # Table of Contents
 1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
