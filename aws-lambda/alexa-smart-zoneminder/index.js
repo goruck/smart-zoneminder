@@ -44,8 +44,9 @@ const helpMessages = ['Show Last Event',
     'Show Video from back yard',
     'Show Front Gate Events of Lindo from 1 month ago'];
 
-// Holds list items that can be selected on the display or by voice.
-let listItems = [];
+// Globals for use between intents in a session.
+let listItems = []; // Holds list items that can be selected on the display or by voice.
+let alarmData = []; // Holds alarm data as queried from the database.
 
 //==============================================================================
 //========================== Event Handlers  ===================================
@@ -82,8 +83,6 @@ const handlers = {
     // Show the last alarm from a camera or all cameras.
     'LastAlarm': function() {
         log('INFO', `LastAlarm Event: ${JSON.stringify(this.event)}`);
-
-        let sessionAttributes = this.event.session.attributes;
 
         const personOrThing = this.event.request.intent.slots.PersonOrThing.value;
         log('INFO', `User supplied person or thing: ${personOrThing}`);
@@ -174,25 +173,13 @@ const handlers = {
 
                 // Get alarm with latest datetime.
                 const maxArrElem = queryResultArray.length - 1;
-                const S3Key = queryResultArray[maxArrElem].S3Key;
-                const ZmLocalEventPath = queryResultArray[maxArrElem].ZmLocalEventPath;
-                const ZmEventDateTime = queryResultArray[maxArrElem].ZmEventDateTime;
-                const ZmCameraName = queryResultArray[maxArrElem].zoneminderName;
-                const ZmEventId = queryResultArray[maxArrElem].ZmEventId;
-                const ZmFrameId = queryResultArray[maxArrElem].ZmFrameId;
+                const {S3Key, ZmLocalEventPath, ZmEventDateTime, zoneminderName} = queryResultArray[maxArrElem];
 
-                // Save alarm data to session attributes.
-                sessionAttributes = {
-                    S3Key: S3Key,
-                    ZmLocalEventPath: ZmLocalEventPath,
-                    ZmEventDateTime: ZmEventDateTime,
-                    ZmCameraName: ZmCameraName,
-                    ZmEventId: ZmEventId,
-                    ZmFrameId: ZmFrameId
-                };
+                // Save alarm data for use later on in session if needed.
+                alarmData = [queryResultArray[maxArrElem]];
 
                 // Construct speech and text output.
-                let output = `alarm from ${ZmCameraName} camera `;
+                let output = `alarm from ${zoneminderName} camera `;
                 // Append alarm cause to output if given.
                 if (findFaceName || findObjectName) output += `caused by ${personOrThing.toLowerCase()} `;
                 output += `on ${timeConverter(Date.parse(ZmEventDateTime))}`;
@@ -220,10 +207,15 @@ const handlers = {
                     hasDisplaySpeechOutput: output,
                     hasDisplayRepromptText: 'You can ask zone minder for something else.',
                     bodyTemplateContent: output,
-                    title: `${ZmCameraName}`,
+                    title: `${zoneminderName}`,
                     templateToken: 'ShowImage',
                     askOrTell: ':ask',
-                    sessionAttributes: sessionAttributes
+                    sessionAttributes: {
+                        // Just a single entry in alarmData so this will point to it. 
+                        token: '1',
+                        // Save context in case user wants to return to previous screen.
+                        context: this.event.context.Display.token
+                    } 
                 };
 
                 if (USE_LOCAL_PATH) {
@@ -250,7 +242,7 @@ const handlers = {
     'Alarms': function() {
         log('INFO', `Alarms Event: ${JSON.stringify(this.event)}`);
 
-        let sessionAttributes = this.event.session.attributes;
+        const sessionAttributes = this.event.session.attributes;
 
         // Check if user has a display.
         if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
@@ -371,6 +363,7 @@ const handlers = {
                 });
 
                 let token = 1;
+                alarmData = [];
                 listItems = [];
                 queryResultArray.forEach((item) => {
                     //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
@@ -381,36 +374,37 @@ const handlers = {
                     } else {
                         imageUrl = S3_PATH + item.S3Key;
                     }
-              
-                    let listItem = {
-                        'templateData': {
-                            'token': token.toString(),
-                            'image': {
-                                'contentDescription': item.zoneminderName,
-                                'sources': [
-                                    {
-                                        'url': imageUrl
-                                    }
-                                ]
-                            },
-                            'textContent': {
-                                'primaryText': {
-                                    'text': item.zoneminderName,
-                                    'type': 'PlainText'
-                                },
-                                'secondaryText': {
-                                    'text': datetime,
-                                    'type': 'PlainText'
-                                },
-                                'tertiaryText': {
-                                    'text': '',
-                                    'type': 'PlainText'
+
+                    let templateJSON =  {
+                        'token': token.toString(),
+                        'image': {
+                            'contentDescription': item.zoneminderName,
+                            'sources': [
+                                {
+                                    'url': imageUrl
                                 }
-                            }
+                            ]
                         },
-                        'alarmData': item
+                        'textContent': {
+                            'primaryText': {
+                                'text': item.zoneminderName,
+                                'type': 'PlainText'
+                            },
+                            'secondaryText': {
+                                'text': datetime,
+                                'type': 'PlainText'
+                            },
+                            'tertiaryText': {
+                                'text': '',
+                                'type': 'PlainText'
+                            }
+                        }
                     };
-                    listItems.push(listItem);
+
+                    listItems.push(templateJSON);
+
+                    alarmData.push(item);
+              
                     token++;
                 });
 
@@ -419,7 +413,7 @@ const handlers = {
                     hasDisplayRepromptText: 'You can ask to see an alarm by number, or touch it.',
                     templateToken: 'ShowImageList',
                     askOrTell: ':ask',
-                    listItems: listItems.map(obj => obj.templateData), // only include templateData
+                    listItems: listItems,
                     hint: 'select number 1',
                     title: output,
                     sessionAttributes: sessionAttributes
@@ -439,56 +433,11 @@ const handlers = {
             log('ERROR', err);
         });
     },
-    // Handle user selecting an item on the screen by touch.
-    'ElementSelected': function() {
-        log('INFO', `ElementSelected Event: ${JSON.stringify(this.event)}`);
-
-        const item = parseInt(this.event.request.token, 10);
-        const itemUrl = listItems[item - 1].templateData.image.sources[0].url;
-        const itemDateTime = listItems[item - 1].templateData.textContent.secondaryText.text;
-        const content = {
-            hasDisplaySpeechOutput: 'Showing selected alarm.',
-            hasDisplayRepromptText: 'You can ask zone minder for something else.',
-            bodyTemplateContent: itemDateTime,
-            backgroundImageUrl: itemUrl,
-            templateToken: 'ShowImage',
-            askOrTell: ':ask',
-            sessionAttributes: listItems[item - 1].alarmData // Save attributes to generate video later.
-        };
-
-        renderTemplate.call(this, content);
-    },
-    // Handle user selecting an item on the screen by voice.
-    'SelectItem': function() {
-        log('INFO', `SelectItem Event: ${JSON.stringify(this.event)}`);
-
-        if (isNaN(this.event.request.intent.slots.number.value)) {
-            log('ERROR', `Bad value. ${this.event.request.intent.slots.number.value}`);
-            this.response.speak('Sorry, I cannot complete the request.');
-            this.emit(':responseReady');
-            return;
-        }
-
-        const item = parseInt(this.event.request.intent.slots.number.value, 10);
-        const itemUrl = listItems[item - 1].templateData.image.sources[0].url;
-        const itemDateTime = listItems[item - 1].templateData.textContent.secondaryText.text;
-        const content = {
-            hasDisplaySpeechOutput: 'Showing selected alarm.',
-            hasDisplayRepromptText: 'You can ask zone minder for something else.',
-            bodyTemplateContent: itemDateTime,
-            backgroundImageUrl: itemUrl,
-            templateToken: 'ShowImage',
-            askOrTell: ':ask',
-            sessionAttributes: listItems[item - 1].alarmData // Save attributes to generate video later.
-        };
-
-        renderTemplate.call(this, content);
-    },
     // Show video of an alarm.
     'AlarmClip': function() {
         log('INFO', `AlarmClip Event: ${JSON.stringify(this.event)}`);
 
-        let sessionAttributes = this.event.session.attributes;
+        const sessionAttributes = this.event.session.attributes;
 
         // Callback to pass to https call that generates alarm clip on server. 
         const showClipCallback = (err, resStr) => {
@@ -512,7 +461,7 @@ const handlers = {
                 uri: credsObj.alarmVideoPath,
                 title: 'Alarm Video',
                 templateToken: 'ShowVideo',
-                sessionAttributes: {} // clear session attributes
+                sessionAttributes: sessionAttributes
             };
 
             renderTemplate.call(this, content);
@@ -522,10 +471,11 @@ const handlers = {
         // If they were then an alarm was just viewed and user wants to see video.
         // If not then skip this and process request normally. 
         if (Object.keys(sessionAttributes).length !== 0) {
-            // Session contains latest alarm frame, event ID and datetime.
-            const lastEvent = sessionAttributes.ZmEventId;
-            const ZmEventDateTime = sessionAttributes.ZmEventDateTime;
-            const lastFrame = sessionAttributes.ZmFrameId;
+            // item points to latest alarm frame, event ID and datetime.
+            const item = parseInt(sessionAttributes.token, 10) - 1;
+            const lastEvent = alarmData[item].ZmEventId;
+            const ZmEventDateTime = alarmData[item].ZmEventDateTime;
+            const lastFrame = alarmData[item].ZmFrameId;
             // Number of frames before last frame to show in video. 
             const IN_SESSION_PRE_FRAMES = 100;
             let startFrame = 0;
@@ -669,6 +619,67 @@ const handlers = {
             });
         });
     },
+    // Handle user selecting an item from a list on the screen by touch.
+    'ElementSelected': function() {
+        log('INFO', `ElementSelected Event: ${JSON.stringify(this.event)}`);
+
+        const token = this.event.request.token;
+        const selectedItem = listItems.find(item => item.token === token);
+
+        const content = {
+            hasDisplaySpeechOutput: 'Showing selected alarm.',
+            hasDisplayRepromptText: 'You can ask zone minder for something else.',
+            bodyTemplateContent: selectedItem.textContent.secondaryText.text,
+            backgroundImageUrl: selectedItem.image.sources[0].url,
+            templateToken: 'ShowImage',
+            askOrTell: ':ask',
+            sessionAttributes: {
+                // Used to view a video of this alarm from here. 
+                token: token,
+                // Used to return to previous screen from here. 
+                context: this.event.context.Display.token
+            } 
+        };
+
+        renderTemplate.call(this, content);
+    },
+    // Handle user selecting an item from a list on the screen by voice.
+    'SelectItem': function() {
+        log('INFO', `SelectItem Event: ${JSON.stringify(this.event)}`);
+
+        const token = this.event.request.intent.slots.number.value;
+        if (typeof token === 'undefined') {
+            log('ERROR', `Bad value. ${token}`);
+            this.response.speak('Sorry, something went wrong. Goodbye');
+            this.emit(':responseReady');
+            return;
+        }
+
+        const selectedItem = listItems.find(item => item.token === token);
+        if (typeof selectedItem === 'undefined') {
+            log('ERROR', `Bad value. ${token}`);
+            this.response.speak('Sorry, that\'s not a valid selection. Goodbye');
+            this.emit(':responseReady');
+            return;
+        }
+
+        const content = {
+            hasDisplaySpeechOutput: 'Showing selected alarm.',
+            hasDisplayRepromptText: 'You can ask zone minder for something else.',
+            bodyTemplateContent: selectedItem.textContent.secondaryText.text,
+            backgroundImageUrl: selectedItem.image.sources[0].url,
+            templateToken: 'ShowImage',
+            askOrTell: ':ask',
+            sessionAttributes: {
+                // Used to view a video of this alarm from here. 
+                token: token,
+                // Used to return to previous screen from here. 
+                context: this.event.context.Display.token
+            } 
+        };
+
+        renderTemplate.call(this, content);
+    },
     'AMAZON.HelpIntent': function () {
         console.log('Help Event: ' + JSON.stringify(this.event));
 
@@ -708,6 +719,32 @@ const handlers = {
     'AMAZON.StopIntent': function () {
         console.log('Stop Event: ' + JSON.stringify(this.event));
         const speechOutput = 'goodbye';
+        this.response.speak(speechOutput);
+        this.emit(':responseReady');
+        return;
+    },
+    'AMAZON.PreviousIntent': function () {
+        console.log(`PreviousIntent Event: ${JSON.stringify(this.event)}`);
+
+        const sessionAttributes = this.event.session.attributes;
+
+        // User wants to return to previously shown list of alarm images.
+        if (sessionAttributes.context === 'ShowImageList') {
+            const content = {
+                hasDisplaySpeechOutput: 'showing previously shown alarms',
+                hasDisplayRepromptText: 'You can ask to see an alarm by number, or touch it.',
+                templateToken: 'ShowImageList',
+                askOrTell: ':ask',
+                listItems: listItems,
+                hint: 'select number 1',
+                title: 'showing previously shown alarms',
+                sessionAttributes: {}
+            };
+    
+            renderTemplate.call(this, content);
+        }
+
+        const speechOutput = 'Sorry, can\'t go back from here. Goodbye.';
         this.response.speak(speechOutput);
         this.emit(':responseReady');
         return;
