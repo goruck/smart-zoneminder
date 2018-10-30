@@ -26,7 +26,7 @@ General form:
 
 "Alexa, ask zone minder to show {Location} alarm of {PersonOrThing}"
 
-If the user does not provide a location then the most recent alarm will be shown from any camera and if a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration or any label given in the [COCO](http://cocodataset.org/#home) dataset. The user can see a video corresponding to the alarm by asking Alexa to "show video clip."
+If the user does not provide a location then the most recent alarm will be shown from any camera and if a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration, 'stranger' for any person not defined or any label given in the [COCO](http://cocodataset.org/#home) dataset. The user can see a video corresponding to the alarm by asking Alexa to "show video clip."
 
 Specific example:
 
@@ -42,7 +42,7 @@ General form:
 
 "Alexa, ask zone minder to show {Location} alarms of {PersonOrThing} from {SomeTimeAgo} ago"
 
-If the user does not provide a location then the last alarm will be shown from all cameras (this can also be triggered by simply asking Alexa to "show all"). If a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration or any label given in the [COCO](http://cocodataset.org/#home) dataset. If a duration was not given by {SomeTimeAgo} then the last alarms will be shown starting from three days ago. In all cases the number of alarms shown will not exceed 64 on the screen due to an Alexa service limitation. The user can scroll though the alarms by either touch or voice and can see a video clip corresponding to the alarm by asking Alexa to "show video clip".
+If the user does not provide a location then the last alarm will be shown from all cameras (this can also be triggered by simply asking Alexa to "show all"). If a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration, 'stranger' for any person not defined or any label given in the [COCO](http://cocodataset.org/#home) dataset. If a duration was not given by {SomeTimeAgo} then the last alarms will be shown starting from three days ago. In all cases the number of alarms shown will not exceed 64 on the screen due to an Alexa service limitation. The user can scroll though the alarms by either touch or voice and can see a video clip corresponding to the alarm by asking Alexa to "show video clip".
 
 Specific example 1:
 
