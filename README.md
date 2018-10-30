@@ -16,62 +16,75 @@ You can see videos of smart-zoneminder in action [here](https://photos.app.goo.g
 8. [Appendix](https://github.com/goruck/smart-zoneminder/blob/master/README.md#appendix)
 
 # Usage Examples
-Hera are a few of the things you can do with smart-zoneminder.
+Here are a few of the things you can do with smart-zoneminder.
 
-**Note: smart-zoneminder currently does not support live streaming of camera feeds.** I recommend that you use [alexa-ip-cam](https://github.com/goruck/alexa-ip-cam) for streaming your cameras feeds live on Echo devices. 
+Note that in all the examples below if the user makes the request to an Alexa device without a screen then the skill will make an attempt to verbalize the response to the user as clearly as possible. 
 
-## Ask Alexa to show an alarm from a camera on a specific date and time
-Note that if the user does not provide a date then the most recent alarm will be shown. By default alarms caused by people (vs objects) will be shown. 
+## Ask Alexa to show the last alarm from a camera due to a person or thing
 
-User: "Alexa, ask zone minder to show alarm from front porch"
+General form:
+
+"Alexa, ask zone minder to show {Location} alarm of {PersonOrThing}"
+
+If the user does not provide a location then the most recent alarm will be shown from any camera and if a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration or any label given in the [COCO](http://cocodataset.org/#home) dataset. The user can see a video corresponding to the alarm by asking Alexa to "show video clip."
+
+Specific example:
+
+User: "Alexa, ask zone minder to show front porch alarm"
 
 Alexa: "Showing last alarm from front porch camera"
 
 ![Alt text](./img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
 
-## Ask Alexa to show last N alarms from a specific camera on a specific date and time
-Note that if user does not give the number of alarms to show the skill will default to showing the last ten around that date and if date is omitted the most recent alarms will be returned.
+## Ask Alexa to show alarms from a camera due to a person or thing starting from some time ago
 
-User: "Alexa, ask zone minder to show alarms from front porch"
+General form:
+
+"Alexa, ask zone minder to show {Location} alarms of {PersonOrThing} from {SomeTimeAgo} ago"
+
+If the user does not provide a location then the last alarm will be shown from all cameras (this can also be triggered by simply asking Alexa to "show all"). If a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration or any label given in the [COCO](http://cocodataset.org/#home) dataset. If a duration was not given by {SomeTimeAgo} then the last alarms will be shown starting from three days ago. In all cases the number of alarms shown will not exceed 64 on the screen due to an Alexa service limitation. The user can scroll though the alarms by either touch or voice and can see a video clip corresponding to the alarm by asking Alexa to "show video clip".
+
+Specific example 1:
+
+User: "Alexa, ask zone minder to show front porch alarms"
 
 Alexa: "Showing last alarms from front porch camera"
 
 ![Alt text](./img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
 
-## Ask Alexa to show the last alarm from all cameras
+Specific example 2:
 
-User: "Alexa, ask zone minder to show alarm"
-
-Alexa: "Showing last alarm from play room door camera"
-
-Result: Image of last alarm frame from all cameras will be displayed on an Echo device with a screen or user will hear about the alarm from Alexa on devices without a screen.
-
-## Ask Alexa to show a person by name from a camera on a specific data and time.
-Note that if the user does not provide a date then the most recent ten alarms will be shown.
-
-User: "Alexa, ask zone minder to show the Lindo from play room"
+User: "Alexa, ask zone minder to show playroom alarms of Lindo"
 
 Alexa: "Showing most recent alarms from playroom for Lindo"
 
 ![Alt text](./img/show-lindo-playroom.png?raw=true "show named person example.")
 
-## Ask Alexa to show an object from a camera on a specific date and time.
-Note that if the user does not provide a date then the most recent ten alarms will be shown. In this example the object dog has been associated with its given name.
+Specific example 3:
 
-User: "Alexa, ask zone minder to show the dog from back yard"
+User: "Alexa, ask zone minder to show backyard alarms of Polly"
 
 Alexa: "Showing most recent alarms from backyard for Polly"
 
 ![Alt text](./img/show-polly-backyard.png?raw=true "show object example.")
 
-## Ask Alexa to play a video of an alarm from a camera on a specific date and time.
-Note that if the user does not provide a date then a video of the last alarm will be played. 
+## Ask Alexa to play a video of a last alarm from a camera
 
-User: "Alexa, ask zone minder to play alarm from front porch"
+General form:
 
-Alexa: "Showing most recent alarms for Polly from back yard."
+"Alexa, show {Location} video clip"
+
+If the user does not provide a camera location then the last video clip of any alarm will be displayed.
+
+Specific example:
+
+User: "Alexa, ask zone minder to show front porch video clip"
+
+Alexa: "Showing most recent video clip from front porch alarm."
 
 Result: Video of last alarm clip from this camera will play on an Echo device with a screen.
+
+**Note: smart-zoneminder currently does not support live streaming of camera feeds.** I recommend that you use [alexa-ip-cam](https://github.com/goruck/alexa-ip-cam) for streaming your cameras feeds live on Echo devices. 
 
 # Project Requirements
 My high level goals and associated requirements for this project are shown below.
