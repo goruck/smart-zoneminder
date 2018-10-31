@@ -28,13 +28,21 @@ General form:
 
 If the user does not provide a location then the most recent alarm will be shown from any camera and if a specific person or thing is not given then an alarm caused by any person will be shown. Location can be any camera name defined in the [configuration](./aws-lambda/alexa-smart-zoneminder/config.json) and PersonOrThing can be the name of any person defined in the configuration, 'stranger' for any person not defined or any label given in the [COCO](http://cocodataset.org/#home) dataset. The user can see a video corresponding to the alarm by asking Alexa to "show video clip."
 
-Specific example:
+Specific example 1:
 
 User: "Alexa, ask zone minder to show front porch alarm"
 
-Alexa: "Showing last alarm from front porch camera"
+Alexa: "Showing last alarm from front porch camera on 2018-10-30 18:25"
 
-![Alt text](./img/last-alarm-by-camera-name.jpg?raw=true "last alarm from camera example.")
+![Alt text](./img/last-alarm-by-camera-name.jpg?raw=true "Last alarm from camera example.")
+
+Specific example 2:
+
+User: "Alexa ask zone minder for back garage alarm of stranger"
+
+Alexa: "Alarm from back gargage caused by stranger on 2018-10-29 13:10"
+
+![Alt text](./img/stranger.png?raw=true "Show stranger example.")
 
 ## Ask Alexa to show alarms from a camera due to a person or thing starting from some time ago
 
@@ -48,25 +56,25 @@ Specific example 1:
 
 User: "Alexa, ask zone minder to show front porch alarms"
 
-Alexa: "Showing last alarms from front porch camera"
+Alexa: "Showing oldest alarms first from front porch camera"
 
-![Alt text](./img/last-alarms-example.jpg?raw=true "last alarms from camera example.")
+![Alt text](./img/last-alarms-example.jpg?raw=true "Last alarms from camera example.")
 
 Specific example 2:
 
-User: "Alexa, ask zone minder to show playroom alarms of Lindo"
+User: "Alexa, ask zone minder to show alarms of Lindo"
 
-Alexa: "Showing most recent alarms from playroom for Lindo"
+Alexa: "Showing latest alarms from all cameras caused by Lindo"
 
-![Alt text](./img/show-lindo-playroom.png?raw=true "show named person example.")
+![Alt text](./img/show-lindo-all.jpg?raw=true "Show all alarms of a person example.")
 
 Specific example 3:
 
 User: "Alexa, ask zone minder to show backyard alarms of Polly"
 
-Alexa: "Showing most recent alarms from backyard for Polly"
+Alexa: "Showing oldest alarms first from backyard for Polly"
 
-![Alt text](./img/show-polly-backyard.png?raw=true "show object example.")
+![Alt text](./img/show-polly-backyard.png?raw=true "show Polly example.")
 
 ## Ask Alexa to play a video of a last alarm from a camera
 
