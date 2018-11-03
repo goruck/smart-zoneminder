@@ -1,7 +1,7 @@
 *This entire project (including the Readme) is under construction.*
 
 # smart-zoneminder
-smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [Tensorflow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) is used to identify people detected in the alarm images. Alexa allows a user to ask to see an image or a video corresponding to an alarm (if using an Echo device with a display) and to get information on what caused the alarm and when it occurred.
+smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [Tensorflow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) is used to identify people detected in the alarm images. Alexa allows a user to ask to see an image or a video corresponding to an alarm and to get information on what caused the alarm and when it occurred. Real-time e-mail of alarms are supported and as soon as the [Alexa Skills Kit supports notifications](https://developer.amazon.com/blogs/alexa/post/833b9af4-26e6-47d2-a13d-bdbd9a257512/expanded-developer-preview-of-notifications-for-alexa-skills), they will also be added. 
 
 # Table of Contents
 1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
@@ -98,19 +98,25 @@ Specific example 1:
 
 User commands: (1) Ask Alexa to show all events; (2) view a particular alarm; (3) view a video containing that alarm; (4) go back and select another alarm.
 
-Alexa: See video clip of this sequence [here](https://photos.app.goo.gl/U7VXhfoCC3srg25q7).
+Video of Alexa response:
+
+[![Specific example 1](https://img.youtube.com/vi/ZyqomNhE8Ow/0.jpg)](https://www.youtube.com/watch?v=ZyqomNhE8Ow)
 
 Specific example 2:
 
 User commands: (1) Ask Alexa to show last alarm; (2) show last alarm from back garage; (3) show a video clip of that alarm.
 
-Alexa: See video clip of this sequence [here](https://photos.app.goo.gl/W8tGeYygES41jPde9).
+Video of Alexa response:
+
+[![Specific example 2](https://img.youtube.com/vi/ZR35JpWSDVI/0.jpg)](https://www.youtube.com/watch?v=ZR35JpWSDVI)
 
 Specific example 3:
 
 User commands: (1) Ask Alexa to show front porch alarms of Lindo; (2) scroll to find an alarm; (3) select an alarm; (4) view video clip of alarm; (5) go back to list of alarms; (6) select another alarm; (7) view video clip of alarm; (8) go back; (9) select another alarm; (10) view video clip of alarm; (11) exit.
 
-Alexa: See video clip of this sequence [here](https://photos.app.goo.gl/uY8z2Ei9eG622Am2A).
+Video of Alexa response:
+
+[![Specific example 3](https://img.youtube.com/vi/rbGPW3MvDoo/0.jpg)](https://www.youtube.com/watch?v=rbGPW3MvDoo)
 
 # Project Requirements
 My high level goals and associated requirements for this project are shown below.
