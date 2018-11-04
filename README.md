@@ -98,7 +98,7 @@ Specific example 1:
 
 User commands: (1) Ask Alexa to show all events; (2) view a particular alarm; (3) view a video containing that alarm; (4) go back and select another alarm.
 
-Video of Alexa response:
+Click on image below to see video of Alexa response:
 
 [![Specific example 1](https://img.youtube.com/vi/ZyqomNhE8Ow/0.jpg)](https://www.youtube.com/watch?v=ZyqomNhE8Ow)
 
@@ -106,7 +106,7 @@ Specific example 2:
 
 User commands: (1) Ask Alexa to show last alarm; (2) show last alarm from back garage; (3) show a video clip of that alarm.
 
-Video of Alexa response:
+Click on image below to see video of Alexa response:
 
 [![Specific example 2](https://img.youtube.com/vi/ZR35JpWSDVI/0.jpg)](https://www.youtube.com/watch?v=ZR35JpWSDVI)
 
@@ -114,7 +114,7 @@ Specific example 3:
 
 User commands: (1) Ask Alexa to show front porch alarms of Lindo; (2) scroll to find an alarm; (3) select an alarm; (4) view video clip of alarm; (5) go back to list of alarms; (6) select another alarm; (7) view video clip of alarm; (8) go back; (9) select another alarm; (10) view video clip of alarm; (11) exit.
 
-Video of Alexa response:
+Click on image below to see video of Alexa response:
 
 [![Specific example 3](https://img.youtube.com/vi/rbGPW3MvDoo/0.jpg)](https://www.youtube.com/watch?v=rbGPW3MvDoo)
 
@@ -127,9 +127,9 @@ This lead to the requirement of a five second or less upload time to a secure AW
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.**
 This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).
 
-3. **Determine if a person detected in an Alarm image if familiar or not.** This lead to the requirement to perform real-time face recognition on people detected in ZoneMinder images. 
+3. **Determine if a person detected in an Alarm image is familiar or not.** This lead to the requirement to perform real-time face recognition on people detected in ZoneMinder images. 
 
-4. **Make it much easier to access ZoneMinder information.**
+4. **Make it easy and intuitive to access ZoneMinder information.**
 This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example, when an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search.
 
 5. **Have low implementation and operating costs.**
@@ -159,9 +159,9 @@ I have the monitor function set to [Mocord](http://zoneminder.readthedocs.io/en/
 
 Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very useful but it takes some trial and error to get it right given each situation is so different. Zoneminder is configured to analyze the feeds for motion at 5 FPS which also helps to limit Rekognition costs but it comes at the expense of possibly missing a high speed object moving through the camera's FOV (however unlikely in my situation). Since I was still concerned about Rekognition costs I also included the option to run local Tensorflow-based object detection instead. This comes at the expense of slightly higher detection times (with my current HW which uses a Nvidia Geforce GTX 1080Ti GPU for Tensorflow) but completely avoids Rekogntion costs. 
 
-Currently smart-zoneminder naively sends every alarm frame detected by ZoneMinder to the cloud. This is expensive. Clearly there are more optimal ways to process the alarms locally in terms of more advanced motion detection algorithms and exploiting the temporal coherence between alarm frames that would limit cloud costs without some of the current restrictions. This is an area for future study by the project. 
+If set to use remote object detection via Rekognition smart-zoneminder can be configured to either send all or some alarm frames (as specified by the *frameSkip* parameter in the uploader's config file) detected by ZoneMinder's motion detector to the cloud. This is expensive. Clearly there are more optimal ways to process the alarms locally in terms of more advanced motion detection algorithms and exploiting the temporal coherence between alarm frames that would limit cloud costs without some of the current restrictions. This is an area for future study by the project. 
 
-I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at 5 FPS. I've configured the cameras' shutter to minimize motion blur at the expense of noise in low light situations since I found Rekognition's accuracy is more affected by the former.
+I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at 5 FPS. I've configured the cameras' shutter to minimize motion blur at the expense of noise in low light situations since I found Rekognition's accuracy is more affected by the former. The object detection in Tensorflow seems more robust in this regard. 
 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
@@ -183,13 +183,13 @@ If you installed ZoneMinder successfully then apache should be up and running bu
 8. Allow external access to Apache by opening the right port on your firewall.
 
 ### MongoDB
-I use a local mongo database to store how every alarm frame was processed by the system. Its important to record the information locally since depending on what options are set not all alarm frames and their associated metadata will be uploaded to AWS. The mongo logging can be toggled on or off by a configuration setting. See [How to Install MongoDB on Ubuntu 18.04](https://www.tecmint.com/install-mongodb-on-ubuntu-18-04/) for instructions on how to install mongo on your system.
+I use a local mongo database to store how every alarm frame was processed by the system. Its important to record the information locally since depending on what options are set not all alarm frames and their associated metadata will be uploaded to AWS S3. The mongo logging can be toggled on or off by a configuration setting. See [How to Install MongoDB on Ubuntu 18.04](https://www.tecmint.com/install-mongodb-on-ubuntu-18-04/) for instructions on how to install mongo on your system.
 
 ### Amazon Developers Account
 You'll need an [Amazon Developers](https://developer.amazon.com/) account to use the Alexa skills I developed for this project since I haven't published them. 
 
 ### AWS Account
-You'll also need an [Amazon AWS](https://aws.amazon.com/) account to run the skill's handler and the other lambda functions required for this project.
+You'll also need an [Amazon AWS](https://aws.amazon.com/) account to run the skill's handler, the other lambda functions required for this project, DynamoDB and S3.
 
 ### DynamoDB
 smart-zoneminder uses a [DynamoDB](https://aws.amazon.com/dynamodb/?nc2=h_l3_db) table to store information about the alarm frame images uploaded to S3. This table needs to be created either through the AWS cli or the console. Here's how to do it via the console.
@@ -244,7 +244,9 @@ Thanks to [Paul Branston](https://github.com/pbran) for great suggestions to set
     ]
 }
 ```
-Note that the Alexa devices require a public URI for all images and videos that these devices display. Since this project currently stores all images in an S3 bucket this means that the Alexa skills will only work if the bucket is open to the world. **FOR TEST PURPOSES ONLY** you can open your bucket by replacing the JSON in step 11 above with the following.
+Note that the Alexa devices require a public URI for all images and videos that these devices display. You can either point the URI to the S3 bucket or to the the server on the local network containing the ZoneMinder image store. The lambda handler for the Alexa skill can be configured to point to either the S3 bucket or the local network for image access by changing the *USE_LOCAL_PATH* constant.
+
+In the case of pointing the URI to the S3 bucket the Alexa skill will only work if the bucket is open to the world which obviously means that anyone could view your alarm frames. **FOR TEST PURPOSES ONLY** you can open your bucket by replacing the JSON in step 11 above with the following.
 ```json
 {
   "Version": "2012-10-17",
@@ -260,12 +262,12 @@ Note that the Alexa devices require a public URI for all images and videos that 
 }
 ```
 
-Alternatively, you can serve the ZoneMinder event files locally and point a public URI to the files that the Alexa devices on your local network can access. This avoids the risk of a S3 bucket being open to the world but comes at the (slight) expense of serving up those files but since Apache is already being used the effort is minimal. The lambda hander for the Alexa skill can be configured to point to either the S3 bucket or the local network for image access. 
+However, the recommended approach is to serve the ZoneMinder event files locally and point a public URI to the files that the Alexa devices on your local network can access. This avoids the risk of an S3 bucket being open to the world but comes at the expense of serving up those files locally and keeping the local store in synch with remote store on S3 (which is currently not done). But since Apache is already being used for ZoneMinder anyway the effort is manageable.
 
 Here's how to enable local access.
 
-1. Setup a DNS entry for the Apache private IP address on your LAN. I use GoDaddy but any DNS host should work, just create a A record for the Apache server's IP address and give it a hostname. Putting Private IP's into public DNS is discouraged, but since this is for personal use its fine.
-2. Get an SSL cert and use Domain Name Validation to secure the domain. I use LetsEncrypt.
+1. Setup a DNS entry for the Apache server's private IP address on your LAN. I used GoDaddy but any DNS host should work, just create an A record for the Apache server's IP address and give it a hostname. Putting Private IP's into public DNS is discouraged, but since this is for personal use its fine.
+2. Get an SSL cert and use Domain Name Validation to secure the domain. I used LetsEncrypt.
 3. Create a site configuration file for an Apace Virtual Host for the domain and create a Directory entry to serve the ZoneMinder event files. Here's mine.
 ```xml
 Alias /nvr /nvr
@@ -300,14 +302,14 @@ The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zo
 Please see the Object Detection Server's [README](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/README.md) for installation instructions.
 
 ## Face Recognition (face-det-rec)
-The Face Detection and Recognition module, [face-det-rec](https://github.com/goruck/smart-zoneminder/tree/master/face-det-rec) is run as a Python program from the Alarm Uploader and it uses dlib and the face_recognition API as described above. You need to first encode examples of faces you want recognized by using another program in the same directory.
+The Face Detection and Recognition module, [face-det-rec](https://github.com/goruck/smart-zoneminder/tree/master/face-det-rec) is run as a Python program from the Alarm Uploader and it uses dlib and the face_recognition API as described above. You need to first encode examples of faces you want recognized by using the *encode_faces.py* program in the same directory.
 
 Please see the Face Recognition's [README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md) for installation instructions.
 
 ## Alarm Clip Generator (gen-vid)
 The Alarm Clip Generator, [gen-vid](https://github.com/goruck/smart-zoneminder/blob/master/cgi/gen-vid.py), is a python script run in Apache's CGI on the local server that generates an MP4 video of an alarm event given its Event ID, starting Frame ID and ending Frame ID. The script is initiated via the CGI by the Alexa skill handler and the resulting video is played back on an Echo device with a screen upon a user's request.
 
-ZoneMinder does offer a [streaming video API](https://github.com/ZoneMinder/zoneminder/blob/master/src/zms.cpp) that can be used to view the event with the alarm frames via a web browser. However rhe Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that's used to playback the alarm clip requires very specific formats which are not supported by the ZoneMinder streaming API. Additionally I wanted to show only the alarm frames and not the entire event which also isn't supported by the Zoneminder API. Also its possible to create the video clip completely on the cloud from the alarm images stored in DynamoDB, however gaps would likely exist in videos created this way because there's no guarantee that ZoneMinder's motion detection would pick up all frames. So I decided to create gen-vid but it does come at the expense of complexity and user perceived latency since a long alarm clip takes some time to generate on my local machine. I'll be working to reduce this latency. 
+ZoneMinder does offer a [streaming video API](https://github.com/ZoneMinder/zoneminder/blob/master/src/zms.cpp) that can be used to view the event with the alarm frames via a web browser. However the Alexa [VideoApp Interface](https://developer.amazon.com/docs/custom-skills/videoapp-interface-reference.html) that's used to playback the alarm clip requires very specific formats which are not supported by the ZoneMinder streaming API. Additionally I wanted to show only the alarm frames and not the entire event which also isn't supported by the Zoneminder API. Also its possible to create the video clip completely on the cloud from the alarm images stored in DynamoDB, however gaps would likely exist in videos created this way because there's no guarantee that ZoneMinder's motion detection would pick up all frames. So I decided to create gen-vid but it does come at the expense of complexity and user perceived latency since a long alarm clip takes some time to generate on my local machine. I'll be working to reduce this latency. 
 
 Please see the Alarm Clip Generator's [README](https://github.com/goruck/smart-zoneminder/blob/master/cgi/README.md) for installation instructions. Apache must be setup to enable the CGI, see above. 
 
