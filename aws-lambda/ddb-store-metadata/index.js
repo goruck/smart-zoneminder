@@ -54,7 +54,7 @@ exports.handler = (event, context, callback) => {
         } else {
             console.log('Successful storing [' + S3Key + '] metadata');
             
-            callback(null, 'Successful storing [' + S3Key + '] metadata');
+            callback(null, event);
         }
     });
 };

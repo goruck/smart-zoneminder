@@ -84,6 +84,23 @@
                 "ErrorEquals": ["States.ALL"],
                 "Next": "error-handler"
             }],
+            "Next": "nodemailer-send-notification"
+        },
+        "nodemailer-send-notification": {
+            "Type": "Task",
+            "Resource": "arn:aws:lambda:us-west-2:232513044594:function:nodemailer-send-notification",
+            "TimeoutSeconds": 10,
+            "Comment": "Deal with random timeouts and errors from service.",
+            "Retry" : [{
+                "ErrorEquals": [ "States.Timeout", "States.TaskFailed"],
+                "IntervalSeconds": 3,
+                "MaxAttempts": 2,
+                "BackoffRate": 1.5
+            }],
+            "Catch": [{
+                "ErrorEquals": ["States.ALL"],
+                "Next": "error-handler"
+            }],
             "End": true
         }
     }
