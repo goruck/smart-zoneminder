@@ -31,13 +31,10 @@ Based on and inspired by [smart-security-camera](https://github.com/markwest1972
 }
 ```
 
-### Environment Variables
+### Create and Configure the AWS Lambda Function
 
-The variable STEP_MACHINE_ARN needs to be declared and defined in the Lambda Function console.  This should point to the ARN of your Step Function. 
-
-### Upload to AWS
-
-1. Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function, using the "blank function" blueprint.
+1. Using the [AWS Lambda Console](https://aws.amazon.com/lambda), using the "blank function" blueprint create a new Lambda Function called *s3-trigger-image-processing*.
 2. Create a trigger for your s3 bucket with the event type "Object Create (All)" and the prefix "upload/".  This will ensure that this function is run for each new item uploaded to the "upload" directory of your s3 bucket.
-3. Once the trigger has been specified you can copy the code from s3-trigger-image-processing.js directly into the inline code editor.
+3. Copy the code from s3-trigger-image-processing.js directly into the inline code editor.
 4. Ensure that the function uses your newly created IAM Role.
+5. Create an Environment Variable called *STEP_MACHINE_ARN* and set the value of it to the ARN of your Step Function.

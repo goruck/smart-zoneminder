@@ -14,7 +14,7 @@ Using the [AWS IAM Console](https://aws.amazon.com/console/) create an IAM Role 
 
 ### Upload to AWS
 
-Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function called *s3-archive-image* and copy the code from index.js directly into the inline code editor.
+Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function called *ddb-store-metadata* and copy the code from index.js directly into the inline code editor.
 
 Ensure that the function uses your newly created IAM Role.
 
