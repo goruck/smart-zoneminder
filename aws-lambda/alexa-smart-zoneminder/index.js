@@ -13,6 +13,7 @@
 const fs = require('fs');
 const Alexa = require('alexa-sdk');
 const AWS = require('aws-sdk');
+const s3 = new AWS.S3({apiVersion: '2006-03-01'});
 
 // Get configuration. 
 let file = fs.readFileSync('./config.json');
@@ -33,8 +34,9 @@ if (credsObj === null) {
 const APP_ID = credsObj.alexaAppId;
 const S3_PATH = 'https://s3-' + configObj.awsRegion +
     '.amazonaws.com/' + configObj.zmS3Bucket + '/';
+const S3_BUCKET = configObj.zmS3Bucket;
 const LOCAL_PATH = 'https://cam.lsacam.com:9443';
-const USE_LOCAL_PATH = true;
+const USE_LOCAL_PATH = false;
 
 // Help messages.
 const helpMessages = ['Show Last Event',
@@ -221,7 +223,8 @@ const handlers = {
                 if (USE_LOCAL_PATH) {
                     content['backgroundImageUrl'] = LOCAL_PATH + ZmLocalEventPath;
                 } else {
-                    content['backgroundImageUrl'] = S3_PATH + S3Key;
+                    const params = {Bucket: S3_BUCKET, Key: S3Key};
+                    content['backgroundImageUrl'] = s3.getSignedUrl('getObject', params);
                 }
 
                 renderTemplate.call(this, content);
@@ -280,8 +283,9 @@ const handlers = {
                 return;
             }
             cameraConfigArray = [{zoneminderName: zoneminderCameraName}];
-            // The ListTemplate2 Display Template can only handle up to 65 items. 
-            numberOfAlarmsToFind = 65;
+            // The ListTemplate2 Display Template has a limitation on total bytes in listitems.
+            // Looks like 25 signed S3 urls is about the max. 
+            numberOfAlarmsToFind = 25;
             sortOrder = 'ascending'; // earliest alarm first
             output = `Showing oldest alarms first from ${zoneminderCameraName} `;
         }
@@ -372,7 +376,8 @@ const handlers = {
                     if (USE_LOCAL_PATH) {
                         imageUrl = LOCAL_PATH + item.ZmLocalEventPath;
                     } else {
-                        imageUrl = S3_PATH + item.S3Key;
+                        const params = {Bucket: S3_BUCKET, Key: item.S3Key};
+                        imageUrl = s3.getSignedUrl('getObject', params);
                     }
 
                     let templateJSON =  {
