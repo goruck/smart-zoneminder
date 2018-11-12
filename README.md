@@ -251,25 +251,9 @@ Thanks to [Paul Branston](https://github.com/pbran) for great suggestions to set
 ```
 Note that the Alexa devices require a public URI for all images and videos that these devices display. You can either point the URI to the S3 bucket or to the the server on the local network containing the ZoneMinder image store. The lambda handler for the Alexa skill can be configured to point to either the S3 bucket or the local network for image access by changing the *USE_LOCAL_PATH* constant.
 
-In the case of pointing the URI to the S3 bucket the Alexa skill will only work if the bucket is open to the world which obviously means that anyone could view your alarm frames. **FOR TEST PURPOSES ONLY** you can open your bucket by replacing the JSON in step 11 above with the following.
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "PublicReadGetObject",
-      "Action": "s3:GetObject",
-      "Effect": "Allow",
-      "Resource": "arn:aws:s3:::zm-alarm-frames/*",
-      "Principal": "*"
-    }
-  ]
-}
-```
+In the case of pointing the URI to the S3 bucket (USE_LOCAL_PATH = false) the Alexa skill handler will use signed s3 urls with an expiration time. This is the recommended approach. 
 
-However, the recommended approach is to serve the ZoneMinder event files locally and point a public URI to the files that the Alexa devices on your local network can access. This avoids the risk of an S3 bucket being open to the world but comes at the expense of serving up those files locally and keeping the local store in synch with remote store on S3 (which is currently not done). But since Apache is already being used for ZoneMinder anyway the effort is manageable.
-
-Here's how to enable local access.
+Alternatively, you can serve the ZoneMinder event files locally (USE_LOCAL_PATH = true) and point a public URI to the files that the Alexa devices on your local network can access. The latency of this approach is slightly lower but comes at the expense of configuring the Apache server for this purpose and creates the potential for the DynamoDB database to be out of synch with the images stored locally since the database is only guaranteed to reflect the S3 store. If you want to enabled local access, follow the steps below. 
 
 1. Setup a DNS entry for the Apache server's private IP address on your LAN. I used GoDaddy but any DNS host should work, just create an A record for the Apache server's IP address and give it a hostname. Putting Private IP's into public DNS is discouraged, but since this is for personal use its fine.
 2. Get an SSL cert and use Domain Name Validation to secure the domain. I used LetsEncrypt.
