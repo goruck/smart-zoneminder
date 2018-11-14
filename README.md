@@ -149,6 +149,11 @@ The figure below shows the smart-zoneminder system architecture.
 
 ![Alt text](./img/sz-blk-dia.jpg?raw=true "smart-zoneminder system architecture diagram.")
 
+# Image Processing Pipeline
+The figure below shows the smart-zoneminder image processing pipeline.
+
+![Alt text](./img/sz-image-pipeline.jpg?raw=true "smart-zoneminder image processing pipeline.")
+
 # System Components and Installation
 The information below details each major component in the architecture, the interconnects between the other components and how to install them both locally and in the cloud.
 
