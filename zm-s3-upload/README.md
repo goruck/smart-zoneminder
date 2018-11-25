@@ -35,7 +35,7 @@ $ npm install
 $ mysql -uUSER -pPASS zm < zms3db.sql > output.txt
 ```
 
-5. Use systemd to run the Alarm Uploader as a Linux service. Edit [zm-s3-upload.service](../scripts/zm-s3-upload.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+6. Use systemd to run the Alarm Uploader as a Linux service. Edit [zm-s3-upload.service](../scripts/zm-s3-upload.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
 ```bash
 $ sudo systemctl enable zm-s3-upload.service
 ```
