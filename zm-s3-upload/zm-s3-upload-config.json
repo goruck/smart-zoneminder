@@ -20,9 +20,9 @@
         "mongoCollection": "alarms"
     },
     "logConfig": {
-        "level": "info",
+        "level": "error",
         "silent": false,
-        "consoleLog": true,
+        "consoleLog": false,
         "baseName": "/home/lindo/develop/smart-zoneminder/zm-s3-upload/"
     }
 }

@@ -1,0 +1,19 @@
+[Unit]
+Description=smart-zoneminder's object detection service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Environment="PATH=/usr/local/cuda/bin${PATH:+:${PATH}}"
+Environment="PYTHONPATH=$PYTHONPATH:/home/lindo/develop/tensorflow/models/research:/home/lindo/develop/tensorflow/models/research/slim"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+Type=simple
+Restart=always
+RestartSec=1
+User=lindo
+WorkingDirectory=/home/lindo/develop/smart-zoneminder/obj-detect
+ExecStart=/home/lindo/develop/tensorflow/bin/python3.6 obj_detect_server.py
+ExecStop=/usr/bin/pkill -f "/home/lindo/develop/tensorflow/bin/python3.6 obj_detect_server.py"
+
+[Install]
+WantedBy=multi-user.target

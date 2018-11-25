@@ -21,10 +21,10 @@ let countNotReady = 0; // keeps track of checking for alarm attempts
 
 // AWS config.
 const awsCreds = JSON.parse(fs.readFileSync('./aws-creds.json'));
-const AWS = require('./node_modules/aws-sdk');
+const AWS = require('aws-sdk');
 const s3 = new AWS.S3(awsCreds);
 
-// Get configuration details. 
+// Get configuration details.
 const configObj = JSON.parse(fs.readFileSync('./zm-s3-upload-config.json'));
 const zmConfig = configObj.zms3Config;
 
@@ -82,7 +82,7 @@ const MONGO_URL = zmConfig.mongoUrl;
 const MONGO_COLLECTION = zmConfig.mongoCollection;
 
 // mysql database connection.
-const mysql = require('./node_modules/mysql');
+const mysql = require('mysql');
 const client = mysql.createConnection({
     host     : DB_HOST,
     user     : DB_USR,
@@ -420,7 +420,7 @@ const getFrames = () => {
 
                 // zerorpc connection to object detection server. 
                 const objDetect = imagePaths => {
-                    const zerorpc = require('./node_modules/zerorpc');
+                    const zerorpc = require('zerorpc');
                     // Heartbeat must be greater than the time required to run detection on maxInit frames.
                     const zerorpcClient = new zerorpc.Client({heartbeatInterval: ZERORPC_HEARTBEAT});
                     zerorpcClient.connect(ZERORPC_PIPE);

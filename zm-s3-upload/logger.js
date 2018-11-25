@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  *
  * Logger for Zoneminder S3 Uploader.
@@ -11,7 +13,7 @@ const fs = require('fs');
 const configObj = JSON.parse(fs.readFileSync('./zm-s3-upload-config.json'));
 const logConfig = configObj.logConfig;
 
-const { createLogger, format, transports } = require('./node_modules/winston');
+const { createLogger, format, transports } = require('winston');
 const { simple, json, combine, timestamp } = format;
 
 const logger = createLogger({
