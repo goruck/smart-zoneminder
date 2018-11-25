@@ -1,5 +1,5 @@
 # obj-detect
-The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is started by a cron job at boot time.
+The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is run as a Linux service using systemd.
 
 # Installation
 1. Clone this git repo to your local machine running Zoneminder and cd to it.
@@ -8,8 +8,14 @@ The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/sm
 
 3. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in the obj_detect_server.py file.
 
-4. obj_detect_server.py must be run in the Tensorflow python virtual environment that was setup previously. Here's a command line example of how to do this (adjust path for your installation):
+4. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect.service](../scripts/obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+```bash
+$ sudo systemctl enable obj-detect.service
+```
+
+Note 1: obj_detect_server.py must be run in the Tensorflow python virtual environment that was setup previously. Here's a command line example of how to do this (adjust path for your installation):
 ```bash
 $ /home/lindo/develop/tensorflow/bin/python3.6 ./obj_detect_server.py
 ```
-Note: the requirements.txt file in this repo is for reference only as it reflects the tensorflow virtualenv configuration. Do not use it to install dependencies in the local directory via pip. You can use it instead to configure the tensorflow virtualenv to match what I used. 
+
+Note 2: the requirements.txt file in this repo is for reference only as it reflects the tensorflow virtualenv configuration. Do not use it to install dependencies in the local directory via pip. You can use it instead to configure the tensorflow virtualenv to match what I used. 

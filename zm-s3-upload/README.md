@@ -35,7 +35,12 @@ $ npm install
 $ mysql -uUSER -pPASS zm < zms3db.sql > output.txt
 ```
 
-5. Start the uploader after you've started the object detection server. This should be run as a daemon or cron job at startup.
+5. Use systemd to run the Alarm Uploader as a Linux service. Edit [zm-s3-upload.service](../scripts/zm-s3-upload.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+```bash
+$ sudo systemctl enable zm-s3-upload.service
+```
+
+Note: The Alarm Uploader must be started after the Object Detection Server is started the systemd scripts take this into account. You can test the Alarm Uploader before enabling the service by executing:
 ```bash
 $ node zm-s3-upload.js
 ```
