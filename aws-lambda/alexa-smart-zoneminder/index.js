@@ -34,11 +34,10 @@ if (credsObj === null) {
 // Define some constants.
 // TODO - clean this up.
 const APP_ID = credsObj.alexaAppId;
-const S3_PATH = 'https://s3-' + configObj.awsRegion +
-    '.amazonaws.com/' + configObj.zmS3Bucket + '/';
 const S3_BUCKET = configObj.zmS3Bucket;
-const LOCAL_PATH = 'https://cam.lsacam.com:9443';
-const USE_LOCAL_PATH = false;
+const LOCAL_PATH = configObj.localPath;
+const USE_LOCAL_PATH = configObj.useLocalPath;
+const LOCAL_TZ = configObj.localTimeZone;
 
 // Help messages.
 const helpMessages = ['Show Last Event',
@@ -190,7 +189,7 @@ const handlers = {
                 // Append alarm date and time.
                 // User's local timezone must be set as an environment variable. 
                 const dt = DateTime.fromISO(ZmEventDateTime.split('.')[0], { zone: 'utc' });
-                const rezoned = dt.setZone(process.env.LOCAL_TZ);
+                const rezoned = dt.setZone(LOCAL_TZ);
                 output += `on ${rezoned.toLocaleString(DateTime.DATETIME_MED)}`;
                              
                 // Check if user has a display and if not just return alarm info w/o image.
@@ -381,7 +380,7 @@ const handlers = {
                     // Add alarm date and time.
                     // User's local timezone must be set as an environment variable. 
                     const dt = DateTime.fromISO(item.ZmEventDateTime.split('.')[0], { zone: 'utc' });
-                    const rezoned = dt.setZone(process.env.LOCAL_TZ);
+                    const rezoned = dt.setZone(LOCAL_TZ);
                     const datetime = rezoned.toLocaleString(DateTime.DATETIME_MED);
 
                     let imageUrl = '';

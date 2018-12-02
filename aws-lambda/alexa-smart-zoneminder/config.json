@@ -102,5 +102,7 @@
   ],
   "awsRegion": "us-west-2",
   "zmS3Bucket": "zm-alarm-frames",
-  "zmDdbTable": "ZmAlarmFrames"
+  "zmDdbTable": "ZmAlarmFrames",
+  "localTimeZone": "America/Los_Angeles",
+  "useLocalPath": false
 }

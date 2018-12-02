@@ -16,7 +16,7 @@ Using the [AWS IAM Console](https://aws.amazon.com/console/) create an IAM Role 
 ### Installation
 1. Clone this git repo to local machine running smart-zoneminder and cd to it. 
 2. Run ```npm install``` to fetch dependencies.
-3. Modify config.json per your ZoneMinder installation.
+3. Modify config.json per your installation.
 4. Create a file called creds.json with the following content modified to match your installation.
 ```json
 {
@@ -25,14 +25,15 @@ Using the [AWS IAM Console](https://aws.amazon.com/console/) create an IAM Role 
     "port": "ApacheServerPort",
     "cgiUser": "UserNameForCGIAccess",
     "cgiPass": "PasswordForCGIAccess",
-    "alarmVideoPath": "URIToAlarmClipVideo"
+    "alarmVideoPath": "URIToAlarmClipVideo",
+    "localPath": "URIToLocalAlarmImages"
 }
 ```
 5. Run ```mkzip``` to zip up contents to prep for upload to AWS. 
 
 ### Upload to AWS
 
-Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function called *alexa-smart-zoneminder* and upload the zip file created above. For the function to properly handle local time and dates you need to create a Lambda function environment variable named *LOCAL_TZ* and set its value to your time zone using IANA format (for example, America/Los_Angeles). You can use the AWS Lambda Console to create this variable. 
+Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function called *alexa-smart-zoneminder* and upload the zip file created above. 
 
 Ensure that the function uses your newly created IAM Role.
 
