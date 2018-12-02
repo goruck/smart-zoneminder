@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * Lambda function for Zoneminder control and status triggered by Alexa.
  * 
@@ -9,11 +11,11 @@
 //==============================================================================
 //========================== Setup and Globals  ================================
 //==============================================================================
-'use strict';
 const fs = require('fs');
 const Alexa = require('alexa-sdk');
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3({apiVersion: '2006-03-01'});
+const { DateTime } = require('luxon');
 
 // Get configuration. 
 let file = fs.readFileSync('./config.json');
@@ -184,7 +186,12 @@ const handlers = {
                 let output = `alarm from ${zoneminderName} camera `;
                 // Append alarm cause to output if given.
                 if (findFaceName || findObjectName) output += `caused by ${personOrThing.toLowerCase()} `;
-                output += `on ${timeConverter(Date.parse(ZmEventDateTime))}`;
+        
+                // Append alarm date and time.
+                // User's local timezone must be set as an environment variable. 
+                const dt = DateTime.fromISO(ZmEventDateTime.split('.')[0], { zone: 'utc' });
+                const rezoned = dt.setZone(process.env.LOCAL_TZ);
+                output += `on ${rezoned.toLocaleString(DateTime.DATETIME_MED)}`;
                              
                 // Check if user has a display and if not just return alarm info w/o image.
                 if (!supportsDisplay.call(this) && !isSimulator.call(this)) {
@@ -371,7 +378,12 @@ const handlers = {
                 listItems = [];
                 queryResultArray.forEach((item) => {
                     //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
-                    const datetime = timeConverter(Date.parse(item.ZmEventDateTime));
+                    // Add alarm date and time.
+                    // User's local timezone must be set as an environment variable. 
+                    const dt = DateTime.fromISO(item.ZmEventDateTime.split('.')[0], { zone: 'utc' });
+                    const rezoned = dt.setZone(process.env.LOCAL_TZ);
+                    const datetime = rezoned.toLocaleString(DateTime.DATETIME_MED);
+
                     let imageUrl = '';
                     if (USE_LOCAL_PATH) {
                         imageUrl = LOCAL_PATH + item.ZmLocalEventPath;
@@ -1372,37 +1384,6 @@ function httpsReq(method, path, postData, text, user, pass, callback) {
         log('ERROR', 'https request: ' + e.message);
         callback(e.message, null);
     });
-}
-
-/**
- * 
- * Converts Unix timestamp (in Zulu) in ms to human understandable date and time of day.
- * 
- * @param {*} unix_timestamp 
- */
-function timeConverter(unix_timestamp) {
-    //const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    // tzDiff = 8 * 60 * 60 * 1000 - Pacific time is 8 hours behind UTC (daylight savings).
-    //const tzDiff = 28800000;
-    // tzOiff = 7 * 60 * 60 * 1000. // standard time.
-    // TODO: make this conversion more robust.
-    const tzDiff = 25200000;
-    // Create a new JavaScript Date object based on the timestamp.
-    // Multiplied by 1000 so that the argument is in milliseconds, not seconds.
-    const date = new Date(unix_timestamp - tzDiff);
-    let year = date.getFullYear();
-    //var month = months[date.getMonth()];
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const hours = date.getHours();
-    const minutes = '0' + date.getMinutes();
-    //const seconds = '0' + date.getSeconds(); // not using
-
-    // Will display time in M D HH:MM format
-    //var formattedTime = month + " " + day + " " + hours + ":" + minutes.substr(-2);
-    // Will display in 2013-10-04 22:23:00 format
-    const formattedTime = year+'-'+month+'-'+day+' '+hours+':'+minutes.substr(-2);
-    return formattedTime;
 }
 
 /**

@@ -10,7 +10,8 @@
     "dependencies": {
         "alexa-sdk": ">=1.0.25",
         "ask-sdk": "^2.1.0",
-        "ask-sdk-v1adapter": "^2.1.0"
+        "ask-sdk-v1adapter": "^2.1.0",
+        "luxon": "^1.8.2"
     },
     "repository": {
         "type": "git",

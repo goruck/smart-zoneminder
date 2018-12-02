@@ -32,7 +32,7 @@ Using the [AWS IAM Console](https://aws.amazon.com/console/) create an IAM Role 
 
 ### Upload to AWS
 
-Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function called *alexa-smart-zoneminder* and upload the zip file created above.
+Using the [AWS Lambda Console](https://aws.amazon.com/lambda), create a new Lambda Function called *alexa-smart-zoneminder* and upload the zip file created above. For the function to properly handle local time and dates you need to create a Lambda function environment variable named *LOCAL_TZ* and set its value to your time zone using IANA format (for example, America/Los_Angeles). You can use the AWS Lambda Console to create this variable. 
 
 Ensure that the function uses your newly created IAM Role.
 
