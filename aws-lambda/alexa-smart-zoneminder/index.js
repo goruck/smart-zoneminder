@@ -17,26 +17,25 @@ const AWS = require('aws-sdk');
 const s3 = new AWS.S3({apiVersion: '2006-03-01'});
 const { DateTime } = require('luxon');
 
-// Get configuration. 
+// Get configuration and define some constants.
 let file = fs.readFileSync('./config.json');
 const configObj = safelyParseJSON(file);
 if (configObj === null) {
     process.exit(1); // TODO: find a better way to exit. 
 }
+const S3_BUCKET = configObj.zmS3Bucket; // S3 bucket store of zoneminder alarms images
+const USE_LOCAL_PATH = configObj.useLocalPath; // Use local or S3 alarm store
+const LOCAL_TZ = configObj.localTimeZone; // Define local time zone
 
-// Get credentials.
+// Get credentials and define some constants.
+// 'credentials' are simply some sensitive definitions.
 file = fs.readFileSync('./creds.json');
 const credsObj = safelyParseJSON(file);
 if (credsObj === null) {
     process.exit(1); // TODO: find a better way to exit. 
 }
-
-// Define some constants from config files.
 const APP_ID = credsObj.alexaAppId; // Alexa skill ID
-const S3_BUCKET = configObj.zmS3Bucket; // S3 bucket where zoneminder alarms images
-const LOCAL_PATH = configObj.localPath; // Local path to zoneminder alarm images
-const USE_LOCAL_PATH = configObj.useLocalPath; // Use local or S3 alarm store
-const LOCAL_TZ = configObj.localTimeZone; // Define local time zone
+const LOCAL_PATH = credsObj.localPath; // Local path to zoneminder alarm images
 
 // Help messages.
 const helpMessages = ['Show Last Event',
