@@ -31,13 +31,12 @@ if (credsObj === null) {
     process.exit(1); // TODO: find a better way to exit. 
 }
 
-// Define some constants.
-// TODO - clean this up.
-const APP_ID = credsObj.alexaAppId;
-const S3_BUCKET = configObj.zmS3Bucket;
-const LOCAL_PATH = configObj.localPath;
-const USE_LOCAL_PATH = configObj.useLocalPath;
-const LOCAL_TZ = configObj.localTimeZone;
+// Define some constants from config files.
+const APP_ID = credsObj.alexaAppId; // Alexa skill ID
+const S3_BUCKET = configObj.zmS3Bucket; // S3 bucket where zoneminder alarms images
+const LOCAL_PATH = configObj.localPath; // Local path to zoneminder alarm images
+const USE_LOCAL_PATH = configObj.useLocalPath; // Use local or S3 alarm store
+const LOCAL_TZ = configObj.localTimeZone; // Define local time zone
 
 // Help messages.
 const helpMessages = ['Show Last Event',
@@ -187,7 +186,6 @@ const handlers = {
                 if (findFaceName || findObjectName) output += `caused by ${personOrThing.toLowerCase()} `;
         
                 // Append alarm date and time.
-                // User's local timezone must be set as an environment variable. 
                 const dt = DateTime.fromISO(ZmEventDateTime.split('.')[0], { zone: 'utc' });
                 const rezoned = dt.setZone(LOCAL_TZ);
                 output += `on ${rezoned.toLocaleString(DateTime.DATETIME_MED)}`;
@@ -378,7 +376,6 @@ const handlers = {
                 queryResultArray.forEach((item) => {
                     //log('INFO', `S3Key: ${item.S3Key} ZmEventDateTime: ${item.ZmEventDateTime}`);
                     // Add alarm date and time.
-                    // User's local timezone must be set as an environment variable. 
                     const dt = DateTime.fromISO(item.ZmEventDateTime.split('.')[0], { zone: 'utc' });
                     const rezoned = dt.setZone(LOCAL_TZ);
                     const datetime = rezoned.toLocaleString(DateTime.DATETIME_MED);
