@@ -40,6 +40,10 @@ const MAX_RECS = zmConfig.MAXRECS;
 // Filesystem path to where ZoneMinder events are stored.
 const IMG_BASE_PATH = zmConfig.IMGBASEPATH;
 
+// As event images are captured they are stored to the filesystem with a numerical index.
+// This defines the number of digits in that index which must match your ZoneMinder configuration.
+const ZM_EVENT_IMAGE_DIGITS = zmConfig.zmEventImageDigits;
+
 // The maximum allowable concurrent uploads to S3.
 // This also sets the number of images submitted for local object detection.
 const MAX_CONCURRENT_UPLOAD = zmConfig.MAXCONCURRENTUPLOAD;
@@ -188,35 +192,52 @@ const getFrames = () => {
             return S3Path + '/' + S3Key;
         };
 
-        // Build path to image file name.
+        /**
+         * Build filesystem path to image.
+         * 
+         * Currently this only supports events stored with "deep" paths, e.g., 
+         *     ../events/1/18/10/17/14/30/20/00102-capture.jpg
+         * 
+         * @param {Object} imgData - Object describing image.
+         * @returns {string} - Filesystem path to image in "deep" format. 
+         */
         const buildFilePath = imgData => {
             const dtFrame = new Date(imgData.starttime);
-            let frameId = imgData.frameid;
-            const monitorName = imgData.monitor_name;
-            /* get a two digit year for the file path */
-            let tYear = dtFrame.getFullYear();
-            tYear = String(tYear).slice(2);
-            /* Month with leading zeros */
-            let tMonth = String(dtFrame.getMonth() + 1);
-            if (tMonth.length == 1) tMonth = '0' + tMonth;
-            /* Day with leading zeros */
-            let tDay = String(dtFrame.getDate());
-            if (tDay.length == 1) tDay = '0' + tDay;
-            /* Hours with leading zeros */
-            let tHour = String(dtFrame.getHours());
-            if (tHour.length == 1) tHour = '0' + tHour;
-            /* Minutes... */
-            let tMin = String(dtFrame.getMinutes());
-            if (tMin.length == 1) tMin = '0' + tMin;
-            /* Seconds ... */
-            let tSec = String(dtFrame.getSeconds());
-            if (tSec.length == 1) tSec = '0' + tSec;
+            // Get a two digit year for the file path.
+            const tYear = dtFrame.getFullYear().toString().slice(2);
+            // Month with leading zero.
+            let tMonth = (dtFrame.getMonth() + 1).toString();
+            if (tMonth.length === 1) tMonth = '0' + tMonth;
+            // Day...
+            let tDay = dtFrame.getDate().toString();
+            if (tDay.length === 1) tDay = '0' + tDay;
+            // Hours...
+            let tHour = dtFrame.getHours().toString();
+            if (tHour.length === 1) tHour = '0' + tHour;
+            // Minutes...
+            let tMin = dtFrame.getMinutes().toString();
+            if (tMin.length === 1) tMin = '0' + tMin;
+            // Seconds ...
+            let tSec = dtFrame.getSeconds().toString();
+            if (tSec.length === 1) tSec = '0' + tSec;
 
-            frameId = String(frameId);
-            if (frameId.length == 1) frameId = '0000' + frameId;
-            if (frameId.length == 2) frameId = '000' + frameId;
-            if (frameId.length == 3) frameId = '00' + frameId;
-            if (frameId.length == 4) frameId = '0' + frameId;
+            // Add leading zero(s) to frame ID to match ZoneMinder configuration. 
+            let frameId = imgData.frameid.toString();
+            frameId = '0'.repeat(ZM_EVENT_IMAGE_DIGITS - frameId.length) + frameId;
+
+            /* 
+               Check if default monitor names are being used.
+               If so then just use monitor number in the image path.
+               If not then use the name the user gave the monitor.
+               Default monitor names are in the form "Monitor-N",
+               where N is the monitor number.
+               
+               Zoneminder creates symlinks between default monitor numbers
+               and non-default monitor names in the image store directory.
+            */
+            const re = /Monitor-\d+/;
+            const monitorName = re.test(imgData.monitor_name) ?
+                imgData.monitor_name.split('-')[1] : imgData.monitor_name;
 
             return imgData.image_base_path + '/' + monitorName +
                '/' + tYear + '/' + tMonth +

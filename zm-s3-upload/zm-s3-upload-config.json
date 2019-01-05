@@ -17,7 +17,8 @@
         "zerorpcPipe": "ipc:///tmp/zmq.pipe",
         "useMongo": true,
         "mongoUrl": "mongodb://zmuser:zmpass@localhost:27017/zm?authSource=admin",
-        "mongoCollection": "alarms"
+        "mongoCollection": "alarms",
+        "zmEventImageDigits": 5
     },
     "logConfig": {
         "level": "error",
