@@ -4,12 +4,12 @@
 # Image paths must be in the form of:
 # '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
 #
-# This program must be run in a tensorflow virtualenv, e.g.,
-# $ /home/lindo/develop/tensorflow/bin/python3.6 ./obj_detect_server.py
+# This program should be run in the 'od' virtual python environment, i.e.,
+# $ /home/lindo/.virtualenvs/od/bin/python ./obj_detect_server.py
 #
 # This is part of the smart-zoneminder project.
 #
-# Copyright (c) 2018 Lindo St. Angel
+# Copyright (c) 2018, 2019 Lindo St. Angel
 
 import numpy as np
 import tensorflow as tf
@@ -18,6 +18,8 @@ import zerorpc
 from PIL import Image
 # Object detection imports.
 from object_detection.utils import label_map_util
+# For tensorrt optimized models...
+import tensorflow.contrib.tensorrt as trt
 
 # Debug.
 #import warnings
@@ -28,9 +30,8 @@ with open('./config.json') as fp:
     config = json.load(fp)['objDetServer']
 
 # Tensorflow object detection file system paths.
-PATH_BASE = config['modelPathBase']
-PATH_TO_CKPT = PATH_BASE + config['modelPath']
-PATH_TO_LABELS = PATH_BASE + config['labelPath']
+PATH_TO_MODEL = config['modelPath']
+PATH_TO_LABEL_MAP = config['labelMapPath']
 
 # Max number of classes for TF object detection.
 NUM_CLASSES = config['numClasses']
@@ -58,7 +59,7 @@ ZRPC_PIPE = config['zerorpcPipe']
 detection_graph = tf.Graph()
 with detection_graph.as_default():
   od_graph_def = tf.GraphDef()
-  with tf.gfile.GFile(PATH_TO_CKPT, 'rb') as fid:
+  with tf.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
     serialized_graph = fid.read()
     od_graph_def.ParseFromString(serialized_graph)
     tf.import_graph_def(od_graph_def, name='')
@@ -70,7 +71,7 @@ with detection_graph.as_default():
   sess.run(tf.global_variables_initializer())
 
 # Load label map. 
-label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
+label_map = label_map_util.load_labelmap(PATH_TO_LABEL_MAP)
 categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
 

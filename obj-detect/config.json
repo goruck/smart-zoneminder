@@ -1,8 +1,8 @@
 {
     "objDetServer": {
-        "modelPathBase": "/home/lindo/develop/tensorflow/models/research/object_detection/",
-        "modelPath": "rfcn_resnet101_coco_2018_01_28/frozen_inference_graph.pb",
-        "labelPath": "data/mscoco_label_map.pbtxt",
+        "comment": "Configuration for obj_detect_server.py".,
+        "modelPath": "models/rfcn_resnet101_coco_2018_01_28/frozen_inference_graph.pb",
+        "labelMapPath": "data/mscoco_label_map.pbtxt",
         "conseqImagesToSkip": 0,
         "numClasses": 90,
         "minScore": 0.8,
