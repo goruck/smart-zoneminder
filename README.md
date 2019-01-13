@@ -389,7 +389,8 @@ I benchmarked Tensorflow object detection model performance on the machine runni
 
 ### Software Configuration
 * Ubuntu 18.04.1 LTS
-* tensorflow-gpu Version 1.8.0
+* Tensorflow-gpu Version 1.8.0
+* TensorRT Version 4.0.1.6
 * NVidia Driver Version 396.54
 * CUDA Version 9.0
 * CuDNN Version 7.0.5
