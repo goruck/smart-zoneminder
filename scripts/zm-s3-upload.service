@@ -1,3 +1,4 @@
+# Copy to /lib/systemd/system/zm-s3-upload.service
 [Unit]
 Description=smart-zoneminder's alarm uploader service
 After=obj-detect.service
@@ -10,7 +11,6 @@ RestartSec=1
 User=lindo
 WorkingDirectory=/home/lindo/develop/smart-zoneminder/zm-s3-upload
 ExecStart=/usr/local/bin/node zm-s3-upload.js
-ExecStop=/usr/bin/pkill -f "/usr/local/bin/node zm-s3-upload.js"
 
 [Install]
 WantedBy=multi-user.target
