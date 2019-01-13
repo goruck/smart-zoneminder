@@ -77,6 +77,12 @@ const CHECK_FOR_ALARMS_ATTEMPTS = zmConfig.checkForAlarmsAttempts;
 // Flag to run local face detection / recognition on people detected. 
 const RUN_FACE_DET_REC = zmConfig.runFaceDetRec;
 
+// The python virtual environment to run the face det / rec script in. 
+const FACE_DET_REC_VIRTENV = zmConfig.faceDetRecVirtenv;
+
+// Path to the face det / rec script. 
+const FACE_DET_REC_PATH = zmConfig.faceDetRecPath;
+
 // mongodb
 // Log the disposition of all alarm frames to a mongo database?
 const USE_MONGO = zmConfig.useMongo;
@@ -420,14 +426,14 @@ const getFrames = () => {
                     // The first arg is the script name. 
                     // Each detected image is a separate arg on the command line. 
                     const spawnArgs = [];
-                    spawnArgs.push('../face-det-rec/face_det_rec.py');
+                    spawnArgs.push(FACE_DET_REC_PATH);
                     detectedObjects.forEach(item =>{
                         spawnArgs.push(JSON.stringify(item));
                     });
 
                     return new Promise((resolve, reject) => {
                         const { spawn } = require('child_process');
-                        const faceDetRecPy = spawn('/home/lindo/.virtualenvs/cv/bin/python', spawnArgs);
+                        const faceDetRecPy = spawn(FACE_DET_REC_VIRTENV, spawnArgs);
 
                         faceDetRecPy.stdout.on('data', (data) => {
                             resolve(JSON.parse(data.toString()));

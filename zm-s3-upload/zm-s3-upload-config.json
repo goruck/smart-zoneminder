@@ -1,5 +1,6 @@
 {
     "zms3Config": {
+        "comment": "Configuration for zm-s3-upload.js.",
         "MAXRECS": 400,
         "DBHOST": "localhost",
         "DBUSR": "zmuser",
@@ -9,6 +10,8 @@
         "MAXCONCURRENTUPLOAD": 10,
         "runLocalObjDet": true,
         "runFaceDetRec": true,
+        "faceDetRecVirtenv": "/home/lindo/.virtualenvs/cv/bin/python",
+        "faceDetRecPath": "../face-det-rec/face_det_rec.py",
         "uploadFalsePositives": false,
         "frameSkip": 1,
         "checkForAlarmsInterval": 5000,
@@ -21,6 +24,7 @@
         "zmEventImageDigits": 5
     },
     "logConfig": {
+        "comment": "Configuration for logger.js for zm-s3-upload.js messages.",
         "level": "error",
         "silent": false,
         "consoleLog": false,
