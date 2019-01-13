@@ -176,7 +176,7 @@ I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
 ### Tensorflow
-This project uses Tensorflow (with GPU support) for local object detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco_2018_01_28* model which can be found in the [Tensorflow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo).
+This project uses Tensorflow (with GPU support) for local object detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco* model which can be found in the [Tensorflow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo). See the Appendix for model benchmarking and selection. 
 
 ### dlib, face_recognition and OpenCV
 [ageitgey's face_recognition API](https://github.com/ageitgey/face_recognition) is used for face recognition. I followed the [linux installation guide](https://gist.github.com/ageitgey/629d75c1baac34dfa5ca2a1928a7aeaf) to install the API and dlib with GPU support on my local machine in a Python virtual environment. OpenCV is used to preprocess the image for face recognition, I used [OpenCV 3 Tutorials, Resources, and Guides](https://www.pyimagesearch.com/opencv-tutorials-resources-guides/) to install OpenCV 3.4.2 with GPU support on my local machine. A high-level overview of how the face recognition works can be found [here](https://medium.com/@ageitgey/machine-learning-is-fun-part-4-modern-face-recognition-with-deep-learning-c3cffc121d78) and [here](https://www.pyimagesearch.com/2018/06/18/face-recognition-with-opencv-python-and-deep-learning/).
@@ -295,6 +295,8 @@ Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zonemin
 ## Local Object Detection (obj_detect_server)
 The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. Another benefit is that the server when started will load into memory the model and initialize it, thus saving time when an inference is actually run. The server can optionally skip inferences on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is run as a Linux service using systemd.
 
+I benchmarked a few Tensorflow object detection models on the machine running smart-zoneminder in order to pick the best model in terms of performance and accuracy. See the Appendix for this analysis. 
+
 Please see the Object Detection Server's [README](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/README.md) for installation instructions.
 
 ## Face Recognition (face-det-rec)
@@ -377,7 +379,48 @@ Thank you Brian and Mark!
 
 # Appendix
 
-## Sample console output from zm-s3-upload.
+## Object Detection Performance and Model Selection
+I benchmarked Tensorflow object detection model performance on the machine running smart-zoneminder. The benchmarking configuration and results are shown below. For a good overview of the Tensorflow object detection models see [Deep Learning for Object Detection: A Comprehensive Review](https://towardsdatascience.com/deep-learning-for-object-detection-a-comprehensive-review-73930816d8d9).
+
+### Hardware Configuration
+* Intel Core i5-3570K 3.4GHz CPU
+* Main system memory 16 GiB RAM
+* NVidia GeForce GTX 1080 Ti (compute capability: 6.1)
+
+### Software Configuration
+* Ubuntu 18.04.1 LTS
+* tensorflow-gpu Version 1.8.0
+* NVidia Driver Version 396.54
+* CUDA Version 9.0
+* CuDNN Version 7.0.5
+
+### Benchmarking Configuration
+I used the benchmarking capability in [TensorRT / TensorFlow Object Detection](https://github.com/tensorflow/tensorrt/tree/master/tftrt/examples/object_detection) because I wanted to evaluate model performance with TensorRT optimizations (in the results below no TensorRT optimizations were used). This code uses the COCO API to fetch the images and annotations used for the benchmarking and was configured by the json shown below.
+
+```json
+ "optimization_config": {
+    "use_trt": false,
+    "remove_assert": false
+  },
+  "benchmark_config": {
+    "images_dir": "dataset/val2014",
+    "annotation_path": "dataset/annotations/instances_val2014.json",
+    "batch_size": 1,
+    "image_shape": [600, 600],
+    "num_images": 4096
+  }
+```
+
+### Results
+ Model        | Avg Latency (ms)           | Avg Throughput (fps)  | COCO mAP |
+|:------------- |:-------------:|:-----:|:-----:
+| [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) | 52 | 19 | 0.28 |
+| [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 22 | 45 | 0.27 |
+| [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2018_01_28.tar.gz) | 14 | 69 | 0.22 |
+
+Based on these results the *ssd_inception_v2_coco* model seems to be a good tradeoff between performance and accuracy on my machine but in practice I found *rfcn_resnet101_coco* to be more accurate and used it for this project. Others with less capable hardware will likely find *ssd_inception_v2_coco* to be acceptable. 
+
+## Sample console output from zm-s3-upload
 
 ```text
 info: Ready for new alarm frames...
@@ -441,6 +484,4 @@ info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00882-capt
 info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00875-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_875-19-27-9-750.jpg
 info: Wrote 10 docs to mongodb.
 info: 10 image(s) have been processed.
-
-
 ```
