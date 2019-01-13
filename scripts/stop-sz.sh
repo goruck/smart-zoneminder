@@ -1,9 +1,9 @@
 #!/bin/bash
 # Script to shut down smart-zoneminder.
-# Copyright (c) 2018 Lindo St. Angel
+# Copyright (c) 2018, 2019 Lindo St. Angel
 
 # Stop object detection server.
-/usr/bin/pkill -f "/home/lindo/develop/tensorflow/bin/python3.6 \
+/usr/bin/pkill -f "/home/lindo/.virtualenvs/od/bin/python3 \
 /home/lindo/develop/smart-zoneminder/obj-detect/obj_detect_server.py"
 
 # Stop alarm frame uploder.
