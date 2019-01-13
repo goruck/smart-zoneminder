@@ -4,18 +4,31 @@ The Object Detection Server, [obj_detect_server.py](https://github.com/goruck/sm
 # Installation
 1. Clone this git repo to your local machine running Zoneminder and cd to it.
 
-2. Create the file '/tmp/zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket. 
+2. Create a folder called "models" and download a Tensorflow object detection model from the [model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md). Only models that have been trained with the COCO dataset are supported at this time.
+```bash
+$ mkdir models
+$ wget http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2018_01_28.tar.gz # example download of ssd_mobilenet_v1
+$ tar -xvzf ssd_mobilenet_v1_coco_2018_01_28.tar.gz
+$ rm -i ssd_mobilenet_v1_coco_2018_01_28.tar.gz # optional
+```
 
-3. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in the obj_detect_server.py file.
+3. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in obj_detect_server.py.
 
-4. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect.service](../scripts/obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+4. Create the file '/tmp/zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket.
+
+5. Install the required python3.6 packages. Its highly recommended that you do so in a python virtualenv.
+```bash
+$ workon od # using virtualenvwrapper to activate a vitualenv called od
+$ pip3 install -r requirements.txt
+$ deactivate
+```
+
+6. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect.service](../scripts/obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
 ```bash
 $ sudo systemctl enable obj-detect.service
 ```
 
-Note 1: obj_detect_server.py must be run in the Tensorflow python virtual environment that was setup previously. Here's a command line example of how to do this (adjust path for your installation):
+Note: obj_detect_server.py must be run in the python virtual environment that was setup above. Here's a command line example of how to do this w/o explicitly activating the virtualenv (adjust path for your installation):
 ```bash
-$ /home/lindo/develop/tensorflow/bin/python3.6 ./obj_detect_server.py
+$ /home/lindo/.virtualenvs/od/bin/python3.6 obj_detect_server.py
 ```
-
-Note 2: the requirements.txt file in this repo is for reference only as it reflects the tensorflow virtualenv configuration. Do not use it to install dependencies in the local directory via pip. You can use it instead to configure the tensorflow virtualenv to match what I used. 
