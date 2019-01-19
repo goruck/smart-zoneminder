@@ -419,70 +419,155 @@ I used the benchmarking capability in [TensorRT / TensorFlow Object Detection](h
 | [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 22 | 45 | 0.27 |
 | [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2018_01_28.tar.gz) | 14 | 69 | 0.22 |
 
-Based on these results the *ssd_inception_v2_coco* model seems to be a good tradeoff between performance and accuracy on my machine but in practice I found *rfcn_resnet101_coco* to be more accurate and used it for this project. Others with less capable hardware will likely find *ssd_inception_v2_coco* to be acceptable. 
+Based on these results the *ssd_inception_v2_coco* model seems to be a good tradeoff between performance and accuracy on my machine but in practice I found *rfcn_resnet101_coco* to be more accurate and used it for this project. Others with less capable hardware will likely find *ssd_inception_v2_coco* to be acceptable.
+
+## Overall system performance
+
+The overall system performance is summarized in the table below.
+
+Configuration | Max Latency^ (s) | Avg Throughput (fps) | Note |
+|:------------|:-------:|:-------:|:------:
+Remote Object Detection | 5.2 | 5 |
+Local Object Detection | 5.4 | 2.5 | rfcn_resnet101_coco
+Local Object and Face Detection | 5.7 | 1.5 | rfcn_resent101_coco and dlib
+^Time between new alarm image in datebase and completed upload to S3. This assumes 5 secs between zm database queries by zm-s3-uploader and 10 max concurrent uploads. 
 
 ## Sample console output from zm-s3-upload
 
 ```text
-info: Ready for new alarm frames...
-info: 19 un-uploaded frames found in: 36 milliseconds
+info: Waiting for new alarm frame(s)...
+info: 17 un-uploaded frames found in 0 s 2.5 ms.
 info: Running with local object detection enabled.
 info: Running with local face det / rec enabled.
-info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00873-capture.jpg
-info: Image labels: { Confidence: 0.9994339346885681,
+info: Processed /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00584-capture.jpg
+info: Image labels: { Confidence: 99.9394416809082,
   Name: 'person',
   Box: 
-   { ymin: 257.41777896881104,
-     xmin: 850.916862487793,
-     ymax: 773.3503174781799,
-     xmax: 1038.574333190918 },
-  Face: 'nico_st_angel' }
-info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00874-capture.jpg
-info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00875-capture.jpg
-info: Image labels: { Confidence: 0.9996906518936157,
+   { ymin: 590.1059603691101,
+     xmin: 311.93172454833984,
+     ymax: 1077.4997520446777,
+     xmax: 735.9034538269043 },
+  Face: null }
+info: Skipped processing of /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00585-capture.jpg
+info: Processed /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00587-capture.jpg
+info: Image labels: { Confidence: 99.92443323135376,
   Name: 'person',
   Box: 
-   { ymin: 250.09660363197327,
-     xmin: 836.7828941345215,
-     ymax: 774.9302244186401,
-     xmax: 1083.0389785766602 },
-  Face: 'nico_st_angel' }
-info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00877-capture.jpg
-info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00878-capture.jpg
-info: Image labels: { Confidence: 0.9991200566291809,
+   { ymin: 607.0036840438843,
+     xmin: 520.517406463623,
+     ymax: 1074.6708798408508,
+     xmax: 791.3787460327148 },
+  Face: null }
+info: Skipped processing of /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00588-capture.jpg
+info: Processed /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00592-capture.jpg
+info: Image labels: { Confidence: 99.9264657497406,
   Name: 'person',
   Box: 
-   { ymin: 393.3701455593109,
-     xmin: 781.582088470459,
-     ymax: 956.7480111122131,
-     xmax: 1079.7370147705078 },
-  Face: 'nico_st_angel' }
-info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00879-capture.jpg
-info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00880-capture.jpg
-info: Image labels: { Confidence: 0.9997510313987732,
+   { ymin: 378.2608652114868,
+     xmin: 1071.9804382324219,
+     ymax: 816.8702745437622,
+     xmax: 1241.4872360229492 },
+  Face: null }
+info: Image labels: { Confidence: 81.95973038673401,
+  Name: 'backpack',
+  Box: 
+   { ymin: 460.12367606163025,
+     xmin: 381.9887638092041,
+     ymax: 649.2824649810791,
+     xmax: 569.5979690551758 } }
+info: Skipped processing of /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00593-capture.jpg
+info: Processed /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00594-capture.jpg
+info: Image labels: { Confidence: 99.85606074333191,
   Name: 'person',
   Box: 
-   { ymin: 531.6450262069702,
-     xmin: 635.1659774780273,
-     ymax: 1060.2527403831482,
-     xmax: 1027.7736282348633 },
-  Face: 'nikki_st_angel' }
-info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00881-capture.jpg
-info: Processed /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00882-capture.jpg
-info: Image labels: { Confidence: 0.9932160973548889,
+   { ymin: 374.14047718048096,
+     xmin: 1100.584716796875,
+     ymax: 823.8329243659973,
+     xmax: 1249.0928649902344 },
+  Face: 'lindo_st_angel' }
+info: Image labels: { Confidence: 83.0621063709259,
+  Name: 'backpack',
+  Box: 
+   { ymin: 459.6431636810303,
+     xmin: 381.47083282470703,
+     ymax: 648.8149237632751,
+     xmax: 569.5986557006836 } }
+info: Skipped processing of /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00595-capture.jpg
+info: Processed /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00596-capture.jpg
+info: Image labels: { Confidence: 99.92876648902893,
   Name: 'person',
   Box: 
-   { ymin: 687.431845664978,
-     xmin: 711.1233901977539,
-     ymax: 1071.694142818451,
-     xmax: 1208.5906219482422 },
-  Face: 'Unknown' }
-info: Skipped processing of /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00883-capture.jpg
-info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00873-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_873-19-27-8-700.jpg
-info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00878-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_878-19-27-11-310.jpg
-info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00880-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_880-19-27-12-360.jpg
-info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00882-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_882-19-27-13-410.jpg
-info: The file: /nvr/zoneminder/events/PlayroomDoor/18/08/16/19/20/00/00875-capture.jpg will be saved to: PlayroomDoor/2018-8-16/hour-19/New_Event-ID_545949-Frame_875-19-27-9-750.jpg
+   { ymin: 373.1494867801666,
+     xmin: 1102.4020385742188,
+     ymax: 836.7723512649536,
+     xmax: 1282.6728057861328 },
+  Face: 'lindo_st_angel' }
+info: Image labels: { Confidence: 80.89488744735718,
+  Name: 'backpack',
+  Box: 
+   { ymin: 459.8338043689728,
+     xmin: 381.52796745300293,
+     ymax: 648.5125637054443,
+     xmax: 568.8717269897461 } }
+info: Skipped processing of /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00597-capture.jpg
+info: The file: /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00584-capture.jpg will be saved to: BackPorch/2019-1-19/hour-15/New_Event-ID_708022-Frame_584-15-1-56-800.jpg
+info: The file: /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00587-capture.jpg will be saved to: BackPorch/2019-1-19/hour-15/New_Event-ID_708022-Frame_587-15-1-57-400.jpg
+info: The file: /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00592-capture.jpg will be saved to: BackYard/2019-1-19/hour-15/New_Event-ID_708024-Frame_592-15-1-58-390.jpg
+info: The file: /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00594-capture.jpg will be saved to: BackYard/2019-1-19/hour-15/New_Event-ID_708024-Frame_594-15-1-58-800.jpg
+info: The file: /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00596-capture.jpg will be saved to: BackYard/2019-1-19/hour-15/New_Event-ID_708024-Frame_596-15-1-59-190.jpg
 info: Wrote 10 docs to mongodb.
-info: 10 image(s) have been processed.
+info: 10 / 17 image(s) uploaded.
+info: Processing 7 more alarm frames...
+info: Processed /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00598-capture.jpg
+info: Image labels: { Confidence: 99.96223449707031,
+  Name: 'person',
+  Box: 
+   { ymin: 388.02454590797424,
+     xmin: 1095.959358215332,
+     ymax: 866.5595483779907,
+     xmax: 1300.3404235839844 },
+  Face: 'lindo_st_angel' }
+info: Skipped processing of /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00599-capture.jpg
+info: Processed /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00600-capture.jpg
+info: Image labels: { Confidence: 99.95986819267273,
+  Name: 'person',
+  Box: 
+   { ymin: 398.61603140830994,
+     xmin: 1063.4001159667969,
+     ymax: 887.9494786262512,
+     xmax: 1249.9040222167969 },
+  Face: 'Unknown' }
+info: Image labels: { Confidence: 81.68306350708008,
+  Name: 'backpack',
+  Box: 
+   { ymin: 459.20549154281616,
+     xmin: 382.4666404724121,
+     ymax: 649.6205520629883,
+     xmax: 571.0733413696289 } }
+info: Skipped processing of /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00601-capture.jpg
+info: Processed /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00602-capture.jpg
+info: Image labels: { Confidence: 99.96305704116821,
+  Name: 'person',
+  Box: 
+   { ymin: 408.53816628456116,
+     xmin: 984.8835754394531,
+     ymax: 922.8833627700806,
+     xmax: 1158.0920791625977 },
+  Face: 'Unknown' }
+info: Skipped processing of /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00603-capture.jpg
+info: Processed /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00604-capture.jpg
+info: Image labels: { Confidence: 99.70620274543762,
+  Name: 'person',
+  Box: 
+   { ymin: 789.4368767738342,
+     xmin: 552.2249794006348,
+     ymax: 1074.701521396637,
+     xmax: 930.7627487182617 },
+  Face: 'Unknown' }
+info: The file: /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00598-capture.jpg will be saved to: BackYard/2019-1-19/hour-15/New_Event-ID_708024-Frame_598-15-1-59-600.jpg
+info: The file: /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00600-capture.jpg will be saved to: BackYard/2019-1-19/hour-15/New_Event-ID_708024-Frame_600-15-2-0-000.jpg
+info: The file: /nvr/zoneminder/events/BackYard/19/01/19/15/00/00/00602-capture.jpg will be saved to: BackYard/2019-1-19/hour-15/New_Event-ID_708024-Frame_602-15-2-0-400.jpg
+info: The file: /nvr/zoneminder/events/BackPorch/19/01/19/15/00/00/00604-capture.jpg will be saved to: BackPorch/2019-1-19/hour-15/New_Event-ID_708022-Frame_604-15-2-0-800.jpg
+info: Wrote 7 docs to mongodb.
+info: 17 / 17 image(s) uploaded in 12 s 156.9 ms (1.4 FPS).
 ```
