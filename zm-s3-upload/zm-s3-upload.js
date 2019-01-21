@@ -360,6 +360,7 @@ const getFrames = () => {
                     Bucket: 'zm-alarm-frames',
                     Key: 'upload/' + S3PathKey,
                     Body: data,
+                    StorageClass: 'STANDARD_IA',
                     Metadata: {
                         'zmMonitorName': imgData.monitor_name,
                         'zmEventName': imgData.event_name,
