@@ -24,9 +24,9 @@
     },
     "logConfig": {
         "comment": "Configuration for logger.js for zm-s3-upload.js messages.",
-        "level": "info",
+        "level": "error",
         "silent": false,
-        "consoleLog": true,
+        "consoleLog": false,
         "baseName": "/home/lindo/develop/smart-zoneminder/zm-s3-upload/"
     }
 }
