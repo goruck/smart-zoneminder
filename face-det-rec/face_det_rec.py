@@ -8,7 +8,7 @@
 # Part of the smart-zoneminder project:
 # See https://github.com/goruck/smart-zoneminder.
 #
-# Copyright (c) 2018 Lindo St. Angel.
+# Copyright (c) 2018, 2019 Lindo St. Angel.
 #
 
 import face_recognition
@@ -71,6 +71,8 @@ for obj in objects_detected:
 			y1 = int(label['box']['ymax'])
 			x2 = int(label['box']['xmax'])
 			roi = img[y2:y1, x1:x2, :]
+			if roi.size == 0:
+				continue
 
 			# Covert from cv2 format.
 			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
