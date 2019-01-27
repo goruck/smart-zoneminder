@@ -422,8 +422,9 @@ const getFrames = () => {
                 // NB: alarms from multiple monitors need to be concurrently processed.
                 const monitor = aryRows[i].monitor_name;
                 const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
-                monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 0;
-                const skip = alarmsFromMonitor[monitor] % (FRAME_SKIP + 1);
+                monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
+                // Need to invert mod result since alarmsFromMonitor count starts at 1.
+                const skip = !(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1));
                 if (skip) continue;
                 const imageFullPath = buildFilePath(aryRows[i]);
                 testImagePaths.push(imageFullPath);
@@ -500,8 +501,8 @@ const getFrames = () => {
                     const labels = {'Labels': []};
                     const fileName = buildFilePath(aryRows[i]);
 
-                    // Find alarm frames that were never sent for object detection and skip past those. 
-                    const skip = i % (FRAME_SKIP + 1);
+                    // Find alarm frames that were never sent for object detection and skip past those.
+                    const skip = (i % (FRAME_SKIP + 1)) !== 0;
                     if (skip) {
                         logger.info(`Skipped processing of ${fileName}`);
                         if (USE_MONGO) mongodbDoc.push({'image': fileName,
