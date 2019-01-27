@@ -37,6 +37,12 @@ COMPARE_FACES_TOLERANCE = 0.57
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
 NUMBER_OF_TIMES_TO_UPSAMPLE = 1
 
+# Face detection model to use. Can be either 'cnn' or 'hog'.
+FACE_DET_MODEL = 'cnn'
+
+# How many times to re-sample when calculating face encoding.
+NUM_JITTERS = 100
+
 # Get image paths from command line.
 if len(sys.argv) == 1:
     exit('No test image file paths were supplied!')
@@ -81,9 +87,9 @@ for obj in objects_detected:
 			# to each face in the input image, then compute the facial embeddings
 			# for each face
 			box = face_recognition.face_locations(rgb, NUMBER_OF_TIMES_TO_UPSAMPLE,
-				model='cnn')
+				model=FACE_DET_MODEL)
 
-			encodings = face_recognition.face_encodings(rgb, box)
+			encodings = face_recognition.face_encodings(rgb, box, NUM_JITTERS)
 
 			# loop over the facial embeddings
 			for encoding in encodings:
