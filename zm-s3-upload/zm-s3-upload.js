@@ -171,6 +171,17 @@ const getFrames = () => {
             logger.info(`${aryRows.length} un-uploaded frames found in ${parseHrtime(startTime)[0]}.`);
         }
 
+        // Determine frames to skip for each one processed.
+        // Note that alarms from multiple monitors need to be concurrently processed.
+        const alarmsFromMonitor = {};
+        const skipFrames = [];
+        aryRows.forEach(item => {
+            const monitor = item.monitor_name;
+            const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
+            monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
+            skipFrames.push(!(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1)));
+        });
+
         /**
          * Build S3 path and key.
          * 
@@ -414,18 +425,10 @@ const getFrames = () => {
             logger.debug(`aryRows len: ${aryRows.length} alarms: ${alarms} alarmsProcessed: ${alarmsProcessed}`);
 
             // Build set of test image paths.
-            const alarmsFromMonitor = {}; // count of alarm frames from each monitor in set
             const testImagePaths = [];
             for (let i = alarmsProcessed; i < alarms + alarmsProcessed; i++) {
                 logger.debug(`Alarm frame info: ${util.inspect(aryRows[i], false, null)}`);
-                // Determine frames to skip for each one processed.
-                // NB: alarms from multiple monitors need to be concurrently processed.
-                const monitor = aryRows[i].monitor_name;
-                const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
-                monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
-                // Need to invert mod result since alarmsFromMonitor count starts at 1.
-                const skip = !(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1));
-                if (skip) continue;
+                if (skipFrames[i]) continue;
                 const imageFullPath = buildFilePath(aryRows[i]);
                 testImagePaths.push(imageFullPath);
             }
@@ -500,14 +503,12 @@ const getFrames = () => {
                 for (let i = alarmsProcessed; i < alarms + alarmsProcessed; i++) {
                     const labels = {'Labels': []};
                     const fileName = buildFilePath(aryRows[i]);
-
                     // Find alarm frames that were never sent for object detection and skip past those.
-                    const skip = (i % (FRAME_SKIP + 1)) !== 0;
-                    if (skip) {
+                    if (skipFrames[i]) {
                         logger.info(`Skipped processing of ${fileName}`);
                         if (USE_MONGO) mongodbDoc.push({'image': fileName,
                             'labels': labels, 'status': 'skipped', 'objDet': 'local'});
-                        promises.push(uploadImage(i, skip));
+                        promises.push(uploadImage(i, true));
                         skipped++;
                         continue;
                     }
@@ -582,16 +583,12 @@ const getFrames = () => {
         const remoteObjDet = (alarms, alarmsProcessed) => {
             logger.debug(`aryRows len: ${aryRows.length} alarms: ${alarms} alarmsProcessed: ${alarmsProcessed}`);
             const promises = [];
-            const skipObj = {};
             const labels = {'Labels': []};
             const mongodbDoc = []; // for local database of all alarm frame disposition.
             for (let i = alarmsProcessed; i < alarms + alarmsProcessed; i++) {
                 logger.debug('Alarm frame info: '+util.inspect(aryRows[i], false, null));
                 const fileName = buildFilePath(aryRows[i]);
-                const monitor = aryRows[i].monitor_name;
-                const monitorExists = skipObj.hasOwnProperty(monitor);
-                monitorExists ? skipObj[monitor]++ : skipObj[monitor] = 0;
-                const skip = skipObj[monitor] % (FRAME_SKIP + 1);
+                const skip = skipFrames[i];
                 if (skip) {
                     logger.info('Skipped processing of '+fileName);
                     if (USE_MONGO) mongodbDoc.push({'image': fileName, 'labels': labels,
