@@ -141,8 +141,10 @@ const getFrames = () => {
     // startTime used to time code performance. 
     const startTime = process.hrtime();
 
-    // aryRows is an array that holds the alarm images read from zm.
-    const aryRows = [];
+    // Initalize some variables to generate stats. 
+    let alarmsProcessed = 0;
+    let alarmsFound = 0;
+    let alarmsSkipped = 0;
 
     // Start the query.
     const query = client.query(zmQuery, [FTYPE, MAX_RECS]);
@@ -152,16 +154,23 @@ const getFrames = () => {
         // Die on query error.
         process.exit(1);
     });
-
-    /*query.on('fields', function(fields) {
-        console.log('query1 fields: ' +fields);
-    });*/
-
+    
+    // Get alarm frames row by row from mysql.
+    // Add image path base and skip info to the alarm then push to aryRows.
+    const alarmsFromMonitor = {}; // alarms per monitor, used for frame skip
+    const aryRows = []; // array that holds the alarm images read from zm
     query.on('result', row => {
         row.image_base_path = IMG_BASE_PATH;
-        aryRows.push(row);
+        // Calculate which frames should be skipped.
+        // Need to keep track of alarms on a monitor basis since they arrive async.
+        const monitor = row.monitor_name;
+        const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
+        monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
+        row.skip = !(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1));
+        aryRows.push(row); // add alarm to array
     });
 
+    // When query ends start processing the alarm images. 
     query.on('end', () => {
         if (aryRows.length === 0) {
             // Nothing to upload, get more frames.
@@ -169,18 +178,8 @@ const getFrames = () => {
             return setTimeout(getFrames, CHECK_FOR_ALARMS_INTERVAL);
         } else {
             logger.info(`${aryRows.length} un-uploaded frames found in ${parseHrtime(startTime)[0]}.`);
+            alarmsFound = aryRows.length;
         }
-
-        // Determine frames to skip for each one processed.
-        // Note that alarms from multiple monitors need to be concurrently processed.
-        const alarmsFromMonitor = {};
-        const skipFrames = [];
-        aryRows.forEach(item => {
-            const monitor = item.monitor_name;
-            const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
-            monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
-            skipFrames.push(!(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1)));
-        });
 
         /**
          * Build S3 path and key.
@@ -275,7 +274,7 @@ const getFrames = () => {
          * @param {array} documents - An array of documents to write to mongo.
          * @returns {Promise} - Pending write of documents. 
          */
-        const writeToMongodb = (documents) => {
+        const writeToMongodb = documents => {
             logger.debug(`mongodb docs: ${util.inspect(documents, false, null)}`);
             let db = '';
             const mongoClient = require('mongodb').MongoClient;
@@ -414,24 +413,25 @@ const getFrames = () => {
         };
 
         /**
-         * Perform local object detection on images.
+         * Perform local or remote object detection on images.
          * If enabled, also perform local face detection and recognition.
          * Parse results and finally upload everything to S3.
          * 
          * @param {int} alarms - Number of new alarm images to process.
-         * @param {int} alarmsProcessed - Number of alarms already processed in image array.
+         * @param {boolean} local - If true run local obj det, else remote.
          */
-        const localObjDet = (alarms = 0, alarmsProcessed = 0) => {
+        const detect = (alarms = 0, local = true) => {
             logger.debug(`aryRows len: ${aryRows.length} alarms: ${alarms} alarmsProcessed: ${alarmsProcessed}`);
 
-            // Build set of test image paths.
-            const testImagePaths = [];
-            for (let i = alarmsProcessed; i < alarms + alarmsProcessed; i++) {
-                logger.debug(`Alarm frame info: ${util.inspect(aryRows[i], false, null)}`);
-                if (skipFrames[i]) continue;
-                const imageFullPath = buildFilePath(aryRows[i]);
-                testImagePaths.push(imageFullPath);
-            }
+            // Limit number of alarms concurrently processed.
+            aryRows.length < MAX_CONCURRENT_UPLOAD ?
+                alarms = aryRows.length : alarms = MAX_CONCURRENT_UPLOAD;
+
+            logger.info(`Processing ${alarms} alarm frame(s)...`);
+
+            const promises = []; // holds upload and mongodb promises
+            const mongodbDoc = []; // for local database of all alarm frame disposition
+            let skipped = 0; // alarm frames skipped during this run
 
             // Perform face detection and recognition via external python script. 
             const faceDetRec = detectedObjects => {
@@ -459,7 +459,7 @@ const getFrames = () => {
             };
 
             // zerorpc connection to object detection server. 
-            const objDetect = imagePaths => {
+            const objDetServer = imagePaths => {
                 const zerorpc = require('zerorpc');
                 // Heartbeat must be greater than the time required to run detection on maxInit frames.
                 const zerorpcClient = new zerorpc.Client({heartbeatInterval: ZERORPC_HEARTBEAT});
@@ -481,163 +481,173 @@ const getFrames = () => {
                 });
             };
 
-            // Run object detection, then run face detection / recognition if enabled. 
-            // After detection / recognition, parse results and upload to S3.
-            // Alarm images (number defined by the alarm variable) will be concurrently uploaded. 
-            objDetect(testImagePaths).then((detObjArr) => {
-                // detObjArr is an array containing objects detected in image(s).
-                // The ordering of items in the array matches the order that they were submitted.
-                logger.debug(`Obj detect results: ${util.inspect(detObjArr, false, null)}`);
-                if (RUN_FACE_DET_REC) return faceDetRec(detObjArr);
-                return detObjArr;
-            }).then((result) => {
-                // result is an array of detected objects and recognized faces (if enabled).
-                // The ordering of items in the array matched the order that they were submitted. 
-                const objectsFound = result;
-                logger.debug(`Face + Obj detect results: ${util.inspect(objectsFound, false, null)}`);
-
-                // Scan objectsFound array for detected objects and upload true alarms to S3.
-                const promises = [];
-                let skipped = 0;
-                const mongodbDoc = []; // for local database of all alarm frame disposition.
-                for (let i = alarmsProcessed; i < alarms + alarmsProcessed; i++) {
-                    const labels = {'Labels': []};
-                    const fileName = buildFilePath(aryRows[i]);
-                    // Find alarm frames that were never sent for object detection and skip past those.
-                    if (skipFrames[i]) {
-                        logger.info(`Skipped processing of ${fileName}`);
-                        if (USE_MONGO) mongodbDoc.push({'image': fileName,
-                            'labels': labels, 'status': 'skipped', 'objDet': 'local'});
-                        promises.push(uploadImage(i, true));
-                        skipped++;
-                        continue;
-                    }
-
-                    // Scan for detected objects and trigger uploads.
-                    // ObjectsFound index must be adjusted for images skipped and already processed.
-                    const numObjDet = objectsFound[i - skipped - alarmsProcessed].labels.length;
-                    if (!numObjDet) {
-                        logger.info(`No objects detected in ${fileName}`);
-                        aryRows[i].alert = 'false';
-                        if (UPLOAD_FALSE_POSITIVES === false) {
-                            logger.info('False positives will NOT be uploaded.');
-                            // Mark as uploaded in zm db but don't actually upload image.
-                            promises.push(uploadImage(i, true));
-                        } else {
-                            promises.push(uploadImage(i, false));
-                        }
-                    } else {
-                        logger.info('Processed '+fileName);
-                        objectsFound[i - skipped - alarmsProcessed].labels.forEach(item => {
-                            const labelData = {
-                                'Confidence': (100 * item.score),
-                                'Name': item.name,
-                                'Box': item.box
-                            };
-                                // If a person was detected then add (any) face data. 
-                            if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
-                            labels.Labels.push(labelData);
-                            logger.info('Image labels: '+util.inspect(labelData, false, null));
-                        });
-                        aryRows[i].alert = 'true';
-                        aryRows[i].objLabels = JSON.stringify(labels);
-                        promises.push(uploadImage(i, false));
-                    }
-
-                    if (USE_MONGO) mongodbDoc.push({'image': fileName,
-                        'labels': labels, 'status': 'processed', 'objDet': 'local'});
-                }
-
-                // Log the disposition of all alarms to mongodb.
-                if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
-
-                // Wait until all uploads complete.
-                // Then look for new alarms else finish existing alarms in array. 
-                Promise.all(promises).then(() => {
+            /**
+             * Wait for uploads to complete.
+             * Then check for new alarms else finish existing alarms in array.
+             */
+            const waitForUploads = () => {
+                return Promise.all(promises).then( () => {
+                    aryRows.splice(0, alarms); // Remove processed alarms from the array.
                     alarmsProcessed += alarms;
-                    if (alarmsProcessed >= aryRows.length) {
+                    alarmsSkipped += skipped;
+                    if (aryRows.length === 0) {
                         const dur = parseHrtime(startTime);
                         const fps = (alarmsProcessed / dur[1]).toFixed(1);
-                        logger.info(`${alarmsProcessed} / ${aryRows.length} image(s) uploaded in ${dur[0]} (${fps} FPS).`);
+                        logger.info(`${alarmsProcessed} / ${alarmsFound} image(s) processed in ${dur[0]} (${fps} fps).`);
+                        logger.info(`${alarmsProcessed - alarmsSkipped} image(s) uploaded.`);
+                        logger.info(`${alarmsSkipped} image(s) skipped.`);
                         logger.info('Waiting for new alarm frame(s)...');
                         return getFrames();
                     } else {
-                        logger.info(`${alarmsProcessed} / ${aryRows.length} image(s) uploaded.`);
-                        (aryRows.length - alarmsProcessed < MAX_CONCURRENT_UPLOAD) ?
-                            alarms = aryRows.length - alarmsProcessed : alarms = MAX_CONCURRENT_UPLOAD;
-                        logger.info(`Processing ${alarms} more alarm frames...`);
-                        return localObjDet(alarms, alarmsProcessed);
+                        logger.info(`${alarmsProcessed} / ${alarmsFound} image(s) processed.`);
+                        return detect(MAX_CONCURRENT_UPLOAD, local);
                     }
                 }).catch((error) => {
-                    logger.error(new Error('upload error: '+error));
+                    logger.error(new Error(`upload error: ${error}`));
                 });
+            };
 
-            }).catch((error) => {
-                logger.error(new Error('upload error: '+error));
-            });
-            return;
-        }; // end localObjDet
+            /**
+             * Generate mongodb doc for image disposition stored locally.
+             * 
+             * @param {string} image - Path to image.
+             * @param {object} labels - Image metadata.
+             * @param {string} status - Indicates if image was skipped or processed.
+             * @param {string} method - Indicates if local or remote obj dectection was used. 
+             */
+            const genMongodbDoc = (image, labels, status, method) => {
+                const doc = {'image': image, 'labels': labels, 'status': status, 'objDet': method};
+                mongodbDoc.push(doc);
+                return;
+            };
 
-        // Upload to S3 to trigger remote object detection.
-        // TODO - combine with local object detect and simplify. 
-        const remoteObjDet = (alarms, alarmsProcessed) => {
-            logger.debug(`aryRows len: ${aryRows.length} alarms: ${alarms} alarmsProcessed: ${alarmsProcessed}`);
-            const promises = [];
-            const labels = {'Labels': []};
-            const mongodbDoc = []; // for local database of all alarm frame disposition.
-            for (let i = alarmsProcessed; i < alarms + alarmsProcessed; i++) {
-                logger.debug('Alarm frame info: '+util.inspect(aryRows[i], false, null));
-                const fileName = buildFilePath(aryRows[i]);
-                const skip = skipFrames[i];
-                if (skip) {
-                    logger.info('Skipped processing of '+fileName);
-                    if (USE_MONGO) mongodbDoc.push({'image': fileName, 'labels': labels,
-                        'status': 'skipped', 'objDet': 'remote'});
-                } else {
-                    if (USE_MONGO) mongodbDoc.push({'image': fileName, 'labels': labels,
-                        'status': 'processed', 'objDet': 'remote'});
+            // Run local object detection, then run face detection / recognition if enabled. 
+            // After detection / recognition, parse results and upload to S3.
+            // Alarm images (number defined by the alarm variable) will be concurrently uploaded.
+            if (local) {
+                // Build set of test image paths.
+                const imagePaths = [];
+                for (let i = 0; i < alarms; i++) {
+                    logger.debug(`Alarm frame info: ${util.inspect(aryRows[i], false, null)}`);
+                    if (aryRows[i].skip) continue;
+                    imagePaths.push(buildFilePath(aryRows[i]));
                 }
-                promises.push(uploadImage(i, skip));
+
+                // Cover the case where a single alarm image is processed and is to be skipped.
+                // This will generate an empty imagePath array which needs special handling. 
+                if (imagePaths.length === 0) {
+                    const fileName = buildFilePath(aryRows[0]);
+                    logger.info(`Skipped processing of ${fileName}`);
+                    if (USE_MONGO) {
+                        genMongodbDoc(fileName, {'Labels': []}, 'skipped', 'local');
+                        promises.push(writeToMongodb(mongodbDoc));
+                    }
+                    promises.push(uploadImage(0, true));
+                    skipped++;
+                    waitForUploads();
+                }
+
+                // Normal object and face detection processing. 
+                objDetServer(imagePaths).then((detObjArr) => {
+                    // detObjArr is an array containing objects detected in image(s).
+                    // The ordering of items in the array matches the order that they were submitted.
+                    logger.debug(`Obj detect results: ${util.inspect(detObjArr, false, null)}`);
+                    if (RUN_FACE_DET_REC) return faceDetRec(detObjArr);
+                    return detObjArr;
+                }).then((objectsFound) => {
+                    // objectsFound is an array of detected objects and recognized faces (if enabled).
+                    // The ordering of items in the array matched the order that they were submitted. 
+                    logger.debug(`Face + Obj detect results: ${util.inspect(objectsFound, false, null)}`);
+
+                    // Scan objectsFound array for detected objects and upload true alarms to S3.
+                    for (let i = 0; i < alarms; i++) {
+                        const fileName = buildFilePath(aryRows[i]);
+                        const labels = {'Labels': []};
+
+                        // Find alarm frames that were never sent for object detection and skip past those.
+                        if (aryRows[i].skip) {
+                            logger.info(`Skipped processing of ${fileName}`);
+                            if (USE_MONGO) genMongodbDoc(fileName, labels, 'skipped', 'local');
+                            // Mark as uploaded in zm db but don't actually upload image.
+                            promises.push(uploadImage(i, true));
+                            skipped++;
+                            continue;
+                        }
+
+                        // Scan for detected objects and trigger uploads.
+                        // ObjectsFound index must be adjusted for images skipped.
+                        const numObjDet = objectsFound[i - skipped].labels.length;
+                        if (!numObjDet) {
+                            logger.info(`No objects detected in ${fileName}`);
+                            aryRows[i].alert = 'false';
+                            if (UPLOAD_FALSE_POSITIVES === false) {
+                                logger.info('False positives will NOT be uploaded.');
+                                // Mark as uploaded in zm db but don't actually upload image.
+                                promises.push(uploadImage(i, true));
+                            } else {
+                                // Upload and mark in db as so. 
+                                promises.push(uploadImage(i, false));
+                            }
+                        } else {
+                            logger.info(`Processed ${fileName}.`);
+                            objectsFound[i - skipped].labels.forEach(item => {
+                                const labelData = {
+                                    'Confidence': (100 * item.score),
+                                    'Name': item.name,
+                                    'Box': item.box
+                                };
+                                // If a person was detected then add (any) face data. 
+                                if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
+                                labels.Labels.push(labelData);
+                                logger.info(`Image labels: ${util.inspect(labelData, false, null)}`);
+                            });
+                            aryRows[i].alert = 'true';
+                            aryRows[i].objLabels = JSON.stringify(labels);
+                            promises.push(uploadImage(i, false));
+                        }
+
+                        if (USE_MONGO) genMongodbDoc(fileName, labels, 'processed', 'local');
+                    }
+
+                    // Log the disposition of all alarms to mongodb.
+                    if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
+
+                    // Wait until all uploads complete.
+                    waitForUploads();
+                }).catch((error) => {
+                    logger.error(new Error(`local object detect error: ${error}`));
+                });
+            } else {
+                // If not local then use remote object detection. 
+                for (let i = 0; i < alarms; i++) {
+                    logger.debug(`Alarm frame info: ${util.inspect(aryRows[i], false, null)}`);
+                    const fileName = buildFilePath(aryRows[i]);
+                    const skip = aryRows[i].skip;
+                    if (skip) {
+                        skipped++;
+                        logger.info(`Skipped processing of ${fileName}`);
+                        if (USE_MONGO) genMongodbDoc(fileName, {'Labels': []}, 'skipped', 'remote');
+                    } else {
+                        if (USE_MONGO) genMongodbDoc(fileName, {'Labels': []}, 'processed', 'remote');
+                    }
+                    promises.push(uploadImage(i, skip));
+                }
+                // Log the disposition of all alarms to mongodb.
+                if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
+
+                waitForUploads();
             }
-
-            // Log the disposition of all alarms to mongodb.
-            if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
-
-            // Wait until all uploads complete.
-            // Then look for new alarms else finish existing alarms in array. 
-            Promise.all(promises).then(() => {
-                alarmsProcessed += alarms;
-                if (alarmsProcessed >= aryRows.length) {
-                    const dur = parseHrtime(startTime);
-                    const fps = (alarmsProcessed / dur[1]).toFixed(1);
-                    logger.info(`${alarmsProcessed} / ${aryRows.length} image(s) uploaded in ${dur[0]} (${fps} FPS).`);
-                    logger.info('Waiting for new alarm frame(s)...');
-                    return getFrames();
-                } else {
-                    logger.info(`${alarmsProcessed} / ${aryRows.length} image(s) uploaded.`);
-                    (aryRows.length - alarmsProcessed < MAX_CONCURRENT_UPLOAD) ?
-                        alarms = aryRows.length - alarmsProcessed : alarms = MAX_CONCURRENT_UPLOAD;
-                    logger.info(`Processing ${alarms} more alarm frames...`);
-                    return remoteObjDet(alarms, alarmsProcessed);
-                }
-            }).catch((error) => {
-                logger.error(new Error('upload error: '+error));
-            });
             return;
-        }; // end remoteObjDet
+        }; // end detect
 
-        // Determine initial maximum number of concurrent S3 uploads. 
-        let alarms = 0;
-        (aryRows.length < MAX_CONCURRENT_UPLOAD) ?
-            alarms = aryRows.length : alarms = MAX_CONCURRENT_UPLOAD;
-
+        // Start local or remote alarm frame detection and upload.
         if (RUN_LOCAL_OBJ_DET) {
             logger.info('Running with local object detection enabled.');
             if (RUN_FACE_DET_REC) logger.info('Running with local face det / rec enabled.');
-            localObjDet(alarms, 0);
+            detect(MAX_CONCURRENT_UPLOAD, true);
         } else {
             logger.info('Running with remote object detection enabled.');
-            remoteObjDet(alarms, 0);
+            detect(MAX_CONCURRENT_UPLOAD, false);
         }
     });
 }; // end getFrames()
