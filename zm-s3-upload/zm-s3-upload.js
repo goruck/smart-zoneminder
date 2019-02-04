@@ -386,7 +386,7 @@ const getFrames = () => {
                 if (typeof(imgData.alert) !== 'undefined') {
                     params.Metadata.alert = imgData.alert;
                     if (imgData.alert === 'true') {
-                        params.Metadata.labels = imgData.objLabels;
+                        params.Metadata.labels = JSON.stringify(imgData.objLabels);
                     }
                 }
 
@@ -539,7 +539,7 @@ const getFrames = () => {
                     const fileName = buildFilePath(aryRows[0]);
                     logger.info(`Skipped processing of ${fileName}`);
                     if (USE_MONGO) {
-                        genMongodbDoc(fileName, {'Labels': []}, 'skipped', 'local');
+                        genMongodbDoc(fileName, [], 'skipped', 'local');
                         promises.push(writeToMongodb(mongodbDoc));
                     }
                     promises.push(uploadImage(0, true));
@@ -562,17 +562,18 @@ const getFrames = () => {
                     // Scan objectsFound array for detected objects and upload true alarms to S3.
                     for (let i = 0; i < alarms; i++) {
                         const fileName = buildFilePath(aryRows[i]);
-                        const labels = {'Labels': []};
 
                         // Find alarm frames that were never sent for object detection and skip past those.
                         if (aryRows[i].skip) {
                             logger.info(`Skipped processing of ${fileName}`);
-                            if (USE_MONGO) genMongodbDoc(fileName, labels, 'skipped', 'local');
+                            if (USE_MONGO) genMongodbDoc(fileName, [], 'skipped', 'local');
                             // Mark as uploaded in zm db but don't actually upload image.
                             promises.push(uploadImage(i, true));
                             skipped++;
                             continue;
                         }
+
+                        const labels = []; // holds detected object and face lables
 
                         // Scan for detected objects and trigger uploads.
                         // ObjectsFound index must be adjusted for images skipped.
@@ -598,11 +599,11 @@ const getFrames = () => {
                                 };
                                 // If a person was detected then add (any) face data. 
                                 if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
-                                labels.Labels.push(labelData);
+                                labels.push(labelData);
                                 logger.info(`Image labels: ${util.inspect(labelData, false, null)}`);
                             });
                             aryRows[i].alert = 'true';
-                            aryRows[i].objLabels = JSON.stringify(labels);
+                            aryRows[i].objLabels = labels;
                             promises.push(uploadImage(i, false));
                         }
 
@@ -626,9 +627,9 @@ const getFrames = () => {
                     if (skip) {
                         skipped++;
                         logger.info(`Skipped processing of ${fileName}`);
-                        if (USE_MONGO) genMongodbDoc(fileName, {'Labels': []}, 'skipped', 'remote');
+                        if (USE_MONGO) genMongodbDoc(fileName, [], 'skipped', 'remote');
                     } else {
-                        if (USE_MONGO) genMongodbDoc(fileName, {'Labels': []}, 'processed', 'remote');
+                        if (USE_MONGO) genMongodbDoc(fileName, [], 'processed', 'remote');
                     }
                     promises.push(uploadImage(i, skip));
                 }

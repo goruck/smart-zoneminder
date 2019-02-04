@@ -7,7 +7,7 @@
  * 
  * This is part of the smart-zoneminder project. See https://github.com/goruck/smart-zoneminder.
  * 
- * Copyright (c) Lindo St. Angel 2018.
+ * Copyright (c) 2018, 2019 Lindo St. Angel.
  */
 
 'use strict';
@@ -22,7 +22,7 @@ exports.handler = (event, context, callback) => {
         if (err) {
             // Cached alarm does not exist.
             // If alarm meets filter criteria email it to user and then cache it.
-            if (findFace(JSON.parse(event.Labels))) {
+            if (findFace(event.Labels)) {
                 const cacheObj = [
                     {
                         event: event.metadata.zmeventid,
@@ -78,10 +78,10 @@ exports.handler = (event, context, callback) => {
  */
 function findFace(labels) {
     function hasFace(obj) {
-        return obj.Face === process.env.FIND_FACE;
+        return typeof(obj.Face) === 'undefined' ? false : obj.Face === process.env.FIND_FACE;
     }
 
-    return labels.Labels.some(hasFace);
+    return labels.some(hasFace);
 }
 
 /**
