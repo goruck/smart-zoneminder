@@ -24,7 +24,7 @@ KNOWN_FACE_ENCODINGS_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/e
 # Face comparision tolerance.
 # A lower value causes stricter compares which may reduce false positives.
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
-COMPARE_FACES_TOLERANCE = 0.57
+COMPARE_FACES_TOLERANCE = 0.54
 
 # Face detection model to use. Can be either 'cnn' or 'hog'
 FACE_DET_MODEL = 'cnn'
@@ -36,13 +36,13 @@ NUM_JITTERS = 100
 MONGO_URL = 'mongodb://zmuser:zmpass@localhost:27017/?authSource=admin'
 
 # Number of documents to fetch from the mongodb database.
-NUM_ALARMS = 2000
+NUM_ALARMS = 1000
 
 # Object detection confidence threshold.
 IMAGE_MIN_CONFIDENCE = 60 
 
 # Set to True to see most recent alarms first.
-IMAGE_DECENDING_ORDER = False
+IMAGE_DECENDING_ORDER = True
 
 # Key codes on my system for cv2.waitKeyEx().
 ESC_KEY = 1048603
@@ -68,7 +68,8 @@ with client:
 	db = client.zm
 	alarms = list(
 		db.alarms.find(
-			{'labels.Labels.Name' : 'person'}
+			#{'labels.Labels.Name' : 'person'} # old database format
+			{'labels.Name' : 'person'}
 		).sort([('_id', -1)]).limit(NUM_ALARMS)
 	)
 
@@ -99,7 +100,7 @@ while True:
 	labels = alarm['labels']
 
 	# Find all roi's in image, then look for faces in the rois, then show faces on the image.
-	for object in labels['Labels']:
+	for object in labels:
 		if object['Name'] == 'person' and object['Confidence'] > IMAGE_MIN_CONFIDENCE:
 			print('Found person object...')
 			# (0, 0) is the top left point of the image.
