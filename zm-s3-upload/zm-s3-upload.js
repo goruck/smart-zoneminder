@@ -439,6 +439,9 @@ const getFrames = () => {
 
             // Perform face detection and recognition via external python script. 
             const faceDetRec = detectedObjects => {
+                // Return a resolved Promise with an empty array if detectedObjects is empty.
+                if (detectedObjects.length === 0) return Promise.resolve([]);
+
                 // Construct args for script.
                 // The first arg is the script name. 
                 // Each detected image is a separate arg on the command line. 
@@ -464,6 +467,9 @@ const getFrames = () => {
 
             // zerorpc connection to object detection server. 
             const objDetServer = imagePaths => {
+                // Return a resolved Promise with an empty array if imagePath is empty.
+                if (imagePaths.length === 0) return Promise.resolve([]);
+
                 const zerorpc = require('zerorpc');
                 // Heartbeat must be greater than the time required to run detection on maxInit frames.
                 const zerorpcClient = new zerorpc.Client({heartbeatInterval: ZERORPC_HEARTBEAT});
@@ -537,93 +543,78 @@ const getFrames = () => {
                     if (aryRows[i].skip) continue;
                     imagePaths.push(buildFilePath(aryRows[i]));
                 }
-
-                // Cover the case where a single alarm image is processed and is to be skipped.
-                // This will generate an empty imagePath array which needs special handling. 
-                if (imagePaths.length === 0) {
-                    const fileName = buildFilePath(aryRows[0]);
-                    logger.info(`Skipped processing of ${fileName}`);
-                    if (USE_MONGO) {
-                        genMongodbDoc(fileName, [], 'skipped', 'local');
-                        promises.push(writeToMongodb(mongodbDoc));
-                    }
-                    promises.push(uploadImage(0, true));
-                    skipped++;
-                    waitForUploads();
-                } else {
-                    // Normal object and face detection processing. 
-                    objDetServer(imagePaths).then((detObjArr) => {
+                
+                objDetServer(imagePaths).then((detObjArr) => {
                     // detObjArr is an array containing objects detected in image(s).
                     // The ordering of items in the array matches the order that they were submitted.
-                        logger.debug(`Obj detect results: ${util.inspect(detObjArr, false, null)}`);
-                        if (RUN_FACE_DET_REC) return faceDetRec(detObjArr);
-                        return detObjArr;
-                    }).then((objectsFound) => {
+                    logger.debug(`Obj detect results: ${util.inspect(detObjArr, false, null)}`);
+                    if (RUN_FACE_DET_REC) return faceDetRec(detObjArr);
+                    return detObjArr;
+                }).then((objectsFound) => {
                     // objectsFound is an array of detected objects and recognized faces (if enabled).
-                    // The ordering of items in the array matched the order that they were submitted. 
-                        logger.debug(`Face + Obj detect results: ${util.inspect(objectsFound, false, null)}`);
+                    // The ordering of items in the array matched the order that they were submitted.
+                    logger.debug(`Face + Obj detect results: ${util.inspect(objectsFound, false, null)}`);
 
-                        // Scan objectsFound array for detected objects and upload true alarms to S3.
-                        for (let i = 0; i < alarms; i++) {
-                            const fileName = buildFilePath(aryRows[i]);
+                    // Scan objectsFound array for detected objects and upload true alarms to S3.
+                    for (let i = 0; i < alarms; i++) {
+                        const fileName = buildFilePath(aryRows[i]);
 
-                            // Find alarm frames that were never sent for object detection and skip past those.
-                            if (aryRows[i].skip) {
-                                logger.info(`Skipped processing of ${fileName}`);
-                                if (USE_MONGO) genMongodbDoc(fileName, [], 'skipped', 'local');
-                                // Mark as uploaded in zm db but don't actually upload image.
-                                promises.push(uploadImage(i, true));
-                                skipped++;
-                                continue;
-                            }
-
-                            const labels = []; // holds detected object and face labels
-
-                            // Scan for detected objects and trigger uploads.
-                            // ObjectsFound index must be adjusted for images skipped.
-                            const numObjDet = objectsFound[i - skipped].labels.length;
-                            if (!numObjDet) {
-                                logger.info(`No objects detected in ${fileName}`);
-                                aryRows[i].alert = 'false';
-                                if (UPLOAD_FALSE_POSITIVES === false) {
-                                    logger.info('False positives will NOT be uploaded.');
-                                    // Mark as uploaded in zm db but don't actually upload image.
-                                    promises.push(uploadImage(i, true));
-                                } else {
-                                // Upload and mark in db as so. 
-                                    promises.push(uploadImage(i, false));
-                                }
-                            } else {
-                                logger.info(`Processed ${fileName}.`);
-                                objectsFound[i - skipped].labels.forEach(item => {
-                                    const labelData = {
-                                        'Confidence': (100 * item.score),
-                                        'Name': item.name,
-                                        'Box': item.box
-                                    };
-                                    // If a person was detected then add (any) face data. 
-                                    if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
-                                    labels.push(labelData);
-                                    logger.info(`Image labels: ${util.inspect(labelData, false, null)}`);
-                                });
-                                aryRows[i].alert = 'true';
-                                aryRows[i].objLabels = labels;
-                                promises.push(uploadImage(i, false));
-                            }
-
-                            if (USE_MONGO) genMongodbDoc(fileName, labels, 'processed', 'local');
+                        // Find alarm frames that were never sent for object detection and skip past those.
+                        if (aryRows[i].skip) {
+                            logger.info(`Skipped processing of ${fileName}`);
+                            if (USE_MONGO) genMongodbDoc(fileName, [], 'skipped', 'local');
+                            // Mark as uploaded in zm db but don't actually upload image.
+                            promises.push(uploadImage(i, true));
+                            skipped++;
+                            continue;
                         }
 
-                        // Log the disposition of all alarms to mongodb.
-                        if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
+                        const labels = []; // holds detected object and face labels
 
-                        // Wait until all uploads complete.
-                        waitForUploads();
-                    }).catch((error) => {
-                        logger.error(new Error(`local object detect error: ${error.stack}`));
-                        process.exit(1); // just die on error
-                    });
-                }
+                        // Scan for detected objects and trigger uploads.
+                        // ObjectsFound index must be adjusted for images skipped.
+                        const numObjDet = objectsFound[i - skipped].labels.length;
+                        if (!numObjDet) {
+                            logger.info(`No objects detected in ${fileName}`);
+                            aryRows[i].alert = 'false';
+                            if (UPLOAD_FALSE_POSITIVES === false) {
+                                logger.info('False positives will NOT be uploaded.');
+                                // Mark as uploaded in zm db but don't actually upload image.
+                                promises.push(uploadImage(i, true));
+                            } else {
+                                // Upload and mark in db as so. 
+                                promises.push(uploadImage(i, false));
+                            }
+                        } else {
+                            logger.info(`Processed ${fileName}.`);
+                            objectsFound[i - skipped].labels.forEach(item => {
+                                const labelData = {
+                                    'Confidence': (100 * item.score),
+                                    'Name': item.name,
+                                    'Box': item.box
+                                };
+                                    // If a person was detected then add (any) face data. 
+                                if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
+                                labels.push(labelData);
+                                logger.info(`Image labels: ${util.inspect(labelData, false, null)}`);
+                            });
+                            aryRows[i].alert = 'true';
+                            aryRows[i].objLabels = labels;
+                            promises.push(uploadImage(i, false));
+                        }
+
+                        if (USE_MONGO) genMongodbDoc(fileName, labels, 'processed', 'local');
+                    }
+
+                    // Log the disposition of all alarms to mongodb.
+                    if (USE_MONGO) promises.push(writeToMongodb(mongodbDoc));
+
+                    // Wait until all uploads complete.
+                    waitForUploads();
+                }).catch((error) => {
+                    logger.error(new Error(`local object detect error: ${error.stack}`));
+                    process.exit(1); // just die on error
+                });
             } else {
                 // If not local then use remote object detection. 
                 for (let i = 0; i < alarms; i++) {
