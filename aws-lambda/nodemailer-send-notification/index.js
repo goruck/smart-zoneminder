@@ -154,13 +154,13 @@ function sendMail(alarm, callback) {
     // Pickup parameters from calling event.
     const bucket = alarm.bucket;
     const filename = alarm.newFilename;
-    const labels = JSON.parse(alarm.Labels); // an object containing an array of objects
+    const labels = alarm.Labels;
 
     // Set up HTML Email
     let htmlString = '<pre><u><b>Label&nbsp;&nbsp;&nbsp;&nbsp;'+
         'Face&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'+
         'Confidence</u></b><br>';
-    labels.Labels.forEach(item => {
+    labels.forEach(item => {
         htmlString += item.Name + '&nbsp;&nbsp;&nbsp;';
         htmlString += item.Face + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
         htmlString += item.Confidence.toFixed(1) + '</b><br>';
@@ -169,7 +169,7 @@ function sendMail(alarm, callback) {
 
     // Set up Text Email
     let textString = 'Label    Face      Confidence\n';
-    labels.Labels.forEach(item => {
+    labels.forEach(item => {
         textString += item.Name + '    ';
         textString += item.Face + '      ';
         textString += item.Confidence.toFixed(1) + '\n';
