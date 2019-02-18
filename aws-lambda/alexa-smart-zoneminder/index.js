@@ -809,7 +809,7 @@ function determineFaceAndObjectName(personOrThing) {
             if (knownFace !== null) {
                 // User requested to see an alarm caused by a specific person.
                 // Considering our dog to be a person :)
-                faceName === 'dog' ? objectName = 'dog' : faceName = knownFace;
+                knownFace === 'dog' ? objectName = 'dog' : faceName = knownFace;
             } else {
                 // User requested to see an alarm caused by a thing, not a person.
                 objectName = personOrThing.toLowerCase();
@@ -887,24 +887,12 @@ function findLatestAlarms(queryParams, callback) {
     // Base query looks for true false positives from a named camera.
     // If faceName or objectName is null then any person or object will queried for. 
     let filterExpression = 'Alert = :state';
-    let projectionExpression = 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId, ZmLocalEventPath';
+    let projectionExpression = 'ZmEventDateTime, S3Key, ZmEventId, ZmFrameId, ZmLocalEventPath, Labels';
     const expressionAttributeValues = {
         ':name': cameraName,
         ':state': 'true',
         ':date': queryStartDateTime
     };
-
-    // If a face name was provided then add it to query.
-    // If face provided then objectName is ignored (it has to be a person).
-    if (faceName !== null) {
-        projectionExpression += ', Labels';
-        filterExpression += ' AND contains(Labels, :face)';
-        expressionAttributeValues[':face'] = faceName;
-    } else if (objectName !== null) {
-        projectionExpression += ', Labels';
-        filterExpression += ' AND contains(Labels, :object)';
-        expressionAttributeValues[':object'] = objectName;
-    }
 
     const params = {
         TableName: 'ZmAlarmFrames',
@@ -931,6 +919,15 @@ function findLatestAlarms(queryParams, callback) {
             for (const item of data.Items) {
                 // If skipFrame enabled only add first frame of an event; skip all others.
                 if (skipFrame && (item.ZmEventId === lastZmEventId)) continue;
+                // If a face or object name was given try to find it in item; skip all others.
+                // Object name is ignored if face is given since it has to be a person. 
+                if (faceName !== null) {
+                    if (item.Labels.some(label => label.Face !== faceName)) continue;
+                } else if (objectName !== null) {
+                    if (item.Labels.some(label => label.Name !== objectName)) continue;
+                } else {
+                    return callback('face or object name not defined', null);
+                }
                 lastZmEventId = item.ZmEventId;
                 foundAlarms.push(item);
                 foundAlarmCount++;
