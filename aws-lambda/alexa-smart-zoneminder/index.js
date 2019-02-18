@@ -925,8 +925,6 @@ function findLatestAlarms(queryParams, callback) {
                     if (item.Labels.some(label => label.Face !== faceName)) continue;
                 } else if (objectName !== null) {
                     if (item.Labels.some(label => label.Name !== objectName)) continue;
-                } else {
-                    return callback('face or object name not defined', null);
                 }
                 lastZmEventId = item.ZmEventId;
                 foundAlarms.push(item);
