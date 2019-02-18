@@ -16,8 +16,7 @@ import argparse
 import pickle
 import cv2
 import json
-
-import sys
+from math import sqrt
 from sys import argv
 from sys import exit
 from sys import stdout
@@ -29,7 +28,7 @@ KNOWN_FACE_ENCODINGS_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/e
 # Face comparision tolerance.
 # A lower value causes stricter compares which may reduce false positives.
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
-COMPARE_FACES_TOLERANCE = 0.57
+COMPARE_FACES_TOLERANCE = 0.60
 
 # Factor to scale image when looking for faces.
 # May increase the probability of finding a face in the image. 
@@ -43,8 +42,11 @@ FACE_DET_MODEL = 'cnn'
 # How many times to re-sample when calculating face encoding.
 NUM_JITTERS = 100
 
+# Face count coefficient of variation threshold to determine name
+FACE_CV = 0.85
+
 # Get image paths from command line.
-if len(sys.argv) == 1:
+if len(argv) == 1:
     exit('No test image file paths were supplied!')
 
 # Construct list from images given on command line. 
@@ -114,10 +116,20 @@ for obj in objects_detected:
 						name = data['names'][i]
 						counts[name] = counts.get(name, 0) + 1
 
-					# determine the recognized face with the largest number of
-					# votes (note: in the event of an unlikely tie Python will
-					# select first entry in the dictionary)
-					name = max(counts, key=counts.get)
+					# calculate mean of face counts
+					m = sum(count for face, count in counts.items()) / len(counts)
+					# calculate standard deviation of face counts
+					s = sqrt(sum((counts - m) ** 2 for face, counts in counts.items()) / len(counts))
+					# calculate coefficient of variation of face counts
+					cv = s / m
+
+					# determine the recognized face using coefficient of variation
+					# if cv is below a threshold then just declare its a family member
+					# note special case of zero cv when only one face detected
+					if cv > FACE_CV or (cv == 0 and len(counts) == 0):
+						name = max(counts, key=counts.get)
+					else:
+						name = 'family_member'
 
 			# Add face name to label metadata.
 			label['face'] = name
@@ -127,4 +139,4 @@ for obj in objects_detected:
 
 # Convert json to string and return data. 
 print(json.dumps(objects_detected_faces))
-sys.stdout.flush()
+stdout.flush()

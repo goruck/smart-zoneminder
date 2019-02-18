@@ -11,6 +11,7 @@ import argparse
 import pickle
 import cv2
 import json
+from math import sqrt
 from pymongo import MongoClient
 from bson import json_util
 
@@ -24,7 +25,7 @@ KNOWN_FACE_ENCODINGS_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/e
 # Face comparision tolerance.
 # A lower value causes stricter compares which may reduce false positives.
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
-COMPARE_FACES_TOLERANCE = 0.54
+COMPARE_FACES_TOLERANCE = 0.60
 
 # Face detection model to use. Can be either 'cnn' or 'hog'
 FACE_DET_MODEL = 'cnn'
@@ -39,10 +40,13 @@ MONGO_URL = 'mongodb://zmuser:zmpass@localhost:27017/?authSource=admin'
 NUM_ALARMS = 1000
 
 # Object detection confidence threshold.
-IMAGE_MIN_CONFIDENCE = 60 
+IMAGE_MIN_CONFIDENCE = 60
+
+# Face count coefficient of variation threshold to determine name
+FACE_CV = 0.85
 
 # Set to True to see most recent alarms first.
-IMAGE_DECENDING_ORDER = True
+IMAGE_DECENDING_ORDER = False
 
 # Key codes on my system for cv2.waitKeyEx().
 ESC_KEY = 1048603
@@ -154,17 +158,31 @@ while True:
 					counts = {}
 
 					# loop over the matched indexes and maintain a count for
-					# each recognized face face
+					# each recognized face
 					for i in matchedIdxs:
 						name = data['names'][i]
 						counts[name] = counts.get(name, 0) + 1
 
-					# determine the recognized face with the largest number of
-					# votes (note: in the event of an unlikely tie Python will
-					# select first entry in the dictionary)
-					name = max(counts, key=counts.get)
+					#print('counts {}'.format(counts))
+					# calculate mean of face counts
+					m = sum(count for face, count in counts.items()) / len(counts)
+					#print('mean {}'.format(m))
+					# calculate standard deviation of face counts
+					s = sqrt(sum((counts - m) ** 2 for face, counts in counts.items()) / len(counts))
+					#print('sd {}'.format(s))
+					# calculate coefficient of variation of face counts
+					cv = s / m
+					#print('cv {}'.format(cv))
 
-					print('named {}'.format(name))
+					# determine the recognized face using coefficient of variation
+					# if cv is below a threshold then just declare its a family member
+					# note special case of zero cv when only one face detected
+					if cv > FACE_CV or (cv == 0 and len(counts) == 0):
+						name = max(counts, key=counts.get)
+						print('this is family member {}'.format(name))
+					else:
+						name = 'family_member'
+						print('cannot tell which family member this is')
 
 				# update the list of names
 				names.append(name)
