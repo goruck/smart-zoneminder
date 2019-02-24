@@ -73,7 +73,7 @@ for (i, imagePath) in enumerate(imagePaths):
 	 continue
 
 	# compute the facial embedding for the face
-	encodings = face_recognition.face_encodings(rgb, boxes, num_jitters=100)
+	encodings = face_recognition.face_encodings(rgb, boxes, num_jitters=500)
 
 	# loop over the encodings
 	for encoding in encodings:
