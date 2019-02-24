@@ -28,7 +28,7 @@ KNOWN_FACE_ENCODINGS_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/e
 # Face comparision tolerance.
 # A lower value causes stricter compares which may reduce false positives.
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
-COMPARE_FACES_TOLERANCE = 0.60
+COMPARE_FACES_TOLERANCE = 0.57
 
 # Factor to scale image when looking for faces.
 # May increase the probability of finding a face in the image. 
@@ -42,8 +42,9 @@ FACE_DET_MODEL = 'cnn'
 # How many times to re-sample when calculating face encoding.
 NUM_JITTERS = 100
 
-# Face count coefficient of variation threshold to determine name
-FACE_CV = 0.85
+# Threshold to declare a valid face.
+# This is the percentage of all embeddings for a face name. 
+NAME_THRESHOLD = 0.20
 
 # Get image paths from command line.
 if len(argv) == 1:
@@ -55,6 +56,11 @@ objects_detected = argv[1:]
 # Load the known faces and embeddings.
 with open(KNOWN_FACE_ENCODINGS_PATH, 'rb') as fp:
     data = pickle.load(fp)
+
+# Calculate number of embeddings for each face name.
+name_count = {n: 0 for n in data['names']}
+for name in data['names']:
+	name_count[name] += 1
 
 # List that will hold all images with any face detection information. 
 objects_detected_faces = []
@@ -108,7 +114,7 @@ for obj in objects_detected:
 					# dictionary to count the total number of times each face
 					# was matched
 					matchedIdxs = [i for (i, b) in enumerate(matches) if b]
-					counts = {}
+					counts = {n: 0 for n in data['names']} # init all name counts to 0
 
 					# loop over the matched indexes and maintain a count for
 					# each recognized face face
@@ -116,20 +122,22 @@ for obj in objects_detected:
 						name = data['names'][i]
 						counts[name] = counts.get(name, 0) + 1
 
-					# calculate mean of face counts
-					m = sum(count for face, count in counts.items()) / len(counts)
-					# calculate standard deviation of face counts
-					s = sqrt(sum((counts - m) ** 2 for face, counts in counts.items()) / len(counts))
-					# calculate coefficient of variation of face counts
-					cv = s / m
+					# Find face name with the max count value.
+					max_value = max(counts.values())
+					max_name = max(counts, key=counts.get)
 
-					# determine the recognized face using coefficient of variation
-					# if cv is below a threshold then just declare its a family member
-					# note special case of zero cv when only one face detected
-					if cv > FACE_CV or (cv == 0 and len(counts) == 0):
-						name = max(counts, key=counts.get)
+					# Compare each recognized face against the max face name.
+					# The max face name count must be greater than a certain value for
+					# it to be valid. This value is set at a percentage of the number of
+					# embeddings for that face name. 
+					name_thresholds = [max_value > value + NAME_THRESHOLD * name_count[max_name]
+						for name, value in counts.items() if name != max_name]
+
+					# If max face name passes against all other faces then declare it valid.
+					if all(name_thresholds):
+						name = max_name
 					else:
-						name = 'family_member'
+						name = None
 
 			# Add face name to label metadata.
 			label['face'] = name
