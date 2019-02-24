@@ -46,6 +46,14 @@ NUM_JITTERS = 100
 # This is the percentage of all embeddings for a face name. 
 NAME_THRESHOLD = 0.20
 
+# Images with Variance of Laplacian less than this are declared blurry. 
+FOCUS_MEASURE_THRESHOLD = 1000
+
+def variance_of_laplacian(image):
+	# compute the Laplacian of the image and then return the focus
+	# measure, which is simply the variance of the Laplacian
+	return cv2.Laplacian(image, cv2.CV_64F).var()
+
 # Get image paths from command line.
 if len(argv) == 1:
     exit('No test image file paths were supplied!')
@@ -86,14 +94,26 @@ for obj in objects_detected:
 			x2 = int(label['box']['xmax'])
 			roi = img[y2:y1, x1:x2, :]
 			if roi.size == 0:
+				# Add face name to label metadata.
+				label['face'] = name
 				continue
 
-			# Covert from cv2 format.
-			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-
+			# Compute the focus measure of the image roi
+			# using the Variance of Laplacian method.
+			# See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+			gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+			fm = variance_of_laplacian(gray)
+			# If fm below a threshold then image isn't clear enough
+			# for face detection / recognition to work, skip image.
+			if fm < FOCUS_MEASURE_THRESHOLD:
+				# Add face name to label metadata.
+				label['face'] = name
+				continue
+			
 			# detect the (x, y)-coordinates of the bounding boxes corresponding
 			# to each face in the input image, then compute the facial embeddings
 			# for each face
+			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
 			box = face_recognition.face_locations(rgb, NUMBER_OF_TIMES_TO_UPSAMPLE,
 				model=FACE_DET_MODEL)
 
