@@ -25,7 +25,7 @@ KNOWN_FACE_ENCODINGS_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/e
 # Face comparision tolerance.
 # A lower value causes stricter compares which may reduce false positives.
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
-COMPARE_FACES_TOLERANCE = 0.60
+COMPARE_FACES_TOLERANCE = 0.57
 
 # Face detection model to use. Can be either 'cnn' or 'hog'
 FACE_DET_MODEL = 'cnn'
@@ -37,13 +37,17 @@ NUM_JITTERS = 100
 MONGO_URL = 'mongodb://zmuser:zmpass@localhost:27017/?authSource=admin'
 
 # Number of documents to fetch from the mongodb database.
-NUM_ALARMS = 1000
+NUM_ALARMS = 500
 
 # Object detection confidence threshold.
 IMAGE_MIN_CONFIDENCE = 60
 
-# Face count coefficient of variation threshold to determine name
-FACE_CV = 0.85
+# Threshold to declare a valid face.
+# This is the percentage of all embeddings for a face name. 
+NAME_THRESHOLD = 0.20
+
+# Images with Variance of Laplacian less than this are declared blurry. 
+FOCUS_MEASURE_THRESHOLD = 1000
 
 # Set to True to see most recent alarms first.
 IMAGE_DECENDING_ORDER = False
@@ -58,9 +62,20 @@ SPACE_KEY = 1048608
 LOWER_CASE_Q_KEY = 1048689
 LOWER_CASE_S_KEY = 1048691
 
+def variance_of_laplacian(image):
+	# compute the Laplacian of the image and then return the focus
+	# measure, which is simply the variance of the Laplacian
+	return cv2.Laplacian(image, cv2.CV_64F).var()
+
 # Load the known faces and embeddings.
 with open(KNOWN_FACE_ENCODINGS_PATH, 'rb') as fp:
     data = pickle.load(fp)
+
+# Calculate number of embeddings for each face name.
+name_count = {n: 0 for n in data['names']}
+for name in data['names']:
+	name_count[name] += 1
+#print(name_count)
 
 client = MongoClient(MONGO_URL)
 
@@ -106,6 +121,9 @@ while True:
 	# Find all roi's in image, then look for faces in the rois, then show faces on the image.
 	for object in labels:
 		if object['Name'] == 'person' and object['Confidence'] > IMAGE_MIN_CONFIDENCE:
+			# If no face is detected name will be set to None (null in json).
+			name = None
+
 			print('Found person object...')
 			# (0, 0) is the top left point of the image.
 			# (x1, y1) are the top left roi coordinates.
@@ -127,6 +145,18 @@ while True:
 				continue
 			#cv2.imshow('roi', roi)
 			#cv2.waitKey(0)
+
+			# Compute the focus measure of the image
+			# using the Variance of Laplacian method.
+			# See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+			gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+			fm = variance_of_laplacian(gray)
+			print('fm {}'.format(fm))
+			# Ff fm below a threshold then image isn't clear enough
+			# for face detection / recognition to work, skip image.
+			if fm < FOCUS_MEASURE_THRESHOLD:
+				print('image is blurred...skipping face det / rec')
+				continue
 
 			# Covert from cv2 to rgb format.
 			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
@@ -155,34 +185,44 @@ while True:
 					# dictionary to count the total number of times each face
 					# was matched
 					matchedIdxs = [i for (i, b) in enumerate(matches) if b]
-					counts = {}
+					counts = {n: 0 for n in data['names']} # init all name counts to 0
+					#print('initial counts {}'.format(counts))
 
 					# loop over the matched indexes and maintain a count for
 					# each recognized face
 					for i in matchedIdxs:
 						name = data['names'][i]
 						counts[name] = counts.get(name, 0) + 1
+					print('counts {}'.format(counts))
 
-					#print('counts {}'.format(counts))
 					# calculate mean of face counts
-					m = sum(count for face, count in counts.items()) / len(counts)
+					#m = sum(count for face, count in counts.items()) / len(counts)
 					#print('mean {}'.format(m))
 					# calculate standard deviation of face counts
-					s = sqrt(sum((counts - m) ** 2 for face, counts in counts.items()) / len(counts))
+					#s = sqrt(sum((counts - m) ** 2 for face, counts in counts.items()) / len(counts))
 					#print('sd {}'.format(s))
 					# calculate coefficient of variation of face counts
-					cv = s / m
+					#cv = s / m
 					#print('cv {}'.format(cv))
 
-					# determine the recognized face using coefficient of variation
-					# if cv is below a threshold then just declare its a family member
-					# note special case of zero cv when only one face detected
-					if cv > FACE_CV or (cv == 0 and len(counts) == 0):
-						name = max(counts, key=counts.get)
+					# Find face name with the max count value.
+					max_value = max(counts.values())
+					max_name = max(counts, key=counts.get)
+
+					# Compare each recognized face against the max face name.
+					# The max face name count must be greater than a certain value for
+					# it to be valid. This value is set at a percentage of the number of
+					# embeddings for that face name. 
+					name_thresholds = [max_value > value + NAME_THRESHOLD * name_count[max_name]
+						for name, value in counts.items() if name != max_name]
+
+					# If max face name passes against all other faces then declare it valid.
+					if all(name_thresholds):
+						name = max_name
 						print('this is family member {}'.format(name))
 					else:
-						name = 'family_member'
-						print('cannot tell which family member this is')
+						name = None
+						print('cannot recognize face')
 
 				# update the list of names
 				names.append(name)
