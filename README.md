@@ -305,7 +305,7 @@ The Face Detection and Recognition module, [face-det-rec](https://github.com/gor
 There are a number of parameters in this module that can be adjusted to optimize face detection and recognition accuracy and attendant compute. You may need to adjust these parameters to suit your configuration. These are summarized below.
 
 Parameter | Default Value | Note |
-|:------------|:-------:|:-------:|:------:
+|:------------|:-------:|:------:
 COMPARE_FACES_TOLERANCE | 0.57 | A lower value causes stricter compares which may reduce false positives.
 NUMBER_OF_TIMES_TO_UPSAMPLE | 1 | Factor to scale image when looking for faces.
 FACE_DET_MODEL | cnn | Can be either 'cnn' or 'hog'
