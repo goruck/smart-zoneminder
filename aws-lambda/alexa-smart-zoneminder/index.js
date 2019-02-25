@@ -922,9 +922,9 @@ function findLatestAlarms(queryParams, callback) {
                 // If a face or object name was given try to find it in item; skip all others.
                 // Object name is ignored if face is given since it has to be a person. 
                 if (faceName !== null) {
-                    if (item.Labels.some(label => label.Face !== faceName)) continue;
+                    if (!item.Labels.some(label => label.Face === faceName)) continue;
                 } else if (objectName !== null) {
-                    if (item.Labels.some(label => label.Name !== objectName)) continue;
+                    if (!item.Labels.some(label => label.Name === objectName)) continue;
                 }
                 lastZmEventId = item.ZmEventId;
                 foundAlarms.push(item);
