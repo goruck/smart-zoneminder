@@ -302,6 +302,20 @@ Please see the Object Detection Server's [README](https://github.com/goruck/smar
 ## Face Recognition (face-det-rec)
 The Face Detection and Recognition module, [face-det-rec](https://github.com/goruck/smart-zoneminder/tree/master/face-det-rec) is run as a Python program from the Alarm Uploader and it uses dlib and the face_recognition API as described above. You need to first encode examples of faces you want recognized by using the *encode_faces.py* program in the same directory.
 
+There are a number of parameters in this module that can be adjusted to optimize face detection and recognition accuracy and attendant compute. You may need to adjust these parameters to suit your configuration. These are summarized below.
+
+Parameter | Default Value | Note |
+|:------------|:-------:|:-------:|:------:
+COMPARE_FACES_TOLERANCE | 0.57 | A lower value causes stricter compares which may reduce false positives.
+NUMBER_OF_TIMES_TO_UPSAMPLE | 1 | Factor to scale image when looking for faces.
+FACE_DET_MODEL | cnn | Can be either 'cnn' or 'hog'
+NUM_JITTERS | 100 | How many times to re-sample when calculating face encoding
+NAME_THRESHOLD | 0.20 | Threshold to declare a valid face. Fraction of all embeddings for a face name.
+FOCUS_MEASURE_THRESHOLD | 1000 | Images with Variance of Laplacian less than this are declared blurry.
+
+The parameters *NAME_THRESHOLD* and *FOCUS_MEASURE_THRESHOLD* play a particularly important role in face recognition accuracy. The former specifies how much larger the count of a recognized face needs to be than other potential matches for it to be declared valid. This parameter is in terms of the fraction of the total number of embeddings for that face. The latter sets the threshold for a Variance of Laplacian measurement of the image, if below this threshold the image is declared to be too blurry for face recognition to take place.
+
+
 Please see the Face Recognition's [README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md) for installation instructions.
 
 ## Alarm Clip Generator (gen-vid)
