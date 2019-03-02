@@ -37,7 +37,7 @@ NUM_JITTERS = 100
 MONGO_URL = 'mongodb://zmuser:zmpass@localhost:27017/?authSource=admin'
 
 # Number of documents to fetch from the mongodb database.
-NUM_ALARMS = 500
+NUM_ALARMS = 600
 
 # Object detection confidence threshold.
 IMAGE_MIN_CONFIDENCE = 60
@@ -47,10 +47,10 @@ IMAGE_MIN_CONFIDENCE = 60
 NAME_THRESHOLD = 0.20
 
 # Images with Variance of Laplacian less than this are declared blurry. 
-FOCUS_MEASURE_THRESHOLD = 1000
+FOCUS_MEASURE_THRESHOLD = 100
 
 # Set to True to see most recent alarms first.
-IMAGE_DECENDING_ORDER = False
+IMAGE_DECENDING_ORDER = True
 
 # Key codes on my system for cv2.waitKeyEx().
 ESC_KEY = 1048603
@@ -89,6 +89,7 @@ with client:
 		db.alarms.find(
 			#{'labels.Labels.Name' : 'person'} # old database format
 			{'labels.Name' : 'person'}
+			#{'labels.Face' : 'Unknown'}
 		).sort([('_id', -1)]).limit(NUM_ALARMS)
 	)
 
@@ -105,6 +106,7 @@ cv2.namedWindow('face detection results', cv2.WINDOW_NORMAL)
 while True:
 	alarm = alarms[idx]
 
+	print('===== New Image =====')
 	print(alarm)
 
 	img = cv2.imread(alarm['image'])
@@ -115,6 +117,9 @@ while True:
 			print('Reached end of alarm images...exiting.')
 			break
 		continue
+
+	height, width, channels = img.shape
+	print('image height {} width {} channels {}'.format(height, width, channels))
 
 	labels = alarm['labels']
 
@@ -133,13 +138,6 @@ while True:
 			y1 = int(object['Box']['ymax'])
 			x2 = int(object['Box']['xmax'])
 
-			# draw the roi and its label on the image
-			cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,0), 2)
-			cv2.putText(img, 'person', (x1, y2 - 15), cv2.FONT_HERSHEY_SIMPLEX,
-				0.75, (0, 255, 0), 2)
-			#cv2.imshow('roi', img)
-			#cv2.waitKey(0)
-
 			roi = img[y2:y1, x1:x2, :]
 			if roi.size == 0:
 				continue
@@ -152,7 +150,8 @@ while True:
 			gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
 			fm = variance_of_laplacian(gray)
 			print('fm {}'.format(fm))
-			# Ff fm below a threshold then image isn't clear enough
+
+			# If fm below a threshold then image isn't clear enough
 			# for face detection / recognition to work, skip image.
 			if fm < FOCUS_MEASURE_THRESHOLD:
 				print('image is blurred...skipping face det / rec')
@@ -167,6 +166,9 @@ while True:
 			box = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
 				model=FACE_DET_MODEL)
 
+			# Return the 128-dimension face encoding for each face in the image.
+			# TODO - figure out why encodings are slightly different in
+			# face_det_rec.py for same image
 			encodings = face_recognition.face_encodings(rgb, box, NUM_JITTERS)
 
 			# initialize the list of names for each face detected
@@ -177,6 +179,7 @@ while True:
 				# attempt to match each face in the input image to our known encodings
 				matches = face_recognition.compare_faces(data['encodings'],
 					encoding, COMPARE_FACES_TOLERANCE)
+
 				name = 'Unknown'
 
 				# check to see if we have found a match
@@ -185,7 +188,9 @@ while True:
 					# dictionary to count the total number of times each face
 					# was matched
 					matchedIdxs = [i for (i, b) in enumerate(matches) if b]
-					counts = {n: 0 for n in data['names']} # init all name counts to 0
+
+					# init all name counts to 0
+					counts = {n: 0 for n in data['names']}
 					#print('initial counts {}'.format(counts))
 
 					# loop over the matched indexes and maintain a count for
@@ -219,7 +224,7 @@ while True:
 					# If max face name passes against all other faces then declare it valid.
 					if all(name_thresholds):
 						name = max_name
-						print('this is family member {}'.format(name))
+						print('this is {}'.format(name))
 					else:
 						name = None
 						print('cannot recognize face')
@@ -227,7 +232,11 @@ while True:
 				# update the list of names
 				names.append(name)
 
-			# loop over the recognized faces
+			# Draw the roi and its label on the image.
+			cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,0), 2)
+			cv2.putText(img, 'person', (x1, y2 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+
+			# Loop over the recognized faces and annotate image. 
 			for ((top, right, bottom, left), name) in zip(box, names):
 				#print('face box top {} right {} bottom {} left {}'.format(top, right, bottom, left))
 				face_box_width = right - left
