@@ -52,7 +52,7 @@ exports.handler = (event, context, callback) => {
             const newAlarm = {event:event.metadata.zmeventid, frame:parseInt(event.metadata.zmframeid, 10)};
             if (alarmNotInCacheOrStale(cachedAlarms, newAlarm)) {
                 console.log(`Alarm ${event.metadata.zmeventid}:${event.metadata.zmframeid} too new. Skipping.`);
-            } else if (findFace(JSON.parse(event.Labels))) {
+            } else if (findFace(event.Labels)) {
                 const cacheObj = updateCachedAlarms(cachedAlarms, newAlarm);
                 fs.writeFile(ALARM_CACHE, JSON.stringify(cacheObj), (err) => {
                     if (err) {
