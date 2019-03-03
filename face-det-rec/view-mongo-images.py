@@ -11,7 +11,6 @@ import argparse
 import pickle
 import cv2
 import json
-from math import sqrt
 from pymongo import MongoClient
 from bson import json_util
 
@@ -47,10 +46,10 @@ IMAGE_MIN_CONFIDENCE = 60
 NAME_THRESHOLD = 0.20
 
 # Images with Variance of Laplacian less than this are declared blurry. 
-FOCUS_MEASURE_THRESHOLD = 100
+FOCUS_MEASURE_THRESHOLD = 1000
 
 # Set to True to see most recent alarms first.
-IMAGE_DECENDING_ORDER = True
+IMAGE_DECENDING_ORDER = False
 
 # Key codes on my system for cv2.waitKeyEx().
 ESC_KEY = 1048603
@@ -126,9 +125,6 @@ while True:
 	# Find all roi's in image, then look for faces in the rois, then show faces on the image.
 	for object in labels:
 		if object['Name'] == 'person' and object['Confidence'] > IMAGE_MIN_CONFIDENCE:
-			# If no face is detected name will be set to None (null in json).
-			name = None
-
 			print('Found person object...')
 			# (0, 0) is the top left point of the image.
 			# (x1, y1) are the top left roi coordinates.
@@ -144,97 +140,96 @@ while True:
 			#cv2.imshow('roi', roi)
 			#cv2.waitKey(0)
 
-			# Compute the focus measure of the image
-			# using the Variance of Laplacian method.
-			# See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
-			gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-			fm = variance_of_laplacian(gray)
-			print('fm {}'.format(fm))
-
-			# If fm below a threshold then image isn't clear enough
-			# for face detection / recognition to work, skip image.
-			if fm < FOCUS_MEASURE_THRESHOLD:
-				print('image is blurred...skipping face det / rec')
-				continue
-
-			# Covert from cv2 to rgb format.
-			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+			# Draw the object roi and its label on the image.
+			cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,0), 2)
+			cv2.putText(img, 'person', (x1, y2 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
 			# detect the (x, y)-coordinates of the bounding boxes corresponding
-			# to each face in the input image, then compute the facial embeddings for each face
+			# to each face in the input image
 			# Do not increase upsample. System will crash from out of memory.
+			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
 			box = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
 				model=FACE_DET_MODEL)
 
-			# Return the 128-dimension face encoding for each face in the image.
-			# TODO - figure out why encodings are slightly different in
-			# face_det_rec.py for same image
-			encodings = face_recognition.face_encodings(rgb, box, NUM_JITTERS)
+			if not box:
+				print('no face detected...skipping face rec')
+				continue
 
-			# initialize the list of names for each face detected
-			names = []
+			# Carve out face roi from object roi. 
+			face_top, face_right, face_bottom, face_left = box[0]
+			face_roi = roi[face_top:face_bottom, face_left:face_right, :]
+			#cv2.imshow('face roi', face_roi)
+			#cv2.waitKey(0)
 
-			# loop over the facial embeddings
-			for encoding in encodings:
-				# attempt to match each face in the input image to our known encodings
-				matches = face_recognition.compare_faces(data['encodings'],
-					encoding, COMPARE_FACES_TOLERANCE)
+			# Compute the focus measure of the face
+			# using the Variance of Laplacian method.
+			# See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+			gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
+			fm = variance_of_laplacian(gray)
+			print('fm {}'.format(fm))
 
-				name = 'Unknown'
+			# If fm below a threshold then face probably isn't clear enough
+			# for face recognition to work, so just skip it. 
+			if fm < FOCUS_MEASURE_THRESHOLD:
+				print('face is blurred...skipping face rec')
+				names = [None]
+			else:
+				# Return the 128-dimension face encoding for each face in the image.
+				# TODO - figure out why encodings are slightly different in
+				# face_det_rec.py for same image
+				encodings = face_recognition.face_encodings(rgb, box, NUM_JITTERS)
 
-				# check to see if we have found a match
-				if True in matches:
-					# find the indexes of all matched faces then initialize a
-					# dictionary to count the total number of times each face
-					# was matched
-					matchedIdxs = [i for (i, b) in enumerate(matches) if b]
+				# initialize the list of names for each face detected
+				names = []
 
-					# init all name counts to 0
-					counts = {n: 0 for n in data['names']}
-					#print('initial counts {}'.format(counts))
+				# loop over the facial embeddings
+				for encoding in encodings:
+					# attempt to match each face in the input image to our known encodings
+					matches = face_recognition.compare_faces(data['encodings'],
+						encoding, COMPARE_FACES_TOLERANCE)
 
-					# loop over the matched indexes and maintain a count for
-					# each recognized face
-					for i in matchedIdxs:
-						name = data['names'][i]
-						counts[name] = counts.get(name, 0) + 1
-					print('counts {}'.format(counts))
+					# Assume face is unknown to start with. 
+					name = 'Unknown'
 
-					# calculate mean of face counts
-					#m = sum(count for face, count in counts.items()) / len(counts)
-					#print('mean {}'.format(m))
-					# calculate standard deviation of face counts
-					#s = sqrt(sum((counts - m) ** 2 for face, counts in counts.items()) / len(counts))
-					#print('sd {}'.format(s))
-					# calculate coefficient of variation of face counts
-					#cv = s / m
-					#print('cv {}'.format(cv))
+					# check to see if we have found a match
+					if True in matches:
+						# find the indexes of all matched faces then initialize a
+						# dictionary to count the total number of times each face
+						# was matched
+						matchedIdxs = [i for (i, b) in enumerate(matches) if b]
 
-					# Find face name with the max count value.
-					max_value = max(counts.values())
-					max_name = max(counts, key=counts.get)
+						# init all name counts to 0
+						counts = {n: 0 for n in data['names']}
+						#print('initial counts {}'.format(counts))
 
-					# Compare each recognized face against the max face name.
-					# The max face name count must be greater than a certain value for
-					# it to be valid. This value is set at a percentage of the number of
-					# embeddings for that face name. 
-					name_thresholds = [max_value > value + NAME_THRESHOLD * name_count[max_name]
-						for name, value in counts.items() if name != max_name]
+						# loop over the matched indexes and maintain a count for
+						# each recognized face
+						for i in matchedIdxs:
+							name = data['names'][i]
+							counts[name] = counts.get(name, 0) + 1
+						print('counts {}'.format(counts))
 
-					# If max face name passes against all other faces then declare it valid.
-					if all(name_thresholds):
-						name = max_name
-						print('this is {}'.format(name))
-					else:
-						name = None
-						print('cannot recognize face')
+						# Find face name with the max count value.
+						max_value = max(counts.values())
+						max_name = max(counts, key=counts.get)
 
-				# update the list of names
-				names.append(name)
+						# Compare each recognized face against the max face name.
+						# The max face name count must be greater than a certain value for
+						# it to be valid. This value is set at a percentage of the number of
+						# embeddings for that face name. 
+						name_thresholds = [max_value > value + NAME_THRESHOLD * name_count[max_name]
+							for name, value in counts.items() if name != max_name]
 
-			# Draw the roi and its label on the image.
-			cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,0), 2)
-			cv2.putText(img, 'person', (x1, y2 - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+						# If max face name passes against all other faces then declare it valid.
+						if all(name_thresholds):
+							name = max_name
+							print('this is {}'.format(name))
+						else:
+							name = None
+							print('cannot recognize face')
+
+					# update the list of names
+					names.append(name)
 
 			# Loop over the recognized faces and annotate image. 
 			for ((top, right, bottom, left), name) in zip(box, names):
