@@ -30,7 +30,7 @@ KNOWN_FACE_ENCODINGS_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/e
 # Face comparision tolerance.
 # A lower value causes stricter compares which may reduce false positives.
 # See https://github.com/ageitgey/face_recognition/wiki/Face-Recognition-Accuracy-Problems.
-COMPARE_FACES_TOLERANCE = 0.57
+COMPARE_FACES_TOLERANCE = 0.60
 
 # Factor to scale image when looking for faces.
 # May increase the probability of finding a face in the image. 
@@ -46,10 +46,10 @@ NUM_JITTERS = 100
 
 # Threshold to declare a valid face.
 # This is the percentage of all embeddings for a face name. 
-NAME_THRESHOLD = 0.20
+NAME_THRESHOLD = 0.25
 
 # Images with Variance of Laplacian less than this are declared blurry. 
-FOCUS_MEASURE_THRESHOLD = 1000
+FOCUS_MEASURE_THRESHOLD = 200
 
 # Get image paths from command line.
 if len(argv) == 1:
