@@ -11,6 +11,7 @@ import argparse
 import pickle
 import cv2
 import json
+from shutil import copy
 from pymongo import MongoClient
 from bson import json_util
 
@@ -60,6 +61,8 @@ DOWN_ARROW_KEY = 1113940
 SPACE_KEY = 1048608
 LOWER_CASE_Q_KEY = 1048689
 LOWER_CASE_S_KEY = 1048691
+LOWER_CASE_P_KEY = 1048688
+LOWER_CASE_O_KEY = 1048687
 
 def variance_of_laplacian(image):
 	# compute the Laplacian of the image and then return the focus
@@ -88,7 +91,7 @@ with client:
 		db.alarms.find(
 			#{'labels.Labels.Name' : 'person'} # old database format
 			{'labels.Name' : 'person'}
-			#{'labels.Face' : 'Unknown'}
+			#{'labels.Face' : 'lindo_st_angel'}
 		).sort([('_id', -1)]).limit(NUM_ALARMS)
 	)
 
@@ -226,7 +229,7 @@ while True:
 
 						# update the list of names
 						names.append(name)
-
+			
 			# Draw the object roi and its label on the image.
 			# This must be done after fm calc otherwise drawing edge will affect result. 
 			cv2.rectangle(img, (x1, y1), (x2, y2), (255,0,0), 2)
@@ -261,6 +264,10 @@ while True:
 		json_dumps = json.dumps(alarm, default=json_util.default)
 		with open(SAVE_PATH + '/' + obj_id_str + '.json', 'w') as outfile:
 			json.dump(json_dumps, outfile)
+	elif key == LOWER_CASE_O_KEY: # save image w/o annotations
+		image_path = alarm['image']
+		print('Saving original alarm image with path {}.'.format(image_path))
+		copy(image_path, SAVE_PATH)
 	elif key == LEFT_ARROW_KEY or key == DOWN_ARROW_KEY: # go back
 		idx -= 1
 	elif key == SPACE_KEY or key == RIGHT_ARROW_KEY or key == UP_ARROW_KEY: # advance
