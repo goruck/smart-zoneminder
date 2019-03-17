@@ -73,7 +73,8 @@ LOWER_CASE_S_KEY = 1048691
 LOWER_CASE_P_KEY = 1048688
 LOWER_CASE_O_KEY = 1048687
 
-# Settings to save images and metadata in Pascal VOC format. 
+# Settings to save images and metadata in Pascal VOC format.
+PVOC_START = 232 # starting index of images and xmls
 PVOC_IMG_WIDTH = 300
 PVOC_IMG_HEIGHT = 300
 PVOC_IMG_BASE_PATH = '/home/lindo/develop/tensorflow/models/images/'
@@ -214,7 +215,7 @@ with client:
 		db.alarms.find(
 			#{'labels.Labels.Name' : 'person'} # old database format
 			#{'labels.Name' : 'person'}
-			{'labels.Face' : 'eva_st_angel'}
+			{'labels.Face' : 'nico_st_angel'}
 		).sort([('_id', -1)]).limit(NUM_ALARMS)
 	)
 
@@ -222,15 +223,15 @@ with client:
 if not IMAGE_DECENDING_ORDER:
 	alarms.reverse()
 
-# Create a window that can be resized by the user.
-# TODO: figure out why I cannot resize window using the mouse
-cv2.namedWindow('face detection results', cv2.WINDOW_NORMAL)
-
 idx = 0 # index of alarm image being processed
-pvoc_counter = 80 # counter used to save images in Pascal VOC format
+pvoc_counter = PVOC_START # counter used to save images in Pascal VOC format
 
 while True:
 	alarm = alarms[idx]
+
+	# Create a window that can be resized by the user.
+	# TODO: figure out why I cannot resize window using the mouse
+	cv2.namedWindow('face detection results', cv2.WINDOW_NORMAL)
 
 	print('===== New Image =====')
 	print(alarm)
@@ -381,4 +382,4 @@ while True:
 			print('Reached end of alarm images...exiting.')
 			break
 
-cv2.destroyAllWindows()
+	cv2.destroyAllWindows()
