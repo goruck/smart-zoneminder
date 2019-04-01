@@ -1,29 +1,31 @@
-# Detect objects using tensorflow-gpu served by zerorpc.
-#
-# This needs to be called from a zerorpc client with an array of alarm frame image paths.
-# Image paths must be in the form of:
-# '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
-#
-# This program should be run in the 'od' virtual python environment, i.e.,
-# $ /home/lindo/.virtualenvs/od/bin/python ./obj_detect_server.py
-#
-# This is part of the smart-zoneminder project.
-#
-# Copyright (c) 2018, 2019 Lindo St. Angel
+"""
+Detect objects using tensorflow-gpu served by zerorpc
+
+This needs to be called from a zerorpc client with an array of zm alarm image paths.
+Image paths must be in the form of:
+'/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
+
+This program should be run in the 'od' virtual python environment, i.e.,
+$ /home/lindo/.virtualenvs/od/bin/python ./obj_detect_server.py
+
+This is part of the smart-zoneminder project.
+See https://github.com/goruck/smart-zoneminder
+
+Copyright (c) 2018, 2019 Lindo St. Angel
+"""
 
 import numpy as np
 import tensorflow as tf
+import cv2
 import json
 import zerorpc
-from PIL import Image
+import logging
 # Object detection imports.
 from object_detection.utils import label_map_util
 # For tensorrt optimized models...
-import tensorflow.contrib.tensorrt as trt
+#import tensorflow.contrib.tensorrt as trt
 
-# Debug.
-#import warnings
-#warnings.simplefilter('default')
+logging.basicConfig(level=logging.ERROR)
 
 # Get configuration.
 with open('./config.json') as fp:
@@ -58,31 +60,27 @@ ZRPC_PIPE = config['zerorpcPipe']
 # Load frozen Tensorflow model into memory. 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
-  od_graph_def = tf.GraphDef()
-  with tf.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
-    serialized_graph = fid.read()
-    od_graph_def.ParseFromString(serialized_graph)
-    tf.import_graph_def(od_graph_def, name='')
-  # Only grow the memory usage as required.
-  # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True
-  sess = tf.Session(config=config, graph=detection_graph)
-  sess.run(tf.global_variables_initializer())
+    od_graph_def = tf.GraphDef()
+    with tf.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
+        serialized_graph = fid.read()
+        od_graph_def.ParseFromString(serialized_graph)
+        tf.import_graph_def(od_graph_def, name='')
+    # Only grow the memory usage as required.
+    # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(config=config, graph=detection_graph)
+    sess.run(tf.global_variables_initializer())
 
-# Load label map. 
+# Load tf label map. 
 label_map = label_map_util.load_labelmap(PATH_TO_LABEL_MAP)
-categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
+categories = label_map_util.convert_label_map_to_categories(label_map,
+    max_num_classes=NUM_CLASSES, use_display_name=True)
 category_index = label_map_util.create_category_index(categories)
-
-# Helper code. 
-def load_image_into_numpy_array(image):
-    (im_width, im_height) = image.size
-    return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
 
 # zerorpc server.
 class DetectRPC(object):
-    def detect(self, test_image_paths):
+    def detect_objects(self, test_image_paths):
        with detection_graph.as_default():
             objects_in_image = []
             old_labels = []
@@ -90,6 +88,7 @@ class DetectRPC(object):
             monitor = ''
             (img_width, img_height) = (CROP_IMAGE_WIDTH, CROP_IMAGE_HEIGHT)
             for image_path in test_image_paths:
+                logging.info('**********Find object(s) for {}'.format(image_path))
                 # If consecutive frames then repeat last label to minimize processing.
                 # Image paths must be in the form of:
                 # '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
@@ -99,7 +98,8 @@ class DetectRPC(object):
                     frame_num = int((image_path.split('/')[-1]).split('-')[0])
                     monitor = image_path.split('/')[4]
                 except (ValueError, IndexError):
-                    print("Could not derive information from image path.")
+                    logging.error("Could not derive information from image path.")
+                    objects_in_image.append({'image': image_path, 'labels': []})
                     continue
                     
                 # Only apply skip logic if frames are from the same monitor. 
@@ -111,21 +111,29 @@ class DetectRPC(object):
                         # Skip CON_IMG_SKIP frames after the first one. 
                         if frame_diff  <= CON_IMG_SKIP:
                             objects_in_image.append({'image': image_path, 'labels': old_labels})
-                            print('monitor {} old_monitor {} frame_num {} old_frame_num {}'
+                            logging.debug('monitor {} old_monitor {} frame_num {} old_frame_num {}'
                                 .format(monitor,old_monitor,frame_num,old_frame_num))
-                            print('Consecutive frame {}, skipping detect and copying previous labels.'
+                            logging.info('Consecutive frame {}, skipping detect and copying previous labels.'
                                 .format(frame_num))
                             continue
 
-                with Image.open(image_path) as image:
-                    # Resize to minimize tf processing.
-                    # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
-                    image_resize = image.resize((img_width, img_height))
+                # Read image from disk. 
+                img = cv2.imread(image_path)
+                #cv2.imwrite('./img.jpg', img)
+                if img is None:
+                    # Bad image was read.
+                    logging.error('Bad image was read.')
+                    objects_in_image.append({'image': image_path, 'labels': []})
+                    continue
 
-                # Convert image to numpy array
-                image_np = load_image_into_numpy_array(image_resize)
+                # Resize to minimize tf processing.
+                # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
+                res = cv2.resize(img, dsize=(img_width, img_height), interpolation=cv2.INTER_AREA)
+                #cv2.imwrite('./res.jpg', res)
+                # Format np array for tf use. 
+                image_tf = res.astype(np.uint8)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                image_np_expanded = np.expand_dims(image_np, axis=0)
+                image_tf_expanded = np.expand_dims(image_tf, axis=0)
                 # Define input node.
                 image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
                 # Define output nodes.
@@ -141,66 +149,25 @@ class DetectRPC(object):
                 # Actual detection.
                 (boxes, scores, classes, num_detections) = sess.run(
                     [boxes, scores, classes, num_detections],
-                    feed_dict={image_tensor: image_np_expanded})
+                    feed_dict={image_tensor: image_tf_expanded})
 
                 # Get labels and scores of detected objects.
                 labels = []
-                (im_width, im_height) = image.size # use original image size for box coords
+                #(w, h) = image.size # use original image size for box coords
+                (h, w) = img.shape[:2] # use original image size for box coords
                 for index, value in enumerate(classes[0]):
                     if scores[0, index] > MIN_SCORE_THRESH:
                         object_dict = {}
                         object_dict['id'] = category_index.get(value)['id']
                         object_dict['name'] = category_index.get(value)['name']
                         object_dict['score'] = float(scores[0, index])
-                        ymin = boxes[0, index][0] * im_height
-                        xmin = boxes[0, index][1] * im_width
-                        ymax = boxes[0, index][2] * im_height
-                        xmax = boxes[0, index][3] * im_width
+                        (ymin, xmin, ymax, xmax) = boxes[0, index] * np.array([h, w, h, w])
                         object_dict['box'] = {'ymin': ymin, 'xmin': xmin, 'ymax': ymax, 'xmax': xmax}
                         labels.append(object_dict)
 
                 old_labels = labels
-
                 objects_in_image.append({'image': image_path, 'labels': labels})
             return json.dumps(objects_in_image)
-
-    # Streaming server.
-    @zerorpc.stream
-    def detect_stream(self, test_image_paths):
-        (img_width, img_height) = (CROP_IMAGE_WIDTH, CROP_IMAGE_HEIGHT)
-        with detection_graph.as_default():
-            for image_path in test_image_paths:
-                with Image.open(image_path) as image:
-                    # Resize to minimize tf processing.
-                    # Note: resize will slightly lower accuracy. 640 x 480 seems like a good balance.
-                    image_resize = image.resize((img_width, img_height))
-
-                # Convert image to numpy array
-                image_np = load_image_into_numpy_array(image_resize)
-                # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
-                image_np_expanded = np.expand_dims(image_np, axis=0)
-                image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
-                # Each box represents a part of the image where a particular object was detected.
-                boxes = detection_graph.get_tensor_by_name('detection_boxes:0')
-                scores = detection_graph.get_tensor_by_name('detection_scores:0')
-                classes = detection_graph.get_tensor_by_name('detection_classes:0')
-                num_detections = detection_graph.get_tensor_by_name('num_detections:0')
-
-                (boxes, scores, classes, num_detections) = sess.run(
-                    [boxes, scores, classes, num_detections],
-                    feed_dict={image_tensor: image_np_expanded})
-
-                # Get labels and scores of detected objects.
-                labels = []
-                object_dict = {}
-                for index, value in enumerate(classes[0]):
-                    if scores[0, index] > MIN_SCORE_THRESH:
-                        object_dict = category_index.get(value)
-                        object_dict['score'] = float(scores[0, index])
-                        object_dict['box'] = boxes[0, index].tolist()
-                        labels.append(object_dict)
-
-                yield json.dumps({'image': image_path, 'labels': labels})
 
 s = zerorpc.Server(DetectRPC(), heartbeat=ZRPC_HEARTBEAT)
 s.bind(ZRPC_PIPE)

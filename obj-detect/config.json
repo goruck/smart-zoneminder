@@ -9,6 +9,6 @@
         "cropImageWidth": 640,
         "cropImageHeight": 480,
         "zerorpcHeartBeat": 60000,
-        "zerorpcPipe": "ipc:///tmp/zmq.pipe"
+        "zerorpcPipe": "ipc:///tmp/obj_detect_zmq.pipe"
     }
 }
