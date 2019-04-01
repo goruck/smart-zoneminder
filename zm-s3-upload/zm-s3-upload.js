@@ -15,6 +15,7 @@
 
 const fs = require('fs');
 const util = require('util');
+const zerorpc = require('zerorpc');
 
 // AWS config.
 const awsCreds = JSON.parse(fs.readFileSync('./aws-creds.json'));
@@ -50,9 +51,13 @@ const MAX_CONCURRENT_UPLOAD = zmConfig.MAXCONCURRENTUPLOAD;
 // This must match the zerorpc server config. 
 const ZERORPC_HEARTBEAT = zmConfig.zerorpcHeartBeat;
 
-// IPC (or TCP) socket for zerorpc.
-// This must match the zerorpc server config.
-const ZERORPC_PIPE = zmConfig.zerorpcPipe;
+// IPC (or TCP) socket for zerorpc object detect server.
+// This must match the zerorpc obj det server config.
+const OBJ_DET_ZERORPC_PIPE = zmConfig.objDetZerorpcPipe;
+
+// IPC (or TCP) socket for zerorpc face detect server.
+// This must match the zerorpc face det server config.
+const FACE_DET_ZERORPC_PIPE = zmConfig.faceDetZerorpcPipe;
 
 // Number of frames to skip for each one processed.
 // Meant to save processing and upload time (possibly with lower accuracy).
@@ -69,12 +74,6 @@ const CHECK_FOR_ALARMS_INTERVAL = zmConfig.checkForAlarmsInterval;
 
 // Flag to run local face detection / recognition on people detected. 
 const RUN_FACE_DET_REC = zmConfig.runFaceDetRec;
-
-// The python virtual environment to run the face det / rec script in. 
-const FACE_DET_REC_VIRTENV = zmConfig.faceDetRecVirtenv;
-
-// Path to the face det / rec script. 
-const FACE_DET_REC_PATH = zmConfig.faceDetRecPath;
 
 // mongodb
 // Log the disposition of all alarm frames to a mongo database?
@@ -437,55 +436,37 @@ const getFrames = () => {
             const mongodbDoc = []; // for local database of all alarm frame disposition
             let skipped = 0; // alarm frames skipped during this run
 
-            // Perform face detection and recognition via external python script. 
-            const faceDetRec = detectedObjects => {
-                // Return a resolved Promise with an empty array if detectedObjects is empty.
-                if (detectedObjects.length === 0) return Promise.resolve([]);
-
-                // Construct args for script.
-                // The first arg is the script name. 
-                // Each detected image is a separate arg on the command line. 
-                const spawnArgs = [];
-                spawnArgs.push(FACE_DET_REC_PATH);
-                detectedObjects.forEach(item =>{
-                    spawnArgs.push(JSON.stringify(item));
-                });
-
-                return new Promise((resolve, reject) => {
-                    const { spawn } = require('child_process');
-                    const faceDetRecPy = spawn(FACE_DET_REC_VIRTENV, spawnArgs);
-
-                    faceDetRecPy.stdout.on('data', (data) => {
-                        resolve(JSON.parse(data.toString()));
-                    });
-                
-                    faceDetRecPy.stderr.on('data', (error) => {
-                        reject(error.toString());
-                    });
-                });
-            };
-
-            // zerorpc connection to object detection server. 
-            const objDetServer = imagePaths => {
+            /**
+             * Connection to zerorpc object or face detection server.
+             * 
+             * @param {string} detectionType - Either 'detect_objects' or 'detect_faces'.
+             * @param {array} imagePaths - Paths to images for detection. 
+             */
+            const detectServer = (detectionType = 'detect_objects', imagePaths = []) => {
                 // Return a resolved Promise with an empty array if imagePath is empty.
                 if (imagePaths.length === 0) return Promise.resolve([]);
 
-                const zerorpc = require('zerorpc');
+                // Set pipe to server based on detection type requested. 
+                let pipe = '';
+                detectionType === 'detect_objects' ?
+                    pipe = OBJ_DET_ZERORPC_PIPE : pipe = FACE_DET_ZERORPC_PIPE;
+
                 // Heartbeat must be greater than the time required to run detection on maxInit frames.
+                // TODO - make heartbeat automatic to keep connection open, latency might be better. 
                 const zerorpcClient = new zerorpc.Client({heartbeatInterval: ZERORPC_HEARTBEAT});
-                zerorpcClient.connect(ZERORPC_PIPE);
+                zerorpcClient.connect(pipe);
 
                 return new Promise((resolve, reject) => {
-                    zerorpcClient.on('error', (error) => {
+                    zerorpcClient.on('error', error => {
                         reject(error);
                     });
 
-                    zerorpcClient.invoke('detect', imagePaths, (error, data) => {
+                    zerorpcClient.invoke(detectionType, imagePaths, (error, data) => {
                         zerorpcClient.close();
                         if (error) {
                             reject(error);
                         } else {
-                            resolve(JSON.parse(data.toString()));
+                            resolve(JSON.parse(data));
                         }
                     });
                 });
@@ -544,11 +525,11 @@ const getFrames = () => {
                     imagePaths.push(buildFilePath(aryRows[i]));
                 }
                 
-                objDetServer(imagePaths).then((detObjArr) => {
+                detectServer('detect_objects', imagePaths).then((detObjArr) => {
                     // detObjArr is an array containing objects detected in image(s).
                     // The ordering of items in the array matches the order that they were submitted.
                     logger.debug(`Obj detect results: ${util.inspect(detObjArr, false, null)}`);
-                    if (RUN_FACE_DET_REC) return faceDetRec(detObjArr);
+                    if (RUN_FACE_DET_REC) return detectServer('detect_faces', detObjArr);
                     return detObjArr;
                 }).then((objectsFound) => {
                     // objectsFound is an array of detected objects and recognized faces (if enabled).
