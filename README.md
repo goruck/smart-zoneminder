@@ -296,35 +296,32 @@ The Alarm Uploader is run as a Linux service using systemd.
 
 Please see the Alarm Uploader's [README](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/README.md) for installation instructions.
 
-## Local Object Detection (obj_detect_server)
+## Local Object Detection (obj-detect)
 The Object Detection Server, [obj_det_server](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/obj_detect_server.py), runs the Tensorflow object detection inference engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder. Another benefit is that the server when started will load into memory the model and initialize it, thus saving time when an inference is actually run. The server can optionally skip inferences on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The Object Detection Server is run as a Linux service using systemd.
 
 I benchmarked a few Tensorflow object detection models on the machine running smart-zoneminder in order to pick the best model in terms of performance and accuracy. See the Appendix for this analysis. 
 
 Please see the Object Detection Server's [README](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/README.md) for installation instructions.
 
-## TPU-based Object Detection (obj_detect_server_tpu)
-The TPU Object Detection Server, [obj_detect_server_tpu.py](./obj-detect-tpu/obj_detect_server_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) Tensorflow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The TPU Object Detection Server is run as a Linux service using systemd.
+## TPU-based Object and Face Detection (tpu-servers)
+This folder contains code and collateral for running the object and face detection servers using the Google edge Tensorflow Processing Unit (TPU). The Alarm Uploader can be configured to use these servers instead of GPU-based ones normally co-resident with the machine running ZoneMinder.
 
-Please see the TPU Object Detection Server's [README](./obj-detect-tpu/README.md) for installation instructions.
+Please see the TPU-based Object and Face Detection's [README](./tpu-servers/README.md) for installation instructions.
 
 ## Face Recognition (face-det-rec)
-The Face Detection and Recognition module, [face-det-rec](https://github.com/goruck/smart-zoneminder/tree/master/face-det-rec) is run as a Python program from the Alarm Uploader and it uses dlib, the face_recognition API and scikit-learn as described above. You need to first encode examples of faces you want recognized by using the *encode_faces.py* program in the same directory and if you want to use an SVM based face classifier you need to run the *train.py* program after that. 
+The Face Detection and Recognition Server, [face_detect_server.py](./face_detect_server.py), runs the dlib face detection and recognition engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (e.g. when using the tpu version of this program). Face Detection and Recognition Server is run as a Linux service using systemd.
 
 There are a number of parameters in this module that can be adjusted to optimize face detection and recognition accuracy and attendant compute. You may need to adjust these parameters to suit your configuration. These are summarized below.
 
 Parameter | Default Value | Note |
 |:------------|:-------:|:------:
-USE_SVM_CLASS  | True | Set to True if using SVM face classifier else knn will be used. svm is more accurate but needs training before it can be used, unlike the 'lazy learner' knn. 
 MIN_SVM_PROBA | 0.8 | Minimum probablity for a valid face returned by the SVM classifier. 
-COMPARE_FACES_TOLERANCE | 0.6 | A lower value causes stricter compares which may reduce false positives. Used for knn only.
 NUMBER_OF_TIMES_TO_UPSAMPLE | 1 | Factor to scale image when looking for faces.
 FACE_DET_MODEL | cnn | Can be either 'cnn' or 'hog'. cnn works much better but uses more memory and is slower. 
-NUM_JITTERS | 100 | How many times to re-sample when calculating face encoding
-NAME_THRESHOLD | 0.25 | Threshold to declare a valid face. Fraction of all embeddings for a face name. Used for knn only. 
+NUM_JITTERS | 10 | How many times to re-sample when calculating face encoding
 FOCUS_MEASURE_THRESHOLD | 200 | Images with Variance of Laplacian less than this are declared blurry.
 
-The parameters *NAME_THRESHOLD*, *MIN_SVM_PROBA* and *FOCUS_MEASURE_THRESHOLD* play a particularly important role in face recognition accuracy. *NAME_THRESHOLD* specifies how much larger the count of a recognized face from the knn classifier needs to be than other potential matches for it to be declared valid. This parameter is in terms of the fraction of the total number of embeddings for that face. *MIN_SVM_PROBA* sets the minimum probablity that will be declared a valid face from the svm-based classifier. *FOCUS_MEASURE_THRESHOLD* sets the threshold for a Variance of Laplacian measurement of the image,if below this threshold the image is declared to be too blurry for face recognition to take place.
+*MIN_SVM_PROBA* sets the minimum probablity that will be declared a valid face from the svm-based classifier. *FOCUS_MEASURE_THRESHOLD* sets the threshold for a Variance of Laplacian measurement of the image,if below this threshold the image is declared to be too blurry for face recognition to take place.
 
 Please see the Face Recognition's [README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md) for installation instructions.
 
@@ -452,8 +449,8 @@ The overall system performance is summarized in the table below.
 Configuration | Max Latency^ (s) | Avg Throughput (fps) | Note |
 |:------------|:-------:|:-------:|:------:
 Remote Object Detection | 5.2 | 5 |
-Local Object Detection | 5.4 | 2.5 | rfcn_resnet101_coco
-Local Object and Face Detection | 5.7 | 1.5 | rfcn_resent101_coco and dlib
+Local Object Detection | 5.4 | 5 | rfcn_resnet101_coco
+Local Object and Face Detection | 5.7 | 4.5 | rfcn_resent101_coco and dlib
 ^Time between new alarm image in datebase and completed upload to S3. This assumes 5 secs between zm database queries by zm-s3-uploader and 10 max concurrent uploads.
 
 ## Face Detection / Recognition Tuning
