@@ -1,0 +1,24 @@
+{
+    "objDetServer": {
+        "comment": "Configuration for obj_detect_server_tpu.py",
+        "objModelPath": "/usr/lib/python3/dist-packages/edgetpu/test_data/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite",
+        "labelMapPath": "/usr/lib/python3/dist-packages/edgetpu/test_data/coco_labels.txt",
+        "mountPoint": "/mnt",
+        "conseqImagesToSkip": 0,
+        "minScore": 0.5,
+        "zerorpcHeartBeat": 60000,
+        "zerorpcPipe": "tcp://192.168.1.131:1234"
+    },
+    "faceDetServer": {
+        "comment": "Configuration for face_detect_server_tpu.py",
+        "faceDetModelPath": "/usr/lib/python3/dist-packages/edgetpu/test_data/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite",
+        "faceEmbModelPath": "./nn4.v2.t7",
+        "svmModelPath": "./face_recognizer.pickle",
+        "svmLabelPath": "./face_labels.pickle",
+        "minSvmProba": 0.7,
+        "focusMeasureThreshold": 200,
+        "mountPoint": "/mnt",
+        "zerorpcHeartBeat": 60000,
+        "zerorpcPipe": "tcp://192.168.1.131:1235"
+    }
+}
