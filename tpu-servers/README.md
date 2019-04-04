@@ -150,7 +150,7 @@ $ sudo mount lindo@192.168.1.4/nvr
 
 13. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-14. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/etc/systemd/system```. Then enable the service:
+14. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service
 ```
