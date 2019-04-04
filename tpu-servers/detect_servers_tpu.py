@@ -219,10 +219,10 @@ class FaceDetectRPC(object):
                         label['face'] = None
                         continue
 
-			        # First bound the roi using the coord info passed in.
-			        # The roi is area around person(s) detected in image.
-			        # (x1, y1) are the top left roi coordinates.
-			        # (x2, y2) are the bottom right roi coordinates.
+                    # First bound the roi using the coord info passed in.
+                    # The roi is area around person(s) detected in image.
+                    # (x1, y1) are the top left roi coordinates.
+                    # (x2, y2) are the bottom right roi coordinates.
                     y2 = int(label['box']['ymin'])
                     x1 = int(label['box']['xmin'])
                     y1 = int(label['box']['ymax'])
@@ -242,8 +242,8 @@ class FaceDetectRPC(object):
                     res = cv2.resize(roi, dsize=(320, 320), interpolation=cv2.INTER_AREA)
                     #cv2.imwrite('./res.jpg', res)
 
-			        # Detect the (x, y)-coordinates of the bounding boxes corresponding
-			        # to each face in the input image using the TPU engine.
+                    # Detect the (x, y)-coordinates of the bounding boxes corresponding
+                    # to each face in the input image using the TPU engine.
                     # NB: reshape(-1) converts the np img array into 1-d. 
                     detection = face_engine.DetectWithInputTensor(res.reshape(-1),
                         threshold=0.1, top_k=3)
@@ -265,8 +265,8 @@ class FaceDetectRPC(object):
                     gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
                     fm = variance_of_laplacian(gray)
 
-			        # If fm below a threshold then face probably isn't clear enough
-			        # for face recognition to work, so skip it. 
+                    # If fm below a threshold then face probably isn't clear enough
+                    # for face recognition to work, so skip it. 
                     if fm < FOCUS_MEASURE_THRESHOLD:
                         logging.debug('Face too blurry to recognize.')
                         name = None
