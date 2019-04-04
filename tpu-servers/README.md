@@ -1,9 +1,7 @@
 # tpu-servers
 This folder contains code and collateral for running the object and face detection servers using the Google edge Tensorflow Processing Unit (TPU). The Alarm Uploader can be configured to use these servers instead of GPU-based ones normally co-resident with the machine running ZoneMinder. 
 
-The TPU Object Detection Server, [obj_detect_server_tpu.py](./obj_detect_server_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) Tensorflow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The server can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The TPU Object Detection Server is run as a Linux service using systemd.
-
-The TPU Face Detection and Recognition Server, [face_detect_server_tpu.py](./face_detect_server_tpu.py), runs the tpu-based face detection and an OpenCV-based face recognition engine using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. The TPU face Detection and Recognition Server is run as a Linux service using systemd.
+The TPU-based object and face detection server, [detect_servers_tpu.py](./detect_servers_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) Tensorflow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The object detection can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The server is run as a Linux service using systemd.
 
 # Installation
 1. Using the [Get Started Guide](https://coral.withgoogle.com/tutorials/devboard/), flash the Dev Board with the latest software image from Google.
@@ -75,7 +73,7 @@ $ unzip opencv.zip
 $ wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/3.4.5.zip
 $ unzip opencv_contrib.zip
 
-# Configure OpenCV using cmake. This takes a while...
+# Configure OpenCV using cmake. This takes a while...cross compile if impatient
 $ cd ~/opencv-3.4.5
 $ mkdir build
 $ cd build
@@ -118,9 +116,9 @@ $ python3
 # Disable swap as in step 4 above.
 ```
 
-8. Copy obj_detect_tpu.py, face_detect_server_tpu and config.json in this directory to ```/media/mendel/obj-detect-tpu```.
+8. Copy detect_server_tpu and config.json in this directory to ```/media/mendel/detect_servers_tpu.py```.
 
-9. Download the model *nn4.v2.t7* to generate the face embeddings from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) and store it in this directory and the ```face-det-rec``` directory since it will be used for training the svm used for classification.
+9. Download the model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to generate the face embeddings and store it in this directory and the ```face-det-rec``` directory since it will be used for training the svm used for face classification.
 
 10. Follow the same steps descibed in the ```face-det-rec``` directory to train the svm face classifier and copy the resulting label and recognizer pickle files to this directory. 
 
@@ -150,10 +148,9 @@ lindo@192.168.1.4:/nvr /mnt/nvr fuse.sshfs auto,user,_netdev,reconnect,uid=1000,
 $ sudo mount lindo@192.168.1.4/nvr
 ```
 
-13. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU object detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+13. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-14. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect-tpu.service](../scripts/obj-detect-tpu.service) and [face-detect-tpu.service](../scripts/face-detect-tpu.service)to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+14. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/etc/systemd/system```. Then enable the service:
 ```bash
-$ sudo systemctl enable obj-detect-tpu.service
-$ sudo systemctl enable face-detect-tpu.service
+$ sudo systemctl enable detect-tpu.service
 ```
