@@ -3,6 +3,67 @@ This folder contains code and collateral for running the object and face detecti
 
 The TPU-based object and face detection server, [detect_servers_tpu.py](./detect_servers_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) Tensorflow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The object detection can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The server is run as a Linux service using systemd.
 
+Images are sent to the object detection as json, in the following form.
+```json
+[
+    {'path_to_image_1},
+    {'path_to_image_2'},
+    {'path_to_image_n'}
+]
+```
+
+Object detection results are returned as json, an example is shown below.
+```json
+[ { image: '/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00506-capture.jpg',
+    labels: 
+     [ { name: 'person',
+         id: 0,
+         score: 0.98046875,
+         box: 
+          { xmin: 898.4868621826172,
+            xmax: 1328.2035827636719,
+            ymax: 944.9342751502991,
+            ymin: 288.86380434036255 } } ] },
+  { image: '/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00509-capture.jpg',
+    labels: 
+     [ { name: 'person',
+         id: 0,
+         score: 0.83984375,
+         box: 
+          { xmin: 1090.408058166504,
+            xmax: 1447.4291610717773,
+            ymax: 846.3531160354614,
+            ymin: 290.5584239959717 } } ] },
+  { image: '/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00515-capture.jpg',
+    labels: [] } ]
+```
+
+The object detection results then in turn can be sent to the face detector, an example of the face detection results returned is shown below.
+```json
+[ { image: '/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00506-capture.jpg',
+    labels: 
+     [ { box: 
+          { xmin: 898.4868621826172,
+            xmax: 1328.2035827636719,
+            ymax: 944.9342751502991,
+            ymin: 288.86380434036255 },
+         name: 'person',
+         face: lindo_st_angel,
+         score: 0.98046875,
+         id: 0 } ] },
+  { image: '/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00509-capture.jpg',
+    labels: 
+     [ { box: 
+          { xmin: 1090.408058166504,
+            xmax: 1447.4291610717773,
+            ymax: 846.3531160354614,
+            ymin: 290.5584239959717 },
+         name: 'person',
+         face: null,
+         score: 0.83984375,
+         id: 0 } ] } ]
+```
+
 # Installation
 1. Using the [Get Started Guide](https://coral.withgoogle.com/tutorials/devboard/), flash the Dev Board with the latest software image from Google.
 
@@ -154,3 +215,5 @@ $ sudo mount lindo@192.168.1.4/nvr
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
+
+15. Test the entire setup by editing ```detect_dervers_test.py``` with paths to test images and running that program.
