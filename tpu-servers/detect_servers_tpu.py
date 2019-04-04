@@ -252,8 +252,8 @@ class FaceDetectRPC(object):
                         logging.debug('No face detected.')
                         label['face'] = None
                         continue
-
-			        # Convert coords and carve out face roi.
+                        
+                    # Convert coords and carve out face roi.
                     box = (detection[0].bounding_box.flatten().tolist()) * np.array([w, h, w, h])
                     (face_left, face_top, face_right, face_bottom) = box.astype('int')
                     face_roi = roi[face_top:face_bottom, face_left:face_right, :]
