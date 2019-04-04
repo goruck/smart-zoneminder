@@ -116,13 +116,13 @@ $ python3
 # Disable swap as in step 4 above.
 ```
 
-8. Copy detect_server_tpu and config.json in this directory to ```/media/mendel/detect_servers_tpu.py```.
+8. Copy *detect_server_tpu* and *config.json* in this directory to ```/media/mendel/detect_servers_tpu.py``` and ```/media/mendel/config.json``` respectively.
 
 9. Download the model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to generate the face embeddings and store it in this directory and the ```face-det-rec``` directory since it will be used for training the svm used for face classification.
 
 10. Follow the same steps descibed in the ```face-det-rec``` directory to train the svm face classifier and copy the resulting label and recognizer pickle files to this directory. 
 
-12. Mount ZoneMinder's alarm image store on the Dev Board so obj-detect-tpu can find the alarm images and process them. The store neededs to be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
+12. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
 # Setup sshfs.
 $ sudo apt-get install sshfs
@@ -150,7 +150,7 @@ $ sudo mount lindo@192.168.1.4/nvr
 
 13. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-14. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable the service:
+14. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable and start the service:
 ```bash
-$ sudo systemctl enable detect-tpu.service
+$ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
