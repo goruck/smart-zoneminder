@@ -259,9 +259,9 @@ class FaceDetectRPC(object):
                     face_roi = roi[face_top:face_bottom, face_left:face_right, :]
                     #cv2.imwrite('./face_roi.jpg', face_roi)
 
-			        # Compute the focus measure of the face
-			        # using the Variance of Laplacian method.
-			        # See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+                    # Compute the focus measure of the face
+                    # using the Variance of Laplacian method.
+                    # See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
                     gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
                     fm = variance_of_laplacian(gray)
 
@@ -279,10 +279,10 @@ class FaceDetectRPC(object):
                             (0, 0, 0), swapRB=True, crop=False)
                         embedder.setInput(face_blob)
                         encoding = embedder.forward()[0]
-					    # Perform svm classification on the encodings to recognize the face.
+                        # Perform svm classification on the encodings to recognize the face.
                         name = svm_face_classifier(encoding, MIN_SVM_PROBA)
 
-			        # Add face name to label metadata.
+                    # Add face name to label metadata.
                     label['face'] = name
 	        # Add processed image to output list. 
             objects_detected_faces.append(obj)
