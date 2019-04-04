@@ -1,0 +1,17 @@
+# Copy to /lib/systemd/system/detect-tpu.service
+[Unit]
+Description=smart-zoneminder's object and face detection service (tpu)
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+# Tensorflow paths
+Type=simple
+Restart=always
+RestartSec=1
+User=mendel
+WorkingDirectory=/media/mendel/obj-detect-tpu
+ExecStart=python3 detect_servers_tpu.py
+
+[Install]
+WantedBy=multi-user.target
