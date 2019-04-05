@@ -19,6 +19,39 @@ ap.add_argument("-d", "--detection-method", type=str, default="cnn",
 	help="face detection model to use: either `hog` or `cnn`")
 args = vars(ap.parse_args())
 
+def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
+	# ref: https://stackoverflow.com/questions/44650888/resize-an-image-without-distortion-opencv
+
+    # initialize the dimensions of the image to be resized and
+    # grab the image size
+    dim = None
+    (h, w) = image.shape[:2]
+
+    # if both the width and height are None, then return the
+    # original image
+    if width is None and height is None:
+        return image
+
+    # check to see if the width is None
+    if width is None:
+        # calculate the ratio of the height and construct the
+        # dimensions
+        r = height / float(h)
+        dim = (int(w * r), height)
+
+    # otherwise, the height is None
+    else:
+        # calculate the ratio of the width and construct the
+        # dimensions
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    # resize the image
+    resized = cv2.resize(image, dim, interpolation = inter)
+
+    # return the resized image
+    return resized
+
 # grab the paths to the input images in our dataset
 print("[INFO] quantifying faces...")
 imagePaths = list(paths.list_images(args["dataset"]))
@@ -37,30 +70,11 @@ for (i, imagePath) in enumerate(imagePaths):
 	# load the input image
 	image = cv2.imread(imagePath)
 
-	# resize image if W > 800 or H > 600
-	# and convert it from RGB (OpenCV ordering)
+	# resize image
+	# and convert it from BGR (OpenCV ordering)
 	# to dlib ordering (RGB)
-	IMG_W_MAX = 800
-	IMG_H_MAX = 600
-	(img_h, img_w) = image.shape[0:2]
-	print('image {}'.format(imagePath))
-	print ('width = {} height = {}'.format(img_w, img_h))
-	if img_w > IMG_W_MAX:
-		r = IMG_W_MAX / image.shape[1]
-		dim = (IMG_W_MAX, int(image.shape[0] * r))
-		resized = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
-		rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-		(img_h, img_w) = resized.shape[0:2]
-		print ('resized -> width = {} height = {}'.format(img_w, img_h))
-	elif img_h > IMG_H_MAX:
-		r = IMG_H_MAX / image.shape[0]
-		dim = (int(image.shape[1] * r), IMG_H_MAX)
-		resized = cv2.resize(image, dim, interpolation = cv2.INTER_AREA)
-		rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
-		(img_h, img_w) = resized.shape[0:2]
-		print ('resized -> width = {} height = {}'.format(img_w, img_h))
-	else:
-		rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+	resized = image_resize(image, width = 600)
+	rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
 
 	# detect the (x, y)-coordinates of the bounding boxes
 	# corresponding to each face in the input image
@@ -74,6 +88,7 @@ for (i, imagePath) in enumerate(imagePaths):
 
 	# compute the facial embedding for the face
 	encodings = face_recognition.face_encodings(rgb, boxes, num_jitters=500)
+	print(encodings)
 
 	# loop over the encodings
 	for encoding in encodings:
