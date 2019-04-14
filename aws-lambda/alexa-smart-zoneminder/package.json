@@ -1,5 +1,5 @@
 {
-    "name": "alexa-smart-zonminder",
+    "name": "alexa-smart-zoneminder",
     "version": "0.1.0",
     "author": "Lindo St. Angel <lindostangel@gmai.com>",
     "description": "alexa skill handler for zoneminder",
@@ -9,9 +9,9 @@
     },
     "dependencies": {
         "alexa-sdk": ">=1.0.25",
-        "ask-sdk": "^2.1.0",
-        "ask-sdk-v1adapter": "^2.1.0",
-        "luxon": "^1.8.2"
+        "ask-sdk": "^2.5.1",
+        "ask-sdk-v1adapter": "^2.5.1",
+        "luxon": "^1.12.1"
     },
     "repository": {
         "type": "git",
