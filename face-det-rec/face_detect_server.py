@@ -20,6 +20,8 @@ import json
 import zerorpc
 import logging
 import pickle
+import gevent
+import signal
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -169,4 +171,9 @@ class DetectRPC(object):
 
 s = zerorpc.Server(DetectRPC(), heartbeat=ZRPC_HEARTBEAT)
 s.bind(ZRPC_PIPE)
+# Register graceful ways to stop server. 
+gevent.signal(signal.SIGINT, s.stop) # Ctrl-C
+gevent.signal(signal.SIGTERM, s.stop) # termination
+# Start server.
+# This will block until a gevent signal is caught
 s.run()
