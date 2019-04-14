@@ -104,10 +104,10 @@ class DetectRPC(object):
                         label['face'] = None
                         continue
 
-			        # First bound the roi using the coord info passed in.
-			        # The roi is area around person(s) detected in image.
-			        # (x1, y1) are the top left roi coordinates.
-			        # (x2, y2) are the bottom right roi coordinates.
+                    # First bound the roi using the coord info passed in.
+                    # The roi is area around person(s) detected in image.
+                    # (x1, y1) are the top left roi coordinates.
+                    # (x2, y2) are the bottom right roi coordinates.
                     y2 = int(label['box']['ymin'])
                     x1 = int(label['box']['xmin'])
                     y1 = int(label['box']['ymax'])
@@ -121,7 +121,7 @@ class DetectRPC(object):
                         continue
 
                     # Detect the (x, y)-coordinates of the bounding boxes corresponding
-			        # to each face in the input image.
+                    # to each face in the input image.
                     rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
                     detection = face_recognition.face_locations(rgb, NUMBER_OF_TIMES_TO_UPSAMPLE,
                         FACE_DET_MODEL)
@@ -131,19 +131,19 @@ class DetectRPC(object):
                         label['face'] = None
                         continue
 
-			        # Carve out face roi from object roi. 
+                    # Carve out face roi from object roi. 
                     face_top, face_right, face_bottom, face_left = detection[0]
                     face_roi = roi[face_top:face_bottom, face_left:face_right, :]
                     #cv2.imwrite('./face_roi.jpg', face_roi)
 
-			        # Compute the focus measure of the face
-			        # using the Variance of Laplacian method.
-			        # See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
+                    # Compute the focus measure of the face
+                    # using the Variance of Laplacian method.
+                    # See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
                     gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
                     fm = variance_of_laplacian(gray)
 
-			        # If fm below a threshold then face probably isn't clear enough
-			        # for face recognition to work, so skip it. 
+                    # If fm below a threshold then face probably isn't clear enough
+                    # for face recognition to work, so skip it. 
                     if fm < FOCUS_MEASURE_THRESHOLD:
                         logging.info('Face too blurry to recognize.')
                         name = None
@@ -157,10 +157,10 @@ class DetectRPC(object):
                         #cv2.rectangle(rgb, (face_left, face_top), (face_right, face_bottom), (255,0,0), 2)
                         #cv2.imwrite('./face_rgb.jpg', rgb)
 
-					    # Perform svm classification on the encodings to recognize the face.
+                        # Perform svm classification on the encodings to recognize the face.
                         name = svm_face_classifier(encoding, MIN_SVM_PROBA)
 
-			        # Add face name to label metadata.
+                    # Add face name to label metadata.
                     label['face'] = name
 
 	        # Add processed image to output list. 
