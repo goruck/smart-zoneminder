@@ -593,7 +593,7 @@ const getFrames = () => {
                     // Wait until all uploads complete.
                     waitForUploads();
                 }).catch((error) => {
-                    logger.error(new Error(`local object detect error: ${error.stack}`));
+                    logger.error(`local object detect error: ${error.stack}`);
                     process.exit(1); // just die on error
                 });
             } else {
