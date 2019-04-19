@@ -14,7 +14,7 @@
         "frameSkip": 1,
         "checkForAlarmsInterval": 5000,
         "zerorpcHeartBeat": 60000,
-        "objDetZerorpcPipe": "tcp://192.168.1.131:1234",
+        "objDetZerorpcPipe": "ipc:///tmp/obj_detect_zmq.pipe",
         "faceDetZerorpcPipe": "ipc:///tmp/face_detect_zmq.pipe",
         "useMongo": true,
         "mongoUrl": "mongodb://zmuser:zmpass@localhost:27017/zm?authSource=admin",
@@ -23,9 +23,9 @@
     },
     "logConfig": {
         "comment": "Configuration for logger.js for zm-s3-upload.js messages.",
-        "level": "info",
+        "level": "error",
         "silent": false,
-        "consoleLog": true,
+        "consoleLog": false,
         "baseName": "/home/lindo/develop/smart-zoneminder/zm-s3-upload/"
     }
 }
