@@ -485,7 +485,7 @@ const getFrames = () => {
                         const dur = parseHrtime(startTime);
                         const fps = (alarmsProcessed / dur[1]).toFixed(1);
                         logger.info(`${alarmsProcessed} / ${alarmsFound} image(s) processed in ${dur[0]} (${fps} fps).`);
-                        logger.info(`${alarmsProcessed - alarmsSkipped} image(s) uploaded.`);
+                        logger.info(`${alarmsProcessed - alarmsSkipped} image(s) analyzed.`);
                         logger.info(`${alarmsSkipped} image(s) skipped.`);
                         logger.info('Waiting for new alarm frame(s)...');
                         return getFrames();
@@ -505,7 +505,7 @@ const getFrames = () => {
              * @param {string} image - Path to image.
              * @param {object} labels - Image metadata.
              * @param {string} status - Indicates if image was skipped or processed.
-             * @param {string} method - Indicates if local or remote obj dectection was used. 
+             * @param {string} method - Indicates if local or remote obj detection was used. 
              */
             const genMongodbDoc = (image, labels, status, method) => {
                 const doc = {'image': image, 'labels': labels, 'status': status, 'objDet': method};
