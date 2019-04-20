@@ -20,9 +20,9 @@ $ rm -i ssd_mobilenet_v1_coco_2018_01_28.tar.gz # optional
 
 6. Install the other required python3.6 packages. Its highly recommended that you do so in a python virtualenv.
 
-7. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect.service](../scripts/obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+7. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect.service](./obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable and start the service:
 ```bash
-$ sudo systemctl enable obj-detect.service
+$ sudo systemctl enable obj-detect.service && sudo systemctl start obj-detect.service
 ```
 
 Note1: the requirements.txt file in this repo is for reference only as it reflects the virtualenv configuration. Do not use it to install dependencies in the local directory via pip. Use the guide above instead to install dependencies in your own virtualenv. 

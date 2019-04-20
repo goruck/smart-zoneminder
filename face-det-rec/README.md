@@ -22,9 +22,9 @@ Thanks to Adrian Rosebrock and his [pyimagesearch project](https://www.pyimagese
 
 10. Create the file '/tmp/face_det_zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the face detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket.
 
-11. Use systemd to run the Object Detection Server as a Linux service. Edit [face-detect.service](../scripts/face-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable the service:
+11. Use systemd to run the Object Detection Server as a Linux service. Edit [face-detect.service](./face-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable and start the service:
 ```bash
-$ sudo systemctl enable face-detect.service
+$ sudo systemctl enable face-detect.service && sudo systemctl start face-detect.service
 ```
 
 Note: the requirements.txt file in this repo is for reference only as it reflects the virtualenv configuration. Do not use it to install dependencies in the local directory via pip. Use the guide above instead to install dependencies in your own virtualenv. 
