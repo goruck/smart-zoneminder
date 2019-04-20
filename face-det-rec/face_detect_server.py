@@ -155,9 +155,7 @@ class DetectRPC(object):
 
                     # Detect the (x, y)-coordinates of the bounding boxes corresponding
                     # to each face in the input image.
-                    # Resize to ensure images aren't too small or large (you'll run OOM).
-                    res = image_resize(roi, width=320)
-                    rgb = cv2.cvtColor(res, cv2.COLOR_BGR2RGB)
+                    rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
                     #cv2.imwrite('./rgb.jpg', rgb)
                     detection = face_recognition.face_locations(rgb, NUMBER_OF_TIMES_TO_UPSAMPLE,
                         FACE_DET_MODEL)
@@ -170,8 +168,8 @@ class DetectRPC(object):
                     face_top, face_right, face_bottom, face_left = detection[0]
                     #cv2.rectangle(rgb, (face_left, face_top), (face_right, face_bottom), (255,0,0), 2)
                     #cv2.imwrite('./face_rgb.jpg', rgb)
-                    # Carve out face roi from resized object roi. 
-                    face_roi = res[face_top:face_bottom, face_left:face_right]
+                    # Carve out face roi from object roi. 
+                    face_roi = roi[face_top:face_bottom, face_left:face_right]
                     #cv2.imwrite('./face_roi.jpg', face_roi)
 
                     # Compute the focus measure of the face
