@@ -5,9 +5,9 @@
         "svmLabelPath": "./face_labels.pickle",
         "minSvmProba": 0.7,
         "focusMeasureThreshold": 200,
-        "numFaceImgUpsample": 0,
+        "numFaceImgUpsample": 1,
         "faceDetModel": "cnn",
-        "numJitters": 10,
+        "numJitters": 100,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/face_detect_zmq.pipe"
     }
