@@ -199,7 +199,7 @@ I use a local mongo database to store how every alarm frame was processed by the
 ## Alarm Uploader (zm-s3-upload)
 The Alarm Uploader, [zm-s3-upload](./zm-s3-upload/zm-s3-upload.js), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found either directly sends them to an S3 bucket or first runs local object detection and or face recognition on the image and marks them as having been uploaded.
 
-There are several important configuration parameters asscoated with object and face recognition that are set at runtime by the values in [zm-s3-upload-config.json
+There are several important configuration parameters associated with object and face recognition that are set at runtime by the values in [zm-s3-upload-config.json
 ](./zm-s3-upload/zm-s3-upload-config.json). Local object detection is enabled by setting the *runLocalObjDet* flag to "true" and face recognition is enabled by setting the *runFaceDetRec* flag to "true". Additionally, object and face detection can be run on the Google Coral dev board instead of the server, this is configured by the *objDetZerorpcPipe* and *faceDetZerorpcPipe* settings, respectively. Note you can run any server-Coral combination of local object and face detection. 
 
 The Alarm Uploader attaches metadata to the alarm frame image such as alarm score, event ID, frame number, date, and others. The metadata is used later on by the cloud services to process the image. The Alarm Uploader will concurrently upload alarm frames to optimize overall upload time. The default value is ten concurrent uploads. Upload speed will vary depending on your Internet bandwidth, image size and other factors but typically frames will be uploaded to S3 in less than a few hundred milliseconds.
@@ -224,7 +224,7 @@ There are a number of parameters in this module that can be adjusted to optimize
 
 Parameter | Default Value | Note |
 |:------------|:-------:|:------:
-MIN_SVM_PROBA | 0.8 | Minimum probablity for a valid face returned by the SVM classifier. 
+MIN_SVM_PROBA | 0.8 | Minimum probability for a valid face returned by the SVM classifier. 
 NUMBER_OF_TIMES_TO_UPSAMPLE | 1 | Factor to scale image when looking for faces.
 FACE_DET_MODEL | cnn | Can be either 'cnn' or 'hog'. cnn works much better but uses more memory and is slower. 
 NUM_JITTERS | 100 | How many times to re-sample when calculating face encoding
