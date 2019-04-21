@@ -7,8 +7,8 @@ smart-zoneminder enables fast object detection, face recognition and upload of [
 1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
 2. [Project Requirements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#project-requirements)
 3. [System Architecture](https://github.com/goruck/smart-zoneminder/blob/master/README.md#system-architecture)
-4. [Edge Setup and Configuration]()
-5. [Cloud Setup and Configuration]()
+4. [Edge Setup and Configuration](https://github.com/goruck/smart-zoneminder/blob/master/README.md#edge-setup-and-configuration)
+5. [Cloud Setup and Configuration](https://github.com/goruck/smart-zoneminder/blob/master/README.md#cloud-setup-and-configuration)
 6. [License](https://github.com/goruck/smart-zoneminder/blob/master/README.md#license)
 7. [Contact](https://github.com/goruck/smart-zoneminder/blob/master/README.md#contact)
 8. [Acknowledgements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#acknowledgements)
@@ -160,7 +160,7 @@ The figure below shows the smart-zoneminder image processing pipeline.
 ![Alt text](./img/sz-image-pipeline.jpg?raw=true "smart-zoneminder image processing pipeline.") 
 
 # Edge Setup and Configuration
-A Linux server and a [Google Coral Dev Board](https://coral.withgoogle.com/products/dev-board/) are the hardware used for local compute and storage in this project. Please see the TPU-based Object and Face Detection's [README](./tpu-servers/README.md) for installation and configuration instructions associated with the Google Coral dev board components. Some details regarding the server hardware used in this project can be found in the appendix. The sections below describe the Linux server components and how to install and configure them.
+A Linux server and a [Google Coral Dev Board](https://coral.withgoogle.com/products/dev-board/) are the hardware used for local compute and storage in this project. Object and face recognition can be run on either the server or the Coral dev board. Please see the TPU-based Object and Face Detection's [README](./tpu-servers/README.md) for installation and configuration instructions associated with the Google Coral dev board components. Some details regarding the server hardware used in this project can be found in the appendix. The rest of this section describes the Linux server components and how to install and configure them.
 
 ## ZoneMinder
 
@@ -197,10 +197,12 @@ If you installed ZoneMinder successfully then apache should be up and running bu
 I use a local mongo database to store how every alarm frame was processed by the system. Its important to record the information locally since depending on what options are set not all alarm frames and their associated metadata will be uploaded to AWS S3. The mongo logging can be toggled on or off by a configuration setting. See [How to Install MongoDB on Ubuntu 18.04](https://www.tecmint.com/install-mongodb-on-ubuntu-18-04/) for instructions on how to install mongo on your system.
 
 ## Alarm Uploader (zm-s3-upload)
-The Alarm Uploader, [zm-s3-upload](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found either directly sends them to an S3 bucket or first runs local object detection and or face recognition on the image and marks them as having been uploaded. The local object detection is enabled by setting the *runLocalObjDet* flag to "true" and face recognition is enabled by setting the *runFaceDetRec* flag to "true" in [zm-s3-upload-config.json
-](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload-config.json).
+The Alarm Uploader, [zm-s3-upload](./zm-s3-upload/zm-s3-upload.js), is a node.js application running on the local server that continually monitors ZoneMinder's database for new alarm frames images and if found either directly sends them to an S3 bucket or first runs local object detection and or face recognition on the image and marks them as having been uploaded.
 
-The Alarm Uploader also attaches metadata to the alarm frame image such as alarm score, event ID, frame number, date, and others. The metadata is used later on by the cloud services to process the image. The Alarm Uploader will concurrently upload alarm frames to optimize overall upload time. The default value is ten concurrent uploads. Upload speed will vary depending on your Internet bandwidth, image size and other factors but typically frames will be uploaded to S3 in less than a few hundred milliseconds.
+There are several important configuration parameters asscoated with object and face recognition that are set at runtime by the values in [zm-s3-upload-config.json
+](./zm-s3-upload/zm-s3-upload-config.json). Local object detection is enabled by setting the *runLocalObjDet* flag to "true" and face recognition is enabled by setting the *runFaceDetRec* flag to "true". Additionally, object and face detection can be run on the Google Coral dev board instead of the server, this is configured by the *objDetZerorpcPipe* and *faceDetZerorpcPipe* settings, respectively. Note you can run any server-Coral combination of local object and face detection. 
+
+The Alarm Uploader attaches metadata to the alarm frame image such as alarm score, event ID, frame number, date, and others. The metadata is used later on by the cloud services to process the image. The Alarm Uploader will concurrently upload alarm frames to optimize overall upload time. The default value is ten concurrent uploads. Upload speed will vary depending on your Internet bandwidth, image size and other factors but typically frames will be uploaded to S3 in less than a few hundred milliseconds.
 
 The Alarm Uploader can be configured to skip alarm frames to minimize processing time, upload bandwidth and cloud storage. This is controlled by the *frameSkip* parameter in the configuration json.
 
