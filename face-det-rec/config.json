@@ -3,7 +3,7 @@
         "comment": "Configuration for face_detect_server.py.",
         "svmModelPath": "./face_recognizer.pickle",
         "svmLabelPath": "./face_labels.pickle",
-        "minSvmProba": 0.7,
+        "minSvmProba": 0.8,
         "focusMeasureThreshold": 200,
         "numFaceImgUpsample": 1,
         "faceDetModel": "cnn",
