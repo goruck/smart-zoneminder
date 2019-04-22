@@ -145,6 +145,8 @@ const getFrames = () => {
     let alarmsProcessed = 0;
     let alarmsFound = 0;
     let alarmsSkipped = 0;
+    let alarmsUploaded = 0;
+    let alarmsNotUploaded = 0;
 
     // Start the query.
     const query = client.query(zmQuery, [FTYPE, MAX_RECS]);
@@ -481,16 +483,17 @@ const getFrames = () => {
                     aryRows.splice(0, alarms); // Remove processed alarms from the array.
                     alarmsProcessed += alarms;
                     alarmsSkipped += skipped;
+                    const dur = parseHrtime(startTime);
+                    const fps = (alarmsProcessed / dur[1]).toFixed(1);
+                    logger.info(`${alarmsProcessed} / ${alarmsFound} image(s) processed in ${dur[0]} (${fps} fps).`);
                     if (aryRows.length === 0) {
-                        const dur = parseHrtime(startTime);
-                        const fps = (alarmsProcessed / dur[1]).toFixed(1);
-                        logger.info(`${alarmsProcessed} / ${alarmsFound} image(s) processed in ${dur[0]} (${fps} fps).`);
-                        logger.info(`${alarmsProcessed - alarmsSkipped} image(s) analyzed.`);
-                        logger.info(`${alarmsSkipped} image(s) skipped.`);
+                        logger.info(`${alarmsUploaded} image(s) analyzed and uploaded.`);
+                        if (alarmsNotUploaded !== 0)
+                            logger.info(`${alarmsNotUploaded} image(s) analyzed but not uploaded (false positives).`);
+                        logger.info(`${alarmsSkipped} image(s) skipped analysis.`);
                         logger.info('Waiting for new alarm frame(s)...');
                         return getFrames();
                     } else {
-                        logger.info(`${alarmsProcessed} / ${alarmsFound} image(s) processed.`);
                         return detect(MAX_CONCURRENT_UPLOAD, local);
                     }
                 }).catch(error => {
@@ -562,9 +565,11 @@ const getFrames = () => {
                                 logger.info('False positives will NOT be uploaded.');
                                 // Mark as uploaded in zm db but don't actually upload image.
                                 promises.push(uploadImage(i, true));
+                                alarmsNotUploaded++;
                             } else {
                                 // Upload and mark in db as so. 
                                 promises.push(uploadImage(i, false));
+                                alarmsUploaded++;
                             }
                         } else {
                             logger.info(`Processed ${fileName}.`);
@@ -582,6 +587,7 @@ const getFrames = () => {
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = labels;
                             promises.push(uploadImage(i, false));
+                            alarmsUploaded++;
                         }
 
                         if (USE_MONGO) genMongodbDoc(fileName, labels, 'processed', 'local');
