@@ -333,7 +333,7 @@ const getFrames = () => {
                 });
             };
 
-            // Mark an alarm frame as uploaded in ZoneMinder's database and increment upload counter.
+            // Mark an alarm frame as uploaded in ZoneMinder's database.
             const markAsUploaded = imgData => {
                 const uploadInsertQuery = 'insert into alarm_uploaded(frameid,eventid,upload_timestamp) ' +
                                           'values(?,?,now())';
@@ -398,7 +398,12 @@ const getFrames = () => {
                 // Actual upload.
                 return new Promise((resolve, reject) => {
                     s3.putObject(params, (error, result) => {
-                        error ? reject(error) : resolve(result);
+                        if (error) {
+                            reject(error);
+                        } else {
+                            alarmsUploaded++;
+                            resolve(result);
+                        }
                     });
                 });
             };
@@ -569,7 +574,6 @@ const getFrames = () => {
                             } else {
                                 // Upload and mark in db as so. 
                                 promises.push(uploadImage(i, false));
-                                alarmsUploaded++;
                             }
                         } else {
                             logger.info(`Processed ${fileName}.`);
@@ -587,7 +591,6 @@ const getFrames = () => {
                             aryRows[i].alert = 'true';
                             aryRows[i].objLabels = labels;
                             promises.push(uploadImage(i, false));
-                            alarmsUploaded++;
                         }
 
                         if (USE_MONGO) genMongodbDoc(fileName, labels, 'processed', 'local');
