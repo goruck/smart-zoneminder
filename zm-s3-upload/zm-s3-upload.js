@@ -174,10 +174,14 @@ const getFrames = () => {
         row.image_base_path = IMG_BASE_PATH;
         // Calculate which frames should be skipped.
         // Need to keep track of alarms on a monitor basis since they arrive async.
-        const monitor = row.monitor_name;
-        const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
-        monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
-        row.skip = !(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1));
+        if (FRAME_SKIP === 0) {
+            row.skip = false;
+        } else {
+            const monitor = row.monitor_name;
+            const monitorExists = alarmsFromMonitor.hasOwnProperty(monitor);
+            monitorExists ? alarmsFromMonitor[monitor]++ : alarmsFromMonitor[monitor] = 1;
+            row.skip = !(alarmsFromMonitor[monitor] % (FRAME_SKIP + 1));
+        }
         aryRows.push(row); // add alarm to array
     });
 
