@@ -368,6 +368,39 @@ This is an AWS Lambda function which implements the skill handler for the Alexa 
 
 Please see the function's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/alexa-smart-zoneminder/README.md) for installation instructions.
 
+# Results
+Results as measured against the project requirements are summarized in this section.
+
+## Overall Processing and Upload Time
+Requirement: *Quickly archive Zoneminder alarm frames to the cloud in order to safeguard against malicious removal of on-site server. This lead to the requirement of a five second or less upload time to a secure AWS S3 bucket.*
+
+I define overall processing and upload time to be measured from when a camera's motion detect is triggered to when the resulting images have been uploaded to an S3 bucket. The upload time will be a function of my uplink bandwidth which is currently 11 Mbps. The default configuration is set to record 1080p frames which when decoded to jpeg result in image sizes averaging about 350 kB and ten images are uploaded concurrently. So upload only times are typically around 2.5 seconds for ten frames. 
+
+The actual compute processing time is dominated by local object and face recognition since ZoneMinder itself does little processing except for simple pixel-based motion detection and mpeg to jpeg decoding. I evaluated several configurations as follows (all assume the worse case condition of no false positives, i.e., a person is detected in each image and a face is detected in each image as well):
+
+- For object detection with the [rfcn_resnet101_coco]((http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) ) network and [dlib](http://dlib.net/)-based face recognition (this is the worse case condition tested) running on the server these processing steps together take about one second for ten images. Therefore the overall worse-case processing and upload time for ten images is about 3.5 s or about 2.9 fps.
+
+- For object detection with the [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) network and [dlib](http://dlib.net/)-based face recognition running on the server these processing steps together take about TBD second for ten images. With this configuration the overall processing time for ten images is about TBD s or about TBD fps.
+
+- For object detection with the [MobileNet SSD v2 (COCO)](https://dl.google.com/coral/canned_models/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite) network as well as [MobileNet SSD v2 (Faces)](https://dl.google.com/coral/canned_models/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite)-based face recognition running on the Coral Dev Board these processing steps together take about TBD second for ten images. With this configuration the overall processing time for ten images is about TBD s or about TBD fps.
+
+In summary the < 5 s requirement is being fulfilled given the worse-case result of 3.5 s for processing ten images. 
+
+## Reduce False Positives
+Requirement: *Significantly reduce false positives from ZoneMinder's pixel-based motion detection. This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).*
+
+TBD
+
+## Real-Time, Accurate Face Recognition
+Requirement: *Determine if a person detected in an Alarm image is familiar or not. This lead to the requirement to perform real-time face recognition on people detected in ZoneMinder images.*
+
+TBD
+
+## Make it easy and intuitive to access ZoneMinder information
+Requirement: *Use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill.* 
+
+TBD
+
 # License
 Everything here is licensed under the [MIT license](https://choosealicense.com/licenses/mit/).
 
@@ -422,17 +455,6 @@ I used the benchmarking capability in [TensorRT / TensorFlow Object Detection](h
 | [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2018_01_28.tar.gz) | 14 | 69 | 0.22 |
 
 Based on these results the *ssd_inception_v2_coco* model seems to be a good tradeoff between performance and accuracy on my machine but in practice I found *rfcn_resnet101_coco* to be more accurate and used it for this project. Others with less capable hardware will likely find *ssd_inception_v2_coco* to be acceptable.
-
-## Overall system performance
-
-The overall system performance is summarized in the table below.
-
-Configuration | Max Latency^ (s) | Avg Throughput (fps) | Note |
-|:------------|:-------:|:-------:|:------:
-Remote Object Detection | 5.2 | 5 |
-Local Object Detection | 5.4 | 5 | server-based rfcn_resnet101_coco, frameSkip = 1, no false positives.
-Local Object and Face Detection | 5.7 | 4.5 | server-based rfcn_resent101_coco and dlib, frameSkip = 1, no false positives.
-^Time between new alarm image in datebase and completed upload to S3. This assumes 5 secs between zm database queries by zm-s3-uploader and 10 max concurrent uploads.
 
 ## Face Detection / Recognition Tuning
 
