@@ -454,6 +454,7 @@ const getFrames = () => {
              * @param {array} imagePaths - Paths to images for detection. 
              */
             const detectServer = (detectionType = 'detect_objects', imagePaths = []) => {
+                const dur1 = parseHrtime(startTime)[1];
                 // Return a resolved Promise with an empty array if imagePath is empty.
                 if (imagePaths.length === 0) return Promise.resolve([]);
 
@@ -477,6 +478,9 @@ const getFrames = () => {
                         if (error) {
                             reject(error);
                         } else {
+                            const dur2 = parseHrtime(startTime)[1];
+                            const rate = (imagePaths.length/(dur2 - dur1)).toFixed(1);
+                            logger.info(`${detectionType} processing rate ${rate} (images/s).`);
                             resolve(JSON.parse(data));
                         }
                     });
