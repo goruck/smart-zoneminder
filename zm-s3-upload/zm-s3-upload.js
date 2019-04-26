@@ -480,7 +480,7 @@ const getFrames = () => {
                         } else {
                             const dur2 = parseHrtime(startTime)[1];
                             const rate = (imagePaths.length/(dur2 - dur1)).toFixed(1);
-                            logger.info(`${detectionType} processing rate ${rate} (images/s).`);
+                            logger.debug(`${detectionType} processing rate ${rate} (images/s).`);
                             resolve(JSON.parse(data));
                         }
                     });
