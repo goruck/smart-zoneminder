@@ -9,10 +9,11 @@ smart-zoneminder enables fast object detection, face recognition and upload of [
 3. [System Architecture](https://github.com/goruck/smart-zoneminder/blob/master/README.md#system-architecture)
 4. [Edge Setup and Configuration](https://github.com/goruck/smart-zoneminder/blob/master/README.md#edge-setup-and-configuration)
 5. [Cloud Setup and Configuration](https://github.com/goruck/smart-zoneminder/blob/master/README.md#cloud-setup-and-configuration)
-6. [License](https://github.com/goruck/smart-zoneminder/blob/master/README.md#license)
-7. [Contact](https://github.com/goruck/smart-zoneminder/blob/master/README.md#contact)
-8. [Acknowledgements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#acknowledgements)
-9. [Appendix](https://github.com/goruck/smart-zoneminder/blob/master/README.md#appendix)
+6. [Results](https://github.com/goruck/smart-zoneminder/blob/master/README.md#results)
+7. [License](https://github.com/goruck/smart-zoneminder/blob/master/README.md#license)
+8. [Contact](https://github.com/goruck/smart-zoneminder/blob/master/README.md#contact)
+9. [Acknowledgements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#acknowledgements)
+10. [Appendix](https://github.com/goruck/smart-zoneminder/blob/master/README.md#appendix)
 
 # Usage Examples
 Here are a few of the things you can do with smart-zoneminder.
@@ -128,7 +129,7 @@ smart-zoneminder can email alarms based on the face detected in the image. Here'
 My high level goals and associated requirements for this project are shown below.
 
 1. **Quickly archive Zoneminder alarm frames to the cloud in order to safeguard against malicious removal of on-site server.**
-This lead to the requirement of a five second or less upload time to a secure AWS S3 bucket. Although ZoneMinder has a built-in ftp-based filter it was sub-optimal for this application as explained below.
+This lead to the requirement of a ten second or less upload time to a secure AWS S3 bucket. Although ZoneMinder has a built-in ftp-based filter it was sub-optimal for this application as explained below.
 
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.**
 This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).
@@ -369,35 +370,52 @@ This is an AWS Lambda function which implements the skill handler for the Alexa 
 Please see the function's [README](https://github.com/goruck/smart-zoneminder/blob/master/aws-lambda/alexa-smart-zoneminder/README.md) for installation instructions.
 
 # Results
-Results as measured against the project requirements are summarized in this section.
+Results as measured against the project goals and requirements are summarized in this section.
 
-## Overall Processing and Upload Time
-Requirement: *Quickly archive Zoneminder alarm frames to the cloud in order to safeguard against malicious removal of on-site server. This lead to the requirement of a five second or less upload time to a secure AWS S3 bucket.*
+## Quickly archive Zoneminder alarm frames to the cloud in order to safeguard against malicious removal of on-site server
+*Requirement: ten second or less upload time to a secure AWS S3 bucket.*
 
 I define overall processing and upload time to be measured from when a camera's motion detect is triggered to when the resulting images have been uploaded to an S3 bucket. The upload time will be a function of my uplink bandwidth which is currently 11 Mbps. The default configuration is set to record 1080p frames which when decoded to jpeg result in image sizes averaging about 350 kB and ten images are uploaded concurrently. So upload only times are typically around 2.5 seconds for ten frames. 
 
-The actual compute processing time is dominated by local object and face recognition since ZoneMinder itself does little processing except for simple pixel-based motion detection and mpeg to jpeg decoding. I evaluated several configurations as follows (all assume the worse case condition of no false positives, i.e., a person is detected in each image and a face is detected in each image as well):
+The actual compute processing time is dominated by local object and face recognition since ZoneMinder itself does little processing except for simple pixel-based motion detection and mpeg to jpeg decoding.
 
-- For object detection with the [rfcn_resnet101_coco]((http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) ) network and [dlib](http://dlib.net/)-based face recognition (this is the worse case condition tested) running on the server these processing steps together take about one second for ten images. Therefore the overall worse-case processing and upload time for ten images is about 3.5 s or about 2.9 fps.
+In addition to the upload and processing time there is a latency caused by the Alarm Uploader polling ZoneMinder's mySQL database for new images. This polling latency is set by the *checkForAlarmsInterval* parameter in the Alarm Uploader's [configuration file](./zm-s3-upload/zm-s3-upload-config.json) and has a default value of 5 s which is a tradeoff between database activity and latency. The worse case is when a new alarm image shows up in the database immediately after its been polled. Clearly some alarms will show up in the database just before the poll which reduces the effective latency on average and some images will be false positives or won't have a face detected so this is really a worse case condition. 
 
-- For object detection with the [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) network and [dlib](http://dlib.net/)-based face recognition running on the server these processing steps together take about TBD second for ten images. With this configuration the overall processing time for ten images is about TBD s or about TBD fps.
+I evaluated several configurations as follows (all assume the worse case condition of no false positives, i.e., a person is detected in each image and a face is detected on each person):
 
-- For object detection with the [MobileNet SSD v2 (COCO)](https://dl.google.com/coral/canned_models/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite) network as well as [MobileNet SSD v2 (Faces)](https://dl.google.com/coral/canned_models/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite)-based face recognition running on the Coral Dev Board these processing steps together take about TBD second for ten images. With this configuration the overall processing time for ten images is about TBD s or about TBD fps.
+- For object detection with the [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) network and [dlib](http://dlib.net/)-based face recognition (this is the worse case condition tested) running on the server these processing steps together take about 2 s for ten images.  In this case the total end to end time for ten images is 5 s (wcs polling latency) + 2 s (wcs object and face recognition processing time) + 2.5 s (upload time) = 9.5 s or about 1 fps.  
 
-In summary the < 5 s requirement is being fulfilled given the worse-case result of 3.5 s for processing ten images. 
+- For object detection with the [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) network and [dlib](http://dlib.net/)-based face recognition running on the server these processing steps together take about 1.5 s for ten images. In this case the total end to end time for ten images is 5 s (wcs polling latency) + 1.5 s (wcs object and face recognition processing time) + 2.5 s (upload time) = 9 s or about 1.1 fps.
 
-## Reduce False Positives
-Requirement: *Significantly reduce false positives from ZoneMinder's pixel-based motion detection. This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).*
+- For object detection with the [MobileNet SSD v2 (COCO)](https://dl.google.com/coral/canned_models/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite) network as well as [MobileNet SSD v2 (Faces)](https://dl.google.com/coral/canned_models/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite)-based face recognition running on the Coral Dev Board these processing steps together take about 5.3 s for ten images. In this case the total end to end time for ten images is 5 s (wcs polling latency) + 5.3 s (wcs object and face recognition processing time) + 2.5 s (upload time) = 12.8 s or about 0.8 fps.
+
+In summary the < 10 s requirement is being fulfilled in the server configuration but not when using Coral under worse case conditions. 
+
+## Significantly reduce false positives from ZoneMinder's pixel-based motion detection
+*Requirement: use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).*
 
 TBD
 
-## Real-Time, Accurate Face Recognition
-Requirement: *Determine if a person detected in an Alarm image is familiar or not. This lead to the requirement to perform real-time face recognition on people detected in ZoneMinder images.*
+## Determine if a person detected in an Alarm image is familiar or not
+*Requirement: perform real-time face recognition on people detected in ZoneMinder images.*
 
 TBD
 
 ## Make it easy and intuitive to access ZoneMinder information
-Requirement: *Use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill.* 
+*Requirement: Use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill.* 
+
+TBD
+
+## Have low implementation and operating costs
+*Requirement: leverage existing components where possible and make economical use of the AWS services. This also led to the option of using local Tensorflow based object detection since using Rekognition at scale is not inexpensive wrt the goals of this project. An operating cost of less than $10 per year is the goal.*
+
+TBD
+
+## Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa
+
+TBD
+
+## Learn about, and show others how to use, Tensorflow, Face Recognition, ZoneMinder, Alexa, AWS and leveraging both edge and cloud compute
 
 TBD
 
