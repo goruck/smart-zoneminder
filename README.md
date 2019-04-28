@@ -1,7 +1,7 @@
-*New - now with Google Edge TPU support.*
-
 # smart-zoneminder
-smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [Tensorflow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) is used to identify people detected in the alarm images. Alexa allows a user to ask to see an image or a video corresponding to an alarm and to get information on what caused the alarm and when it occurred. Real-time e-mail of alarms are supported and as soon as the [Alexa Skills Kit supports notifications](https://developer.amazon.com/blogs/alexa/post/833b9af4-26e6-47d2-a13d-bdbd9a257512/expanded-developer-preview-of-notifications-for-alexa-skills), they will also be added. 
+smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via [TensorFlow](https://www.tensorflow.org/) dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) is used to identify people detected in the alarm images. Alexa allows a user to ask to see an image or a video corresponding to an alarm and to get information on what caused the alarm and when it occurred.
+
+smart-zoneminder in its default configuration stores about three weeks of continuous video at the edge and one year of alarm images in the cloud. It costs as little as $8 per year per camera to operate.
 
 # Table of Contents
 1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
@@ -40,7 +40,7 @@ Specific example 2:
 
 User: "Alexa ask zone minder for back garage alarm of stranger"
 
-Alexa: "Alarm from back gargage caused by stranger on 2018-10-29 13:10"
+Alexa: "Alarm from back garage caused by stranger on 2018-10-29 13:10"
 
 ![Alt text](./img/stranger.png?raw=true "Show stranger example.")
 
@@ -125,6 +125,9 @@ smart-zoneminder can email alarms based on the face detected in the image. Here'
 
 ![Alt text](./img/alarm-email-example.png?raw=true "example of alarm email.")
 
+## Alexa Notifications
+As soon as the [Alexa Skills Kit supports notifications](https://developer.amazon.com/blogs/alexa/post/833b9af4-26e6-47d2-a13d-bdbd9a257512/expanded-developer-preview-of-notifications-for-alexa-skills) they will be added.
+
 # Project Requirements
 My high level goals and associated requirements for this project are shown below.
 
@@ -132,7 +135,7 @@ My high level goals and associated requirements for this project are shown below
 This lead to the requirement of a ten second or less upload time to a secure AWS S3 bucket. Although ZoneMinder has a built-in ftp-based filter it was sub-optimal for this application as explained below.
 
 2. **Significantly reduce false positives from ZoneMinder's pixel-based motion detection.**
-This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).
+This lead to the requirement to use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or TensorFlow locally (this is configurable).
 
 3. **Determine if a person detected in an Alarm image is familiar or not.** This lead to the requirement to perform real-time face recognition on people detected in ZoneMinder images. 
 
@@ -140,11 +143,11 @@ This lead to the requirement to use a higher-level object and person detection a
 This lead to the requirement to use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill. This includes proactive notifications, e.g., the Alexa service telling you that an alarm has occurred and why. For example, when an unknown person was seen by a camera or when a known person was seen. Another example is time-, object- and person-based voice search.
 
 5. **Have low implementation and operating costs.**
-This lead to the requirement to leverage existing components where possible and make economical use of the AWS services. This also led to the option of using local Tensorflow based object detection since using Rekognition at scale is not inexpensive wrt the goals of this project. An operating cost of less than $10 per year is the goal.
+This lead to the requirement to leverage existing components where possible and make economical use of the AWS services. This also led to the option of using local TensorFlow based object detection since using Rekognition at scale is not inexpensive wrt the goals of this project. An operating cost of less than $10 per year is the goal.
 
 6. **Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa.**
 
-7. **Learn about, and show others how to use, Tensorflow, Face Recognition, ZoneMinder, Alexa, AWS and leveraging both edge and cloud compute.**
+7. **Learn about, and show others how to use, TensorFlow, Face Recognition, ZoneMinder, Alexa, AWS and leveraging both edge and cloud compute.**
 
 # System Architecture
 The figure below shows the smart-zoneminder system architecture.
@@ -169,16 +172,16 @@ You need to have ZoneMinder installed on a local linux machine to use smart-zone
 
 I have the monitor function set to [Mocord](http://zoneminder.readthedocs.io/en/stable/userguide/definemonitor.html) which means that the camera streams will be continuously recorded, with motion being marked as an alarm within an event (which is a 600 second block of continuously recorded video). ZoneMinder stores the camera streams as JPEGs for each video frame in the event. I chose this mode because I wanted to have a record of all the video as well as the alarms. ZoneMinder does provide for a means ("filters") to upload an event to an external server when certain conditions are met, such as an alarm occurring. Its possible to use such a filter instead of the uploader I created but I didn't want to upload 600 s worth of images every time an alarm occurred and the filter would have been slow, worse case being almost 600 s if an alarm happened at the start of an event.
 
-Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very useful but it takes some trial and error to get it right given each situation is so different. Zoneminder is configured to analyze the feeds for motion at 5 FPS which also helps to limit Rekognition costs but it comes at the expense of possibly missing a high speed object moving through the camera's FOV (however unlikely in my situation). Since I was still concerned about Rekognition costs I also included the option to run local Tensorflow-based object detection instead. This comes at the expense of slightly higher detection times (with my current HW which uses a Nvidia Geforce GTX 1080Ti GPU for Tensorflow) but completely avoids Rekogntion costs. 
+Its very important to configure ZoneMinder's motion detection properly to limit the number of false positives in order to minimize cloud costs, most critically AWS Rekognition. Even though the Rekognition Image API has a free tier that allows 5,000 images per month to be analyzed its very easy for a single camera to see many thousands of alarm frames per month in a high traffic area and every alarm frame is a JPEG that is sent to the cloud to be processed via the Rekognition Image API. There are many guides on the Internet to help configure ZoneMinder motion detection. I found [Understanding ZoneMinder's Zoning system for Dummies](https://wiki.zoneminder.com/Understanding_ZoneMinder%27s_Zoning_system_for_Dummies) to be very useful but it takes some trial and error to get it right given each situation is so different. Zoneminder is configured to analyze the feeds for motion at 5 FPS which also helps to limit Rekognition costs but it comes at the expense of possibly missing a high speed object moving through the camera's FOV (however unlikely in my situation). Since I was still concerned about Rekognition costs I also included the option to run local TensorFlow-based object detection instead. This comes at the expense of slightly higher detection times (with my current HW which uses a Nvidia Geforce GTX 1080Ti GPU for TensorFlow) but completely avoids Rekogntion costs. 
 
 If set to use remote object detection via Rekognition smart-zoneminder can be configured to either send all or some alarm frames (as specified by the *frameSkip* parameter in the uploader's config file) detected by ZoneMinder's motion detector to the cloud. This is expensive. Clearly there are more optimal ways to process the alarms locally in terms of more advanced motion detection algorithms and exploiting the temporal coherence between alarm frames that would limit cloud costs without some of the current restrictions. This is an area for future study by the project. 
 
-I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at 5 FPS. I've configured the cameras' shutter to minimize motion blur at the expense of noise in low light situations since I found Rekognition's accuracy is more affected by the former. The object detection in Tensorflow seems more robust in this regard. 
+I have seven 1080p PoE cameras being served by my ZoneMinder setup. The cameras are sending MJPEG over RTSP to ZoneMinder at 5 FPS. I've configured the cameras' shutter to minimize motion blur at the expense of noise in low light situations since I found Rekognition's accuracy is more affected by the former. The object detection in TensorFlow seems more robust in this regard. 
 
 Some of the components interface with ZoneMinder's MySql database and image store and make assumptions about where those are in the filesystem. I've tried to pull these dependencies out into configuration files where feasible but if you heavily customize ZoneMinder its likely some path in the component code will need to be modified that's not in a configuration file.
 
-## Tensorflow
-This project uses Tensorflow (with GPU support) for local object detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco* model which can be found in the [Tensorflow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo). See the Appendix for model benchmarking and selection.
+## TensorFlow
+This project uses TensorFlow (with GPU support) for local object detection. I followed [Installing TensorFlow on Ubuntu ](https://www.tensorflow.org/install/install_linux) as a guide to install it on my local machine and I used a Python Virtual environment. After I installed Tensorflow I installed the object detection API using [Step by Step TensorFlow Object Detection API Tutorial](https://medium.com/@WuStangDan/step-by-step-tensorflow-object-detection-api-tutorial-part-1-selecting-a-model-a02b6aabe39e) as a guide. I'm currently using the *rfcn_resnet101_coco* model which can be found in the [TensorFlow detection model zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md#tensorflow-detection-model-zoo). See the Appendix for model benchmarking and selection.
 
 ## dlib, face_recognition, scikit-learn and OpenCV
 [ageitgey's face_recognition API](https://github.com/ageitgey/face_recognition) is used for face detection and for knn-based recognition. I followed the [linux installation guide](https://gist.github.com/ageitgey/629d75c1baac34dfa5ca2a1928a7aeaf) to install the API and dlib with GPU support on my local machine in a Python virtual environment. [scikit-learn](https://scikit-learn.org/stable/) is used to train an SVM for more robust face recognition from the face encodings generated by dlib. I installed scikit-learn via pip per these [instructions](https://scikit-learn.org/stable/install.html). OpenCV is used to preprocess the image for face recognition, I used [OpenCV 3 Tutorials, Resources, and Guides](https://www.pyimagesearch.com/opencv-tutorials-resources-guides/) to install OpenCV 3.4.2 with GPU support on my local machine. A high-level overview of how the face recognition works can be found [here](https://medium.com/@ageitgey/machine-learning-is-fun-part-4-modern-face-recognition-with-deep-learning-c3cffc121d78) and [here](https://www.pyimagesearch.com/2018/06/18/face-recognition-with-opencv-python-and-deep-learning/).
@@ -375,13 +378,13 @@ Results as measured against the project goals and requirements are summarized in
 ## Quickly archive Zoneminder alarm frames to the cloud in order to safeguard against malicious removal of on-site server
 *Requirement: ten second or less upload time to a secure AWS S3 bucket.*
 
-I define overall processing and upload time to be measured from when a camera's motion detect is triggered to when the resulting images have been uploaded to an S3 bucket. The upload time will be a function of my uplink bandwidth which is currently 11 Mbps. The default configuration is set to record 1080p frames which when decoded to jpeg result in image sizes averaging about 350 kB and ten images are uploaded concurrently. So upload only times are typically around 2.5 seconds for ten frames. 
+I define overall processing and upload time to be measured from when a camera's motion detect is triggered to when the resulting images have been uploaded to an S3 bucket. The upload time will be a function of my uplink bandwidth which is currently 11 Mbps. The default configuration is set to record 1080p frames which when decoded to jpeg result in image sizes averaging about 350 kB and ten images are uploaded concurrently. The number of concurrent uploads is controlled by the *MAXCONCURRENTUPLOAD* parameter in the Alarm Uploader [configuration file](./zm-s3-upload/zm-s3-upload-config.json). Upload only times are typically around 2.5 seconds for ten frames on  my system.
 
 The actual compute processing time is dominated by local object and face recognition since ZoneMinder itself does little processing except for simple pixel-based motion detection and mpeg to jpeg decoding.
 
 In addition to the upload and processing time there is a latency caused by the Alarm Uploader polling ZoneMinder's mySQL database for new images. This polling latency is set by the *checkForAlarmsInterval* parameter in the Alarm Uploader's [configuration file](./zm-s3-upload/zm-s3-upload-config.json) and has a default value of 5 s which is a tradeoff between database activity and latency. The worse case is when a new alarm image shows up in the database immediately after its been polled. Clearly some alarms will show up in the database just before the poll which reduces the effective latency on average and some images will be false positives or won't have a face detected so this is really a worse case condition. 
 
-I evaluated several configurations as follows (all assume the worse case condition of no false positives, i.e., a person is detected in each image and a face is detected on each person):
+I evaluated and measured performance on several configurations as follows. All assume the worse case condition of no false positives, i.e., a person is detected in each image and a face is detected on each person. 
 
 - For object detection with the [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) network and [dlib](http://dlib.net/)-based face recognition (this is the worse case condition tested) running on the server these processing steps together take about 2 s for ten images.  In this case the total end to end time for ten images is 5 s (wcs polling latency) + 2 s (wcs object and face recognition processing time) + 2.5 s (upload time) = 9.5 s or about 1 fps.  
 
@@ -394,30 +397,54 @@ In summary the < 10 s requirement is being fulfilled in the server configuration
 ## Significantly reduce false positives from ZoneMinder's pixel-based motion detection
 *Requirement: use a higher-level object and person detection algorithm based on Amazon Rekognition remotely or Tensorflow locally (this is configurable).*
 
-TBD
+Subjectively, object detection with any of the models tested is highly accurate and works well in most camera lighting conditions including when the camera's IR illuminators are active. My guess is that its over 99% accurate with the resnet101 model. I plan to modify the test script [view-mongo-images.py](./face-det-rec/view-mongo-images.py) to allow ground truth tagging of images to get a quantitative measure.
+
+I'm very happy with the resnet101-based model running on the server as well as the mobilenet-based model running on the Coral system although its accuracy is noticeably lower. I plan to use retrain both these models with local images to further improve accuracy. The test script [view-mongo-images.py](./face-det-rec/view-mongo-images.py) can be used to collect the required images. 
 
 ## Determine if a person detected in an Alarm image is familiar or not
 *Requirement: perform real-time face recognition on people detected in ZoneMinder images.*
 
-TBD
+Subjectively, face detection with the models tested is fairly accurate and works well in most camera lighting conditions including when the camera's IR illuminators are active. My guess is that its over 90% accurate with the dlib models and an svm face classifier. I plan to modify the test script [view-mongo-images.py](./face-det-rec/view-mongo-images.py) to allow ground truth tagging of images to get a quantitative measure.
+
+I'm not satisfied with the current level of face recognition accuracy and improving it will be a focus of current work for the project. Face recognition on the Coral system using the supplied models is partially challenged, the accuracy of it is much less than with dlib which is far too slow to run on the Coral system. 
 
 ## Make it easy and intuitive to access ZoneMinder information
 *Requirement: Use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill.* 
 
-TBD
+The Alexa skill developed for this project works well although long DynamoDB queries at time can give a less than satisfying user perception of latency. I can improve this by paying for [Global Search Indexes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html) for additional keys. 
 
 ## Have low implementation and operating costs
 *Requirement: leverage existing components where possible and make economical use of the AWS services. This also led to the option of using local Tensorflow based object detection since using Rekognition at scale is not inexpensive wrt the goals of this project. An operating cost of less than $10 per year is the goal.*
 
-TBD
+The project makes good use of existing components on both the edge and cloud sides and all software components are freely available in the public domain. The server hardware is mid end and will cost around $700 new. The Coral dev board can currently be bought for $129. The operating costs consists of month AWS service charges and electricity service for the server and Coral dev board.
+
+Running my server using 100 Watts on average for 24 hours a day @ $0.10 per kWh costs about $87/year in electricity costs. Running the Coral dev board using 10 Watts on average for 24 hours a day @ $0.10 per kWh costs about $8.7/year in electricity costs. Clearly to have a hope of meeting the $10/year goal one has to use the Coral system!
+
+The AWS cloud costs will mainly consist of S3, Rekognition (if using remote detection) and Step Function service usage. Although this project uses Lambda, DynamoDB and other services their usage is normally so low they fall into the free tier. At scale this will not be the case but on a relative basis S3, Rekognition and Step Function services will dominate the operating cost.
+
+Over a year of usage the system has been uploading about 10GB/month of images from seven cameras to S3 with an average image size around 300 kB. I'm using STANDARD-IA storage which costs $0.0125 per GB-Month. This works out to about $0.13/month or about $1.5/year. Very frugal! 
+
+Step function costs have been averaging about $4/month for about 164,000 state transitions per month.
+
+I found that remote object detection using Recognition costs about $35/month with the typical activity seen by my seven cameras which generated about 40,000 images/month for Recognition to analyze. I have not yet implemented face recognition in the cloud so these costs only include object detection. With face recognition these cloud costs could potentially double. This is very expensive even compared to the case of running the server for object detection locally!
+
+The annual cost to operate smart-zoneminder for seven 1080p cameras is summarized by the table below. This assumes one year's worth of alarm images stored in the cloud.
+
+Configuration/Annual Cost| Step Fn ($) | S3 ($) | Rekognition ($) | Electricity ($) | Total ($) | Total/Camera ($)
+|:-------:|:------:|:-----:|:-----:|:----:|:-----:|:-----:|
+| Server (Remote Detection) | 48 | 1.5 | 420 | 88 | 558 | 80 |
+| Server (Local Detection) | 48 | 1.5 | 0 | 88 | 138 | 20 |
+| Coral (Local Detection) | 48 | 1.5 | 0 | 8.7 | 58 | 8.3 |
+
+On a per camera basis only the local Coral option meets $10/year operating cost goal. More work needs to be done to lower the operating costs, in particular the flexibility affording by the Step Functions may not be worth the costs at least with the granularity of the current Lambda functions. From this data, one thing is clear using Rekognition as the primary detector at scale is very expensive and most deployments need to consider edge-based detection at least partially. 
 
 ## Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa
 
-TBD
+smart-zoneminder in its default configuration for seven 1080p cameras stores about three weeks of continuous video at the edge and one year of alarm images in the cloud with object and face recognition, real-time notifications and full integration with Alexa including voice search. With Google Coral based detection the cost is about $8 per month per camera.
 
-## Learn about, and show others how to use, Tensorflow, Face Recognition, ZoneMinder, Alexa, AWS and leveraging both edge and cloud compute
+[Nest Aware](https://nest.com/cameras/nest-aware/), [Cloud Cam](https://www.amazon.com/gp/product/B01C4UY0JK), [Ring Protect Plus](https://homealarmreport.com/should-you-subscribe-to-a-ring-video-recording-plan/) and others are excellent solutions. All of these solutions support audio which currently smart-zoneminder does not. Compared with smart-zoneminder the closest in capabilities seems to be Nest Aware given its object and face recognition features but is expensive (currently $30/month for the first camera). Ring's plan is relatively inexpensive (currently $10/month unlimited cameras) but looks to be comparatively simple in capabilities (no object or face detection).
 
-TBD
+All of these solutions are very expensive compared to smart-zoneminder.
 
 # License
 Everything here is licensed under the [MIT license](https://choosealicense.com/licenses/mit/).
@@ -466,7 +493,7 @@ I used the benchmarking capability in [TensorRT / TensorFlow Object Detection](h
 ```
 
 ### Results
- Model        | Avg Latency (ms)           | Avg Throughput (fps)  | COCO mAP |
+Model        | Avg Latency (ms)           | Avg Throughput (fps)  | COCO mAP |
 |:------------- |:-------------:|:-----:|:-----:
 | [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) | 52 | 19 | 0.28 |
 | [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 22 | 45 | 0.27 |
