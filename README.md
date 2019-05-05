@@ -380,9 +380,9 @@ Results as measured against the project goals and requirements are summarized in
 
 I define overall processing and upload time to be measured from when a camera's motion detect is triggered to when the resulting images have been uploaded to an S3 bucket. The upload time will be a function of my uplink bandwidth which is currently 11 Mbps. The default configuration is set to record 1080p frames which when decoded to jpeg result in image sizes averaging about 350 kB and ten images are uploaded concurrently. The number of concurrent uploads is controlled by the *MAXCONCURRENTUPLOAD* parameter in the Alarm Uploader [configuration file](./zm-s3-upload/zm-s3-upload-config.json). Upload only times are typically around 2.5 seconds for ten frames on  my system.
 
-The actual compute processing time is dominated by local object and face recognition since ZoneMinder itself does little processing except for simple pixel-based motion detection and mpeg to jpeg decoding.
+The actual compute processing time is dominated by local object and face recognition since ZoneMinder itself does relatively little processing except for simple pixel-based motion detection and mpeg to jpeg decoding. The latter may require more cycles on systems with less compute then what I'm using or have more cameras or with higher resolution. 
 
-In addition to the upload and processing time there is a latency caused by the Alarm Uploader polling ZoneMinder's mySQL database for new images. This polling latency is set by the *checkForAlarmsInterval* parameter in the Alarm Uploader's [configuration file](./zm-s3-upload/zm-s3-upload-config.json) and has a default value of 5 s which is a tradeoff between database activity and latency. The worse case is when a new alarm image shows up in the database immediately after its been polled. Clearly some alarms will show up in the database just before the poll which reduces the effective latency on average and some images will be false positives or won't have a face detected so this is really a worse case condition. 
+In addition to the upload and processing time there is a latency caused by the Alarm Uploader polling ZoneMinder's MySQL database for new images. This polling latency is set by the *checkForAlarmsInterval* parameter in the Alarm Uploader's [configuration file](./zm-s3-upload/zm-s3-upload-config.json) and has a default value of 5 s which is a tradeoff between database activity and latency. The worse case is when a new alarm image shows up in the database immediately after its been polled. Clearly some alarms will show up in the database just before the poll which reduces the effective latency on average and some images will be false positives or won't have a face detected so this is really a worse case condition. 
 
 I evaluated and measured performance on several configurations as follows. All assume the worse case condition of no false positives, i.e., a person is detected in each image and a face is detected on each person. 
 
@@ -436,7 +436,7 @@ Configuration/Annual Cost| Step Fn ($) | S3 ($) | Rekognition ($) | Electricity 
 | Server (Local Detection) | 48 | 1.5 | 0 | 88 | 138 | 20 |
 | Coral (Local Detection) | 48 | 1.5 | 0 | 8.7 | 58 | 8.3 |
 
-On a per camera basis only the local Coral option meets $10/year operating cost goal. More work needs to be done to lower the operating costs, in particular the flexibility affording by the Step Functions may not be worth the costs at least with the granularity of the current Lambda functions. From this data, one thing is clear using Rekognition as the primary detector at scale is very expensive and most deployments need to consider edge-based detection at least partially. 
+On a per camera basis only the local Coral option meets $10/year operating cost goal. More work needs to be done to lower the operating costs, in particular the flexibility affording by the Step Functions may not be worth the costs at least with the granularity of the current Lambda functions. From this data, one thing is clear using Rekognition as the primary detector at scale is very expensive and most deployments need to consider edge-based detection, at least partially. 
 
 ## Be competitive with smart camera systems out in the market from Nest, Amazon, and others that use image recognition and Alexa
 
@@ -495,21 +495,24 @@ I used the benchmarking capability in [TensorRT / TensorFlow Object Detection](h
 ### Results
 Model        | Avg Latency (ms)           | Avg Throughput (fps)  | COCO mAP |
 |:------------- |:-------------:|:-----:|:-----:
-| [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) | 52 | 19 | 0.28 |
-| [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 22 | 45 | 0.27 |
-| [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2018_01_28.tar.gz) | 14 | 69 | 0.22 |
+| [rfcn_resnet101_coco](http://download.tensorflow.org/models/object_detection/rfcn_resnet101_coco_2018_01_28.tar.gz) | 48 | 21 | 0.28 |
+| [ssd_inception_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_inception_v2_coco_2018_01_28.tar.gz) | 17 | 60 | 0.27 |
+| [ssd_mobilenet_v2_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz) | 14 | 74 | 0.24 |
+| [ssd_mobilenet_v1_coco](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v1_coco_2018_01_28.tar.gz) | 11 | 92 | 0.22 |
 
 Based on these results the *ssd_inception_v2_coco* model seems to be a good tradeoff between performance and accuracy on my machine but in practice I found *rfcn_resnet101_coco* to be more accurate and used it for this project. Others with less capable hardware will likely find *ssd_inception_v2_coco* to be acceptable.
 
+The performance using the Google Coral dev board can be found [here](https://coral.withgoogle.com/docs/edgetpu/faq/) which shows that for MobileNet v1 an inference takes 2.2 ms using the TPU (image size of 224x224).
+
 ## Face Detection / Recognition Tuning
 
-The face detection and recognition accuracy vs compute can be adjusted by a few parameters found in [face-det-rec.py](./face-det-rec/face_det_rec.py). These are:
+The face detection and recognition accuracy vs compute can be adjusted by a few parameters found in [config.json](./face-det-rec/config.json). These are:
 
-- NUMBER_OF_TIMES_TO_UPSAMPLE
-- FACE_DET_MODEL
-- NUM_JITTERS
-- FOCUS_MEASURE_THRESHOLD
-- MIN_SVM_PROBA
+- numFaceImgUpsample
+- faceDetModel
+- numJitters
+- focusMeasureThreshold
+- minSvmProba
 
 To aid in the optimization of these parameters I developed the [view-mongo-images.py](./face-det-rec/view-mongo-images.py) program that allows you to step through the mongodb database written to by zm-s3-uploader.js to quickly see the effect of changing parameter values.
 
