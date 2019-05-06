@@ -30,6 +30,8 @@ ap.add_argument('-fm', '--focus_measure_threshold', type=float, default=200.0,
 	help='minimum threshold for focus measure')
 ap.add_argument('-io', '--image_decending_order', type=bool, default=False,
 	help='set to True to see most recent alarms first')
+ap.add_argument('-up', '--upsample', type=int, default=1,
+	help='number of times to upsample image to detect face')
 args = vars(ap.parse_args())
 
 # Set to True if using SVM face classifier else knn will be used.
@@ -58,6 +60,8 @@ SAVE_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/saved_images/'
 
 # Face detection model to use. Can be either 'cnn' or 'hog'
 FACE_DET_MODEL = 'cnn'
+
+NUMBER_OF_TIMES_TO_UPSAMPLE = args['upsample']
 
 # How many times to re-sample the face when calculating face encoding.
 NUM_JITTERS = 100
@@ -319,8 +323,8 @@ while True:
 			# detect the (x, y)-coordinates of the bounding boxes corresponding
 			# to each face in the input image
 			rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-			box = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
-				model=FACE_DET_MODEL)
+			box = face_recognition.face_locations(rgb, NUMBER_OF_TIMES_TO_UPSAMPLE,
+				FACE_DET_MODEL)
 
 			# initialize the list of names for each face detected
 			names = []
