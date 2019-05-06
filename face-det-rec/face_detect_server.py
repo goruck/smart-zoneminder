@@ -191,7 +191,7 @@ class DetectRPC(object):
                     # for face recognition to work, so skip it. 
                     if fm < FOCUS_MEASURE_THRESHOLD:
                         logging.debug('Face too blurry to recognize.')
-                        name = None
+                        label['face'] = None
                         continue
 
                     # Find the 128-dimension face encoding for face in image.
