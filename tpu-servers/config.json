@@ -17,6 +17,7 @@
         "svmLabelPath": "./face_labels.pickle",
         "minSvmProba": 0.7,
         "focusMeasureThreshold": 200,
+        "minFace": 20,
         "mountPoint": "/mnt",
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "tcp://192.168.1.131:1235"

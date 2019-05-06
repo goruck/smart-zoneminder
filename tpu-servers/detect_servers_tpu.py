@@ -65,6 +65,9 @@ SVM_LABEL_PATH = face_config['svmLabelPath']
 MIN_SVM_PROBA = face_config['minSvmProba']
 # Images with Variance of Laplacian less than this are declared blurry. 
 FOCUS_MEASURE_THRESHOLD = face_config['focusMeasureThreshold']
+# Faces with width or height less than this are too small for recognition.
+# In pixels.
+MIN_FACE = config['minFace']
 
 def ReadLabelFile(file_path):
     # Function to read labels from text files.
@@ -258,29 +261,35 @@ class FaceDetectRPC(object):
                     (face_left, face_top, face_right, face_bottom) = box.astype('int')
                     face_roi = roi[face_top:face_bottom, face_left:face_right, :]
                     #cv2.imwrite('./face_roi.jpg', face_roi)
+                    (f_h, f_w) = face_roi.shape[:2]
+                    # If face width or height are not sufficiently large then skip.
+                    if f_h < MIN_FACE or f_w < MIN_FACE:
+                        logging.debug('Face too small to recognize.')
+                        label['face'] = None
+                        continue
 
                     # Compute the focus measure of the face
                     # using the Variance of Laplacian method.
                     # See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
                     gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
                     fm = variance_of_laplacian(gray)
-
                     # If fm below a threshold then face probably isn't clear enough
                     # for face recognition to work, so skip it. 
                     if fm < FOCUS_MEASURE_THRESHOLD:
                         logging.debug('Face too blurry to recognize.')
-                        name = None
-                    else:
-                        # Find the 128-dimension face encoding for face in image.
-                        # Construct a blob for the face roi, then pass the blob
-                        # through the face embedding model to obtain the 128-d
-                        # quantification of the face.
-                        face_blob = cv2.dnn.blobFromImage(face_roi, 1.0 / 255, (96, 96),
-                            (0, 0, 0), swapRB=True, crop=False)
-                        embedder.setInput(face_blob)
-                        encoding = embedder.forward()[0]
-                        # Perform svm classification on the encodings to recognize the face.
-                        name = svm_face_classifier(encoding, MIN_SVM_PROBA)
+                        label['face'] = None
+                        continue
+
+                    # Find the 128-dimension face encoding for face in image.
+                    # Construct a blob for the face roi, then pass the blob
+                    # through the face embedding model to obtain the 128-d
+                    # quantification of the face.
+                    face_blob = cv2.dnn.blobFromImage(face_roi, 1.0 / 255, (96, 96),
+                        (0, 0, 0), swapRB=True, crop=False)
+                    embedder.setInput(face_blob)
+                    encoding = embedder.forward()[0]
+                    # Perform svm classification on the encodings to recognize the face.
+                    name = svm_face_classifier(encoding, MIN_SVM_PROBA)
 
                     # Add face name to label metadata.
                     label['face'] = name
