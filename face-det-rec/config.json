@@ -6,6 +6,7 @@
         "minSvmProba": 0.8,
         "focusMeasureThreshold": 200,
         "numFaceImgUpsample": 1,
+        "minFace": 20,
         "faceDetModel": "cnn",
         "numJitters": 100,
         "zerorpcHeartBeat": 60000,

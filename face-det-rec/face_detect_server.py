@@ -46,6 +46,10 @@ MIN_SVM_PROBA = config['minSvmProba']
 # Images with Variance of Laplacian less than this are declared blurry. 
 FOCUS_MEASURE_THRESHOLD = config['focusMeasureThreshold']
 
+# Faces with width or height less than this are too small for recognition.
+# In pixels.
+MIN_FACE = config['minFace']
+
 # Factor to scale image when looking for faces.
 # May increase the probability of finding a face in the image. 
 # Use caution setting the value > 1 since you may run out of memory.
@@ -165,33 +169,39 @@ class DetectRPC(object):
                         label['face'] = None
                         continue
 
+                    # Carve out face roi and check to see if large enough for recognition.
                     face_top, face_right, face_bottom, face_left = detection[0]
                     #cv2.rectangle(rgb, (face_left, face_top), (face_right, face_bottom), (255,0,0), 2)
                     #cv2.imwrite('./face_rgb.jpg', rgb)
-                    # Carve out face roi from object roi. 
                     face_roi = roi[face_top:face_bottom, face_left:face_right]
                     #cv2.imwrite('./face_roi.jpg', face_roi)
+                    (f_h, f_w) = face_roi.shape[:2]
+                    # If face width or height are not sufficiently large then skip.
+                    if f_h < MIN_FACE or f_w < MIN_FACE:
+                        logging.debug('Face too small to recognize.')
+                        label['face'] = None
+                        continue
 
                     # Compute the focus measure of the face
                     # using the Variance of Laplacian method.
                     # See https://www.pyimagesearch.com/2015/09/07/blur-detection-with-opencv/
                     gray = cv2.cvtColor(face_roi, cv2.COLOR_BGR2GRAY)
                     fm = variance_of_laplacian(gray)
-
                     # If fm below a threshold then face probably isn't clear enough
                     # for face recognition to work, so skip it. 
                     if fm < FOCUS_MEASURE_THRESHOLD:
                         logging.debug('Face too blurry to recognize.')
                         name = None
-                    else:
-                        # Find the 128-dimension face encoding for face in image.
-                        # face_locations in css order (top, right, bottom, left)
-                        face_location = (face_top, face_right, face_bottom, face_left)
-                        encoding = face_recognition.face_encodings(rgb,
-                            known_face_locations=[face_location], num_jitters=NUM_JITTERS)[0]
-                        logging.debug('face encoding {}'.format(encoding))
-                        # Perform svm classification on the encodings to recognize the face.
-                        name = svm_face_classifier(encoding, MIN_SVM_PROBA)
+                        continue
+
+                    # Find the 128-dimension face encoding for face in image.
+                    # face_locations in css order (top, right, bottom, left)
+                    face_location = (face_top, face_right, face_bottom, face_left)
+                    encoding = face_recognition.face_encodings(rgb,
+                        known_face_locations=[face_location], num_jitters=NUM_JITTERS)[0]
+                    logging.debug('face encoding {}'.format(encoding))
+                    # Perform svm classification on the encodings to recognize the face.
+                    name = svm_face_classifier(encoding, MIN_SVM_PROBA)
 
                     # Add face name to label metadata.
                     label['face'] = name
