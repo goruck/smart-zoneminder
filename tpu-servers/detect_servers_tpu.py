@@ -67,7 +67,7 @@ MIN_SVM_PROBA = face_config['minSvmProba']
 FOCUS_MEASURE_THRESHOLD = face_config['focusMeasureThreshold']
 # Faces with width or height less than this are too small for recognition.
 # In pixels.
-MIN_FACE = config['minFace']
+MIN_FACE = face_config['minFace']
 
 def ReadLabelFile(file_path):
     # Function to read labels from text files.
