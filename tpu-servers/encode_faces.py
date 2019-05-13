@@ -1,110 +1,106 @@
-# USAGE
-# python encode_faces.py --dataset dataset --encodings encodings.pickle
+'''
+Find faces in given images and encode into 128-D embeddings. 
 
-from imutils import paths
-import face_recognition
+Usage:
+$ python3 encode_faces.py --dataset dataset --encodings encodings.pickle
+
+Part of the smart-zoneminder project:
+See https://github.com/goruck/smart-zoneminder.
+
+Copyright (c) 2019 Lindo St. Angel
+'''
+
+import numpy as np
 import argparse
 import pickle
 import cv2
-import os
+from glob import glob
+from os.path import sep
+from edgetpu.detection.engine import DetectionEngine
 
-# construct the argument parser and parse the arguments
+print("[INFO] quantifying faces...")
+
+# Construct the argument parser and parse the arguments.
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--dataset", required=True,
 	help="path to input directory of faces + images")
 ap.add_argument("-e", "--encodings", required=True,
-	help="path to serialized db of facial encodings")
-ap.add_argument("-d", "--detection-method", type=str, default="cnn",
-	help="face detection model to use: either `hog` or `cnn`")
+	help="name of serialized output file of facial encodings")
 args = vars(ap.parse_args())
 
-def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
-	# ref: https://stackoverflow.com/questions/44650888/resize-an-image-without-distortion-opencv
+DET_MODEL_PATH = './mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite'
+EMB_MODEL_PATH = './nn4.v2.t7'
 
-    # initialize the dimensions of the image to be resized and
-    # grab the image size
-    dim = None
-    (h, w) = image.shape[:2]
-
-    # if both the width and height are None, then return the
-    # original image
-    if width is None and height is None:
-        return image
-
-    # check to see if the width is None
-    if width is None:
-        # calculate the ratio of the height and construct the
-        # dimensions
-        r = height / float(h)
-        dim = (int(w * r), height)
-
-    # otherwise, the height is None
-    else:
-        # calculate the ratio of the width and construct the
-        # dimensions
-        r = width / float(w)
-        dim = (width, int(h * r))
-
-    # resize the image
-    resized = cv2.resize(image, dim, interpolation = inter)
-
-    # return the resized image
-    return resized
-
-# grab the paths to the input images in our dataset
-print("[INFO] quantifying faces...")
-imagePaths = list(paths.list_images(args["dataset"]))
+# Grab the paths to the input images in our dataset.
+imagePaths = glob(args['dataset'] + '/**/*.*', recursive=True)
 
 # initialize the list of known encodings and known names
 knownEncodings = []
 knownNames = []
 
-# loop over the image paths
+# Init tpu engine.
+face_engine = DetectionEngine(DET_MODEL_PATH)
+
+# Init OpenCV's deep learning face embedding model.
+embedder = cv2.dnn.readNetFromTorch(EMB_MODEL_PATH)
+
+# Loop over the image paths.
+# NB: Its assumed that only one face is in each image.
 for (i, imagePath) in enumerate(imagePaths):
-	# extract the person name from the image path
 	print("[INFO] processing image {}/{}".format(i + 1,
 		len(imagePaths)))
-	name = imagePath.split(os.path.sep)[-2]
 
-	# load the input image
+	# extract the person name from the image path
+	name = imagePath.split(sep)[-2]
+
+	# Load the input image.
 	image = cv2.imread(imagePath)
+	(h, w) = image.shape[:2]
+	if h == 0 or w == 0:
+		print('*** image size zero! ***')
+		continue
 
-	# resize and convert it from BGR (OpenCV ordering)
-	# to dlib ordering (RGB)
-	resized = image_resize(image, width = 600)
-	rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+	# Resize roi for face detection.
+    # The tpu face det requires (320, 320).
+	res = cv2.resize(image, dsize=(320, 320), interpolation=cv2.INTER_AREA)
+    #cv2.imwrite('./res.jpg', res)
 
-	# detect the (x, y)-coordinates of the bounding boxes
-	# corresponding to each face in the input image
-	# Do not increase upsample beyond 1 else you'll run out of memory.
-	boxes = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
-		model=args["detection_method"])
+    # Detect the (x, y)-coordinates of the bounding boxes corresponding
+    # to each face in the input image using the TPU engine.
+    # NB: reshape(-1) converts the np img array into 1-d.
+	detection = face_engine.DetectWithInputTensor(res.reshape(-1),
+		threshold=0.1, top_k=3)
+	if not detection:
+		print('*** no face found! ***')
+		continue
 
-	if len(boxes) == 0:
-	 print('*** no face found! ***')
-	 continue
+	# Convert coords and carve out face roi.
+	# Its assumed that only one face is in each image so take detection[0]
+	(h, w) = res.shape[:2]
+	box = (detection[0].bounding_box.flatten().tolist()) * np.array([w, h, w, h])
+	(face_left, face_top, face_right, face_bottom) = box.astype('int')
+	face_roi = image[face_top:face_bottom, face_left:face_right, :]
+    #cv2.imwrite('./face_roi.jpg', face_roi)
+	(h, w) = face_roi.shape[:2]
+	if h == 0 or w == 0:
+		print('*** face roi zero! ***')
+		continue
 
-	# compute the facial embedding for the face
-	embedder = cv2.dnn.readNetFromTorch('./nn4.v2.t7')
-	# carve out face ROI from image
-    # then construct a blob for the face ROI, then pass the blob
-    # through our face embedding model to obtain the 128-d
-    # quantification of the face 
-	face_top, face_right, face_bottom, face_left = boxes[0]
-	face_roi = resized[face_top:face_bottom, face_left:face_right, :]
-	faceBlob = cv2.dnn.blobFromImage(face_roi, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
+	# Compute the facial embedding for the face.
+    # Construct a blob for the face ROI, then pass the blob
+    # through the face embedding model to obtain the 128-d
+    # quantification of the face.
+	faceBlob = cv2.dnn.blobFromImage(
+		face_roi, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
 	embedder.setInput(faceBlob)
-	encodings = embedder.forward()
-	print(encodings)
+	encoding = embedder.forward()[0]
+	#print(encoding)
 
-	# loop over the encodings
-	for encoding in encodings:
-		# add each encoding + name to our set of known names and
-		# encodings
-		knownEncodings.append(encoding)
-		knownNames.append(name)
+	# Add encoding and name to set of known names and encodings.
+	knownEncodings.append(encoding)
+	knownNames.append(name)
 
-# dump the facial encodings + names to disk
+# Dump the facial encodings + names to disk.
 print("[INFO] serializing encodings...")
 data = {"encodings": knownEncodings, "names": knownNames}
 f = open(args["encodings"], "wb")
