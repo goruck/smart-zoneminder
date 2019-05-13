@@ -1,8 +1,8 @@
 {
     "objDetServer": {
         "comment": "Configuration for obj_detect_server_tpu.py",
-        "objModelPath": "/usr/lib/python3/dist-packages/edgetpu/test_data/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite",
-        "labelMapPath": "/usr/lib/python3/dist-packages/edgetpu/test_data/coco_labels.txt",
+        "objModelPath": "./mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite",
+        "labelMapPath": "./coco_labels.txt",
         "mountPoint": "/mnt",
         "conseqImagesToSkip": 0,
         "minScore": 0.5,
@@ -11,7 +11,7 @@
     },
     "faceDetServer": {
         "comment": "Configuration for face_detect_server_tpu.py",
-        "faceDetModelPath": "/usr/lib/python3/dist-packages/edgetpu/test_data/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite",
+        "faceDetModelPath": "./mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite",
         "faceEmbModelPath": "./nn4.v2.t7",
         "svmModelPath": "./face_recognizer.pickle",
         "svmLabelPath": "./face_labels.pickle",
