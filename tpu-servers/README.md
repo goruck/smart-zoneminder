@@ -70,17 +70,7 @@ The object detection results then in turn can be sent to the face detector, an e
 UUID=ff2b8c97-7882-4967-bc94-e41ed07f3b83 /media/mendel ext4 defaults 0 2
 ```
 
-3. Install zerorpc.
-```bash
-$ pip3 install zerorpc
-
-# Test...
-$ python3
->>> import zerorpc
->>> 
-```
-
-4. Install dlib
+3. Create a swap file.
 ```bash
 $ cd /media/mendel
 
@@ -92,76 +82,75 @@ $ sudo dd if=/dev/zero of=/swapfile bs=1M count=1024 oflag=append conv=notrunc
 $ sudo mkswap /swapfile
 # Enable swapping.
 $ sudo swapon /swapfile
-
-# Get the latest version of dlib from GitHub.
-$ git clone https://github.com/davisking/dlib.git
-# Build the main dlib library.
-$ cd dlib
-$ mkdir build; cd build; cmake ..; cmake --build .
-# Build and install the Python extensions.
-$ cd ..
-$ python3 setup.py install
-# Test...
-$ python3
->>> import dlib
->>>
-
-# Disable and remove swap.
-$ sudo swapoff /swapfile
-$ sudo rm -i /swapfile
 ```
 
-5. Install openCV.
+4. Install zerorpc.
 ```bash
-$ cd /media/mendel
-
-# Enable swap as in step 4 above.
-
 # Install dependencies.
-$ sudo apt install python3-dev python3-pip python3-numpy
-$ sudo apt install build-essential cmake git libgtk2.0-dev pkg-config libavcodec-dev libavformat-dev libswscale-dev  libtbb2 libtbb-dev libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev protobuf-compiler libgflags-dev libgoogle-glog-dev libblas-dev libhdf5-serial-dev liblmdb-dev libleveldb-dev liblapack-dev libsnappy-dev libprotobuf-dev libopenblas-dev libgtk2.0-dev libboost-dev libboost-all-dev libeigen3-dev libatlas-base-dev libne10-10 libne10-dev
-$ pip3 install neon
-$ sudo apt install libneon27-dev
-$ sudo apt install libneon27-gnutls-dev
+$ sudo apt install python3-dev libffi-dev
+
+$ pip3 install zerorpc
+
+# Test...
+$ python3
+>>> import zerorpc
+>>> 
+```
+
+5. Install OpenCV.
+
+NB: The Coral's main CPU is a Quad-core Cortex-A53 which uses an Armv8 microarchitecture and supports single-precision (32-bit, aka AArch32) and double-precision (64-bit, aka AArch64) floating-point data types and arithmetic as defined by the IEEE 754 floating-point standard. OpenCV can use [SIMD (NEON)](https://developer.arm.com/architectures/instruction-sets/simd-isas/neon) instructions to accelerate its computations which is enabled by the cmake options as shown below. For more information about floating point operations from Arm, see [Floating Point](https://developer.arm.com/architectures/instruction-sets/floating-point).
+
+```bash
+# Install basic dependencies.
+$ sudo apt install python3-dev python3-pip python3-numpy \
+build-essential cmake git libgtk2.0-dev pkg-config \
+libavcodec-dev libavformat-dev libswscale-dev libtbb2 libtbb-dev \
+libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev protobuf-compiler \
+libgflags-dev libgoogle-glog-dev libblas-dev libhdf5-serial-dev \
+liblmdb-dev libleveldb-dev liblapack-dev libsnappy-dev libprotobuf-dev \
+libopenblas-dev libgtk2.0-dev libboost-dev libboost-all-dev \
+libeigen3-dev libatlas-base-dev libne10-10 libne10-dev liblapacke-dev
+
+# Install neon SIMD acceleration dependencies.
+$ sudo apt install libneon27-dev libneon27-gnutls-dev
 
 # Download source.
+$ cd /media/mendel
 $ wget -O opencv.zip https://github.com/opencv/opencv/archive/3.4.5.zip
 $ unzip opencv.zip
 $ wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/3.4.5.zip
 $ unzip opencv_contrib.zip
 
-# Configure OpenCV using cmake. This takes a while...cross compile if impatient
-$ cd ~/opencv-3.4.5
+# Configure OpenCV using cmake.
+$ cd /media/mendel/opencv-3.4.5
 $ mkdir build
 $ cd build
-$ cmake -D CMAKE_BUILD_TYPE=RELEASE -D ENABLE_NEON=ON -D ENABLE_TBB=ON -D ENABLE_IPP=ON -D ENABLE_VFVP3=ON -D WITH_OPENMP=ON -D WITH_CSTRIPES=ON -D WITH_OPENCL=ON -D CMAKE_INSTALL_PREFIX=/usr/local -D OPENCV_EXTRA_MODULES_PATH=/media/mendel/opencv_contrib-3.4.0/modules/ ..
+# NB VFPv3 is not used in Armv8-A (AArch66)...don't set -DENABLE_VFPV3=ON.
+$ cmake -D CMAKE_BUILD_TYPE=RELEASE -D ENABLE_NEON=ON -D ENABLE_TBB=ON \
+-D ENABLE_IPP=ON -D WITH_OPENMP=ON -D WITH_CSTRIPES=OFF -D WITH_OPENCL=ON \
+-D BUILD_TESTS=OFF -D INSTALL_PYTHON_EXAMPLES=OFF D BUILD_EXAMPLES=OFF \
+-D CMAKE_INSTALL_PREFIX=/usr/local \
+-D OPENCV_EXTRA_MODULES_PATH=/media/mendel/opencv_contrib-3.4.5/modules/ ..
 
 # Compile and install. This takes a while...cross compile if impatient
 $ make
 $ sudo make install
 
+# Rename binding.
+$ cd /usr/local/lib/python3.5/dist-packages/cv2/python-3.5
+$ sudo mv cv2.cpython-35m-aarch64-linux-gnu.so cv2.so
+
 # Test...
 $ python3
 >>> import cv2
+>>>  cv2.__version__
+'3.4.5'
 >>>
-
-# Disable swap as in step 4 above.
 ```
 
-6. Install face_recognition
+6. Install scikit-learn.
 ```bash
-$ pip3 install face_recognition
-
-# Test...
-$ python3
->>> import face_recognition
->>> 
-```
-
-7. Install scikit-learn. This will take a while.
-```bash
-# Enable swap as in step 4 above.
-
 # Install
 $ pip3 install scikit-learn
 
@@ -169,29 +158,36 @@ $ pip3 install scikit-learn
 $ python3
 >>> import sklearn
 >>>
-
-# Disable swap as in step 4 above.
 ```
 
-8. Copy *detect_server_tpu* and *config.json* in this directory to ```/media/mendel/detect_servers_tpu.py``` and ```/media/mendel/config.json``` respectively.
+7. Disable and remove swap.
+```bash
+$ cd /media/mendel
+$ sudo swapoff /swapfile
+$ sudo rm -i /swapfile
+```
 
-9. Download the model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to generate the face embeddings and store it in this directory and the ```face-det-rec``` directory since it will be used for training the svm used for face classification.
+8. Copy *detect_server_tpu*, *config.json*, *encode_faces.py*, *train.py*, in this directory to ```/media/mendel/tpu-servers/``` on the Coral dev board. Create the ```tpu-servers``` directory if needed. 
 
-10. Create a directory for each person's face images that you want recognized, named for the person's face, in a directory called "dataset". Also create a directory called 'Unknown' that will hold faces of random strangers that is needed for the training of the svm face classifier.
+9. Copy the face image dataset from [face-det-rec](./face-det-rec) to ```/media/mendel/tpu-servers/```. These are used to train the svm-based face classifier. 
 
-11. Place 20 or so images of the person's face in each directory you created above plus about 20 random stranger faces in the 'Unknown' folder.
+10. Download the face embeddings dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory.
 
-12. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images in the directories created above. See the "Encoding the faces using OpenCV and deep learning" in the guide mentioned above. This will create a pickle file containing the face embedding. 
+11. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
-13. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels.
+12. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
-14. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
+13. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied aobve. This will create a pickle file containing the face embeddings used to train the svm-based face classifier.
+
+14. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels.
+
+15. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
 # Setup sshfs.
 $ sudo apt-get install sshfs
 
 # Create mount point.
-$ mkdir /mnt/nvr
+$ sudo mkdir /mnt/nvr
 
 # Setup SSH keys to enable auto login.
 # See https://www.cyberciti.biz/faq/how-to-set-up-ssh-keys-on-linux-unix/
@@ -202,20 +198,22 @@ $ ssh-keygen -t rsa
 # Install the public key on the server hosting ZoneMinder.
 $ ssh-copy-id -i $HOME/.ssh/id_rsa.pub lindo@192.168.1.4
 
-# Corresponsing /etc/fstab entry:
+# Edit /etc/fstab so that the store is automounted. Here's mine.
 $ more /etc/fstab
 ...
 lindo@192.168.1.4:/nvr /mnt/nvr fuse.sshfs auto,user,_netdev,reconnect,uid=1000,gid=1000,IdentityFile=/home/mendel/.ssh/id_rsa,idmap=user,allow_other 0 0
 
-# Mount the zm store.
-$ sudo mount lindo@192.168.1.4/nvr
+# Test mount the zm store. This will happen at boot from now on. 
+$ sudo mount -a
+$ ls /mnt/nvr
+camera-share  lost+found  zoneminder
 ```
 
-15. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+16. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-16. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable and start the service:
+17. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable and start the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-17. Test the entire setup by editing ```detect_dervers_test.py``` with paths to test images and running that program.
+18. Test the entire setup by editing ```detect_dervers_test.py``` with paths to test images and running that program.
