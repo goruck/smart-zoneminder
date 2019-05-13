@@ -32,7 +32,7 @@ labels = le.fit_transform(data['names'])
 def svc_param_selection(x, y, nfolds):
     # Exhaustive search over specified parameter values for svm.
     Cs = [0.001, 0.01, 0.1, 1, 10]
-    gammas = [0.001, 0.01, 0.1, 1]
+    gammas = [0.001, 0.01, 0.1, 1, 10]
     param_grid = {'C': Cs, 'gamma' : gammas}
     grid_search = GridSearchCV(SVC(kernel='rbf'), param_grid, iid=False, cv=nfolds)
     grid_search.fit(x, y)
