@@ -23,9 +23,9 @@ print("[INFO] quantifying faces...")
 # Construct the argument parser and parse the arguments.
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--dataset", required=True,
-	help="path to input directory of faces + images")
+    help="path to input directory of faces + images")
 ap.add_argument("-e", "--encodings", required=True,
-	help="name of serialized output file of facial encodings")
+    help="name of serialized output file of facial encodings")
 args = vars(ap.parse_args())
 
 DET_MODEL_PATH = './mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite'
@@ -47,58 +47,58 @@ embedder = cv2.dnn.readNetFromTorch(EMB_MODEL_PATH)
 # Loop over the image paths.
 # NB: Its assumed that only one face is in each image.
 for (i, imagePath) in enumerate(imagePaths):
-	print("[INFO] processing image {}/{}".format(i + 1,
-		len(imagePaths)))
+    print("[INFO] processing image {}/{}".format(i + 1,
+    len(imagePaths)))
 
-	# extract the person name from the image path
-	name = imagePath.split(sep)[-2]
+    # extract the person name from the image path
+    name = imagePath.split(sep)[-2]
 
-	# Load the input image.
-	image = cv2.imread(imagePath)
-	(h, w) = image.shape[:2]
-	if h == 0 or w == 0:
-		print('*** image size zero! ***')
-		continue
+    # Load the input image.
+    image = cv2.imread(imagePath)
+    (h, w) = image.shape[:2]
+    if h == 0 or w == 0:
+        print('*** image size zero! ***')
+        continue
 
-	# Resize roi for face detection.
+    # Resize roi for face detection.
     # The tpu face det requires (320, 320).
-	res = cv2.resize(image, dsize=(320, 320), interpolation=cv2.INTER_AREA)
+    res = cv2.resize(image, dsize=(320, 320), interpolation=cv2.INTER_AREA)
     #cv2.imwrite('./res.jpg', res)
 
     # Detect the (x, y)-coordinates of the bounding boxes corresponding
     # to each face in the input image using the TPU engine.
     # NB: reshape(-1) converts the np img array into 1-d.
-	detection = face_engine.DetectWithInputTensor(res.reshape(-1),
-		threshold=0.1, top_k=3)
-	if not detection:
-		print('*** no face found! ***')
-		continue
+    detection = face_engine.DetectWithInputTensor(res.reshape(-1),
+        threshold=0.1, top_k=3)
+    if not detection:
+        print('*** no face found! ***')
+        continue
 
-	# Convert coords and carve out face roi.
-	# Its assumed that only one face is in each image so take detection[0]
-	(h, w) = res.shape[:2]
-	box = (detection[0].bounding_box.flatten().tolist()) * np.array([w, h, w, h])
-	(face_left, face_top, face_right, face_bottom) = box.astype('int')
-	face_roi = image[face_top:face_bottom, face_left:face_right, :]
+    # Convert coords and carve out face roi.
+    # Its assumed that only one face is in each image so take detection[0]
+    (h, w) = res.shape[:2]
+    box = (detection[0].bounding_box.flatten().tolist()) * np.array([w, h, w, h])
+    (face_left, face_top, face_right, face_bottom) = box.astype('int')
+    face_roi = image[face_top:face_bottom, face_left:face_right, :]
     #cv2.imwrite('./face_roi.jpg', face_roi)
-	(h, w) = face_roi.shape[:2]
-	if h == 0 or w == 0:
-		print('*** face roi zero! ***')
-		continue
+    (h, w) = face_roi.shape[:2]
+    if h == 0 or w == 0:
+        print('*** face roi zero! ***')
+        continue
 
-	# Compute the facial embedding for the face.
+    # Compute the facial embedding for the face.
     # Construct a blob for the face ROI, then pass the blob
     # through the face embedding model to obtain the 128-d
     # quantification of the face.
-	faceBlob = cv2.dnn.blobFromImage(
-		face_roi, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
-	embedder.setInput(faceBlob)
-	encoding = embedder.forward()[0]
-	#print(encoding)
+    faceBlob = cv2.dnn.blobFromImage(
+        face_roi, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
+    embedder.setInput(faceBlob)
+    encoding = embedder.forward()[0]
+    #print(encoding)
 
-	# Add encoding and name to set of known names and encodings.
-	knownEncodings.append(encoding)
-	knownNames.append(name)
+    # Add encoding and name to set of known names and encodings.
+    knownEncodings.append(encoding)
+    knownNames.append(name)
 
 # Dump the facial encodings + names to disk.
 print("[INFO] serializing encodings...")
