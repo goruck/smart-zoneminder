@@ -201,7 +201,7 @@ $ ssh-copy-id -i $HOME/.ssh/id_rsa.pub lindo@192.168.1.4
 # Edit /etc/fstab so that the store is automounted. Here's mine.
 $ more /etc/fstab
 ...
-lindo@192.168.1.4:/nvr /mnt/nvr fuse.sshfs auto,user,_netdev,reconnect,uid=1000,gid=1000,IdentityFile=/home/mendel/.ssh/id_rsa,idmap=user,allow_other 0 0
+lindo@192.168.1.4:/nvr /mnt/nvr fuse.sshfs auto,user,_netdev,reconnect,uid=1000,gid=1000,IdentityFile=/home/mendel/.ssh/id_rsa,idmap=user,allow_other 0 2
 
 # Test mount the zm store. This will happen at boot from now on. 
 $ sudo mount -a
