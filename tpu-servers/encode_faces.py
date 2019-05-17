@@ -47,8 +47,8 @@ embedder = cv2.dnn.readNetFromTorch(EMB_MODEL_PATH)
 # Loop over the image paths.
 # NB: Its assumed that only one face is in each image.
 for (i, imagePath) in enumerate(imagePaths):
-    print("[INFO] processing image {}/{}".format(i + 1,
-    len(imagePaths)))
+    print('[INFO] processing image {}/{}'.format(i + 1,
+        len(imagePaths)))
 
     # extract the person name from the image path
     name = imagePath.split(sep)[-2]
@@ -62,14 +62,14 @@ for (i, imagePath) in enumerate(imagePaths):
 
     # Resize roi for face detection.
     # The tpu face det requires (320, 320).
-    res = cv2.resize(image, dsize=(320, 320), interpolation=cv2.INTER_AREA)
+    res = cv2.resize(image, dsize=(320, 320), interpolation=cv2.INTER_CUBIC)
     #cv2.imwrite('./res.jpg', res)
 
     # Detect the (x, y)-coordinates of the bounding boxes corresponding
     # to each face in the input image using the TPU engine.
-    # NB: reshape(-1) converts the np img array into 1-d.
-    detection = face_engine.DetectWithInputTensor(res.reshape(-1),
-        threshold=0.1, top_k=3)
+    # NB: reshape(-1) converts the res ndarray into 1-d.
+    detection = face_engine.DetectWithInputTensor(input_tensor=res.reshape(-1),
+        threshold=0.9, top_k=1)
     if not detection:
         print('*** no face found! ***')
         continue
@@ -80,7 +80,8 @@ for (i, imagePath) in enumerate(imagePaths):
     box = (detection[0].bounding_box.flatten().tolist()) * np.array([w, h, w, h])
     (face_left, face_top, face_right, face_bottom) = box.astype('int')
     face_roi = image[face_top:face_bottom, face_left:face_right, :]
-    #cv2.imwrite('./face_roi.jpg', face_roi)
+    img_name = './face_roi{}.jpg'.format(i)
+    cv2.imwrite(img_name, face_roi)
     (h, w) = face_roi.shape[:2]
     if h == 0 or w == 0:
         print('*** face roi zero! ***')
