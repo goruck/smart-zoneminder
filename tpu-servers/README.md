@@ -86,7 +86,10 @@ $ sudo swapon /swapfile
 
 4. Install zerorpc.
 ```bash
-# Install dependencies.
+# Update repo.
+$ sudo apt-get update
+
+# Install dependencies if not already installed.
 $ sudo apt install python3-dev libffi-dev
 
 $ pip3 install zerorpc
@@ -102,6 +105,9 @@ $ python3
 NB: The Coral's main CPU is a Quad-core Cortex-A53 which uses an Armv8 microarchitecture and supports single-precision (32-bit, aka AArch32) and double-precision (64-bit, aka AArch64) floating-point data types and arithmetic as defined by the IEEE 754 floating-point standard. OpenCV can use [SIMD (NEON)](https://developer.arm.com/architectures/instruction-sets/simd-isas/neon) instructions to accelerate its computations which is enabled by the cmake options as shown below. For more information about floating point operations from Arm, see [Floating Point](https://developer.arm.com/architectures/instruction-sets/floating-point).
 
 ```bash
+# Update repo.
+$ sudo apt-get update
+
 # Install basic dependencies.
 $ sudo apt install python3-dev python3-pip python3-numpy \
 build-essential cmake git libgtk2.0-dev pkg-config \
@@ -144,7 +150,7 @@ $ sudo mv cv2.cpython-35m-aarch64-linux-gnu.so cv2.so
 # Test...
 $ python3
 >>> import cv2
->>>  cv2.__version__
+>>> cv2.__version__
 '3.4.5'
 >>>
 ```
@@ -157,31 +163,73 @@ $ pip3 install scikit-learn
 # Test...
 $ python3
 >>> import sklearn
+>>> sklearn.__version__
+'0.20.3'
 >>>
 ```
 
-7. Disable and remove swap.
+7. Install dlib.
+```bash
+$ cd /media/mendel
+
+# Update repo.
+$ sudo apt-get update
+
+# Install dependencies if not already installed.
+$ sudo apt-get install build-essential cmake
+
+# Clone dlib repo.
+$ git clone https://github.com/davisking/dlib.git
+
+# Build and install. 
+$ cd dlib
+# -O3 enables auto vectorization optimizations
+# so that the compiler automatically uses NEON instructions.
+$ python3 setup.py install --set DLIB_NO_GUI_SUPPORT=YES \
+--set DLIB_USE_CUDA=NO --compiler-flags "-O3"
+
+# Test...
+python3
+>>> import dlib
+>>> dlib.__version__
+'19.17.99'
+>>>
+```
+
+8. Install face_recognition.
+```bash
+$ pip3 install face_recognition
+
+# Test...
+$ python3
+>>> import face_recognition
+>>> face_recognition.__version__
+'1.2.3'
+>>>
+```
+
+9. Disable and remove swap.
 ```bash
 $ cd /media/mendel
 $ sudo swapoff /swapfile
 $ sudo rm -i /swapfile
 ```
 
-8. Copy *detect_server_tpu*, *config.json*, *encode_faces.py*, *train.py*, in this directory to ```/media/mendel/tpu-servers/``` on the Coral dev board. Create the ```tpu-servers``` directory if needed. 
+10. Copy *detect_server_tpu*, *config.json*, *encode_faces.py*, *train.py*, in this directory to ```/media/mendel/tpu-servers/``` on the Coral dev board. Create the ```tpu-servers``` directory if needed. 
 
-9. Copy the face image dataset from [face-det-rec](./face-det-rec) to ```/media/mendel/tpu-servers/```. These are used to train the svm-based face classifier. 
+11. Copy the face image dataset from [face-det-rec](./face-det-rec) to ```/media/mendel/tpu-servers/```. These are used to train the svm-based face classifier. 
 
-10. Download the face embeddings dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory.
+12. Download the face embeddings dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory.
 
-11. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
+13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
-12. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
+14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
-13. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied aobve. This will create a pickle file containing the face embeddings used to train the svm-based face classifier.
+15. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied aobve. This will create a pickle file containing the face embeddings used to train the svm-based face classifier.
 
-14. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels.
+16. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels.
 
-15. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
+17. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
 # Setup sshfs.
 $ sudo apt-get install sshfs
@@ -209,11 +257,11 @@ $ ls /mnt/nvr
 camera-share  lost+found  zoneminder
 ```
 
-16. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+18. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-17. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable and start the service:
+19. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable and start the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-18. Test the entire setup by editing ```detect_dervers_test.py``` with paths to test images and running that program.
+20. Test the entire setup by editing ```detect_dervers_test.py``` with paths to test images and running that program.
