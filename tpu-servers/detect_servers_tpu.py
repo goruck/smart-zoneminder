@@ -232,7 +232,7 @@ class FaceDetectRPC(object):
                     y1 = int(label['box']['ymax'])
                     x2 = int(label['box']['xmax'])
                     roi = img[y2:y1, x1:x2, :]
-                    cv2.imwrite('./roi.jpg', roi)
+                    #cv2.imwrite('./roi.jpg', roi)
                     if roi.size == 0:
                         # Bad object roi...move on to next image.
                         logging.error('Bad object roi.')
