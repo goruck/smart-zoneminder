@@ -89,7 +89,7 @@ $ sudo swapon /swapfile
 # Update repo.
 $ sudo apt-get update
 
-# Install dependencies if not already installed.
+# Install dependencies if needed. 
 $ sudo apt install python3-dev libffi-dev
 
 $ pip3 install zerorpc
@@ -175,7 +175,7 @@ $ cd /media/mendel
 # Update repo.
 $ sudo apt-get update
 
-# Install dependencies if not already installed.
+# Install dependencies if needed. 
 $ sudo apt-get install build-essential cmake
 
 # Clone dlib repo.
@@ -215,19 +215,19 @@ $ sudo swapoff /swapfile
 $ sudo rm -i /swapfile
 ```
 
-10. Copy *detect_server_tpu*, *config.json*, *encode_faces.py*, *train.py*, in this directory to ```/media/mendel/tpu-servers/``` on the Coral dev board. Create the ```tpu-servers``` directory if needed. 
+10. Copy *detect_server_tpu*, *config.json*, *encode_faces.py*, *train.py*, in this directory to ```/media/mendel/tpu-servers/``` on the Coral dev board. Create the ```tpu-servers``` directory if needed.
 
-11. Copy the face image dataset from [face-det-rec](./face-det-rec) to ```/media/mendel/tpu-servers/```. These are used to train the svm-based face classifier. 
+11. Create the face image data set in ```/media/mendel/tpu-servers/``` needed to train the svm-based face classifier  per the steps in [face-det-rec README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md)  or just copy the images to this directory if you created them before.
 
-12. Download the face embeddings dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory. You can skip this step if you aren't going to use OpenCV to generate the facial embeddings. Currently this does not work well since face alignment isn't implemented. The default facial embedding method used in the project currently is dlib. 
+12. Download the face embedding dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory. You can skip this step if you aren't going to use OpenCV to generate the facial embeddings. Currently this does not work well since face alignment isn't implemented. The default facial embedding method used in the project currently is dlib. 
 
 13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
 14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
-15. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied aobve. This will create a pickle file containing the face embeddings used to train the svm-based face classifier.
+15. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied above. This will create a pickle file containing the face embeddings used to train the svm-based face classifier. The program can run tpu-, dlib- and openCV-based face detectors and dlib- and OpenCV-based facial embedders. Its currently configured to use tpu-based face detection and dlib-based facial embeddings which gives the best results vs compute. 
 
-16. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels. The program will optimize the hyperparameters and evaluate the model, including its F1 score which should be clase to 1.0 for good classifier performance. The optimal hyperparameters and model statistics are output after training is completed.
+16. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels. The program will optimize the hyperparameters and evaluate the model, including its F1 score which should be close to 1.0 for good classifier performance. The optimal hyperparameters and model statistics are output after training is completed.
 
 17. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
@@ -264,4 +264,4 @@ camera-share  lost+found  zoneminder
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-20. Test the entire setup by editing ```detect_dervers_test.py``` with paths to test images and running that program.
+20. Test the entire setup by editing ```detect_servers_test.py``` with paths to test images and running that program.
