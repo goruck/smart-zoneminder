@@ -1,7 +1,7 @@
 # tpu-servers
-This folder contains code and collateral for running the object and face detection servers using the Google edge Tensorflow Processing Unit (TPU). The Alarm Uploader can be configured to use these servers instead of GPU-based ones normally co-resident with the machine running ZoneMinder. 
+This folder contains code and collateral for running the object and face detection servers using the Google edge TensorFlow Processing Unit (TPU). The Alarm Uploader can be configured to use these servers instead of GPU-based ones normally co-resident with the machine running ZoneMinder. 
 
-The TPU-based object and face detection server, [detect_servers_tpu.py](./detect_servers_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) Tensorflow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employs [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The object detection can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The server is run as a Linux service using systemd.
+The TPU-based object and face detection server, [detect_servers_tpu.py](./detect_servers_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) TensorFlow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employs [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The object detection can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The server is run as a Linux service using systemd.
 
 Images are sent to the object detection as an array of strings, in the following form.
 ```javascript
@@ -219,7 +219,7 @@ $ sudo rm -i /swapfile
 
 11. Copy the face image dataset from [face-det-rec](./face-det-rec) to ```/media/mendel/tpu-servers/```. These are used to train the svm-based face classifier. 
 
-12. Download the face embeddings dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory.
+12. Download the face embeddings dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory. You can skip this step if you aren't going to use OpenCV to generate the facial embeddings. Currently this does not work well since face alignment isn't implemented. The default facial embedding method used in the project currently is dlib. 
 
 13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
@@ -227,7 +227,7 @@ $ sudo rm -i /swapfile
 
 15. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied aobve. This will create a pickle file containing the face embeddings used to train the svm-based face classifier.
 
-16. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels.
+16. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels. The program will optimize the hyperparameters and evaluate the model, including its F1 score which should be clase to 1.0 for good classifier performance. The optimal hyperparameters and model statistics are output after training is completed.
 
 17. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
