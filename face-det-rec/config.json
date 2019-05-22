@@ -5,7 +5,7 @@
         "svmLabelPath": "./face_labels.pickle",
         "minSvmProba": 0.8,
         "focusMeasureThreshold": 200,
-        "numFaceImgUpsample": 1,
+        "numFaceImgUpsample": 2,
         "minFace": 20,
         "faceDetModel": "cnn",
         "numJitters": 100,
