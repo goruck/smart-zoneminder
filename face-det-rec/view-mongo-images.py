@@ -403,7 +403,7 @@ while True:
         json_dumps = json.dumps(alarm, default=json_util.default)
         with open(SAVE_PATH + obj_id_str + '.json', 'w') as outfile:
             json.dump(json_dumps, outfile)
-    elif key == LOWER_CASE_O_KEY: # save image w/o annotations
+    elif key == LOWER_CASE_O_KEY: # save image w/o metadata
         image_path = alarm['image']
         print('Saving image for {}.'.format(image_path))
         image = cv2.imread(image_path)
