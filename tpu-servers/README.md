@@ -223,7 +223,7 @@ $ sudo rm -i /swapfile
 
 13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
 
-14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
+14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory. You can instead use transfer learning to train your own model and use that instead of the Google stock models, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).
 
 15. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied above. This will create a pickle file containing the face embeddings used to train the svm-based face classifier. The program can run tpu-, dlib- and openCV-based face detectors and dlib- and OpenCV-based facial embedders. Its currently configured to use tpu-based face detection and dlib-based facial embeddings which gives the best results vs compute. 
 
