@@ -15,12 +15,13 @@ Inspired by Brian Roy's original [work](https://github.com/briantroy/Zoneminder-
 
 2. Fetch dependencies.
 ```bash
+$ sudo apt install libzmq3-dev # required for zerorpc
 $ npm install
 ```
 
 3. Modify the configuration parameters in [zm-s3-upload-config.json](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload-config.json) per your ZoneMinder installation. The config parameters are documented in the [zm-s3-upload.js](https://github.com/goruck/smart-zoneminder/blob/master/zm-s3-upload/zm-s3-upload.js) app.
 
-4. Create a file called **aws-creds.json** that contains AWS S3 keys created in the step above. An example of the file contents is shown below.
+4. Create a file called **aws-creds.json** that contains AWS S3 keys created as explained in the main README. An example of the file contents is shown below.
 ```json
 {
     "AWSCreds": {
