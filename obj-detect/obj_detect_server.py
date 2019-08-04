@@ -27,7 +27,7 @@ from object_detection.utils import label_map_util
 # For tensorrt optimized models...
 #import tensorflow.contrib.tensorrt as trt
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.DEBUG)
 
 # Get configuration.
 with open('./config.json') as fp:
@@ -86,32 +86,35 @@ def skip_inference(frame_num, monitor, labels, image_path, objects_in_image):
     Image paths must be in the form of:
     '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
     """
+
     old_frame_num = frame_num
     old_monitor = monitor
     skip = False
-    try:
-        frame_num = int((image_path.split('/')[-1]).split('-')[0])
-        monitor = image_path.split('/')[4]
-    except (ValueError, IndexError):
-        logging.error("Could not derive information from image path.")
-        objects_in_image.append({'image': image_path, 'labels': []})
-        skip = True
-        return skip, frame_num, monitor
+
+    if CON_IMG_SKIP != 0:
+        try:
+            frame_num = int((image_path.split('/')[-1]).split('-')[0])
+            monitor = image_path.split('/')[4]
+        except (ValueError, IndexError):
+            logging.error('Could not derive information from image path.')
+            objects_in_image.append({'image': image_path, 'labels': []})
+            skip = True
+            return skip, frame_num, monitor
                     
-    # Only apply skip logic if frames are from the same monitor. 
-    if monitor == old_monitor:
-        # Only apply skip logic if alarm frames are from the same event.
-        # Intra-event frames are monotonically increasing.
-        frame_diff = frame_num - old_frame_num
-        if frame_diff > 0:
-            # Skip CON_IMG_SKIP frames after the first one. 
-            if frame_diff <= CON_IMG_SKIP:
-                objects_in_image.append({'image': image_path, 'labels': labels})
-                logging.debug('monitor {} old_monitor {} frame_num {} old_frame_num {}'
-                    .format(monitor,old_monitor,frame_num,old_frame_num))
-                logging.debug('Consecutive frame {}, skipping detect and copying previous labels.'
-                    .format(frame_num))
-                skip = True
+        # Only apply skip logic if frames are from the same monitor. 
+        if monitor == old_monitor:
+            # Only apply skip logic if alarm frames are from the same event.
+            # Intra-event frames are monotonically increasing.
+            frame_diff = frame_num - old_frame_num
+            if frame_diff > 0:
+                # Skip CON_IMG_SKIP frames after the first one. 
+                if frame_diff <= CON_IMG_SKIP:
+                    objects_in_image.append({'image': image_path, 'labels': labels})
+                    logging.debug('monitor {} old_monitor {} frame_num {} old_frame_num {}'
+                        .format(monitor,old_monitor,frame_num,old_frame_num))
+                    logging.debug('Consecutive frame {}, skipping detect and copying previous labels.'
+                        .format(frame_num))
+                    skip = True
                         
     return skip, frame_num, monitor
 
