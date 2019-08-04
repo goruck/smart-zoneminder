@@ -1,22 +1,38 @@
-# USAGE
-# python encode_faces.py --dataset dataset --encodings encodings.pickle
+'''
+Find faces in given images and encode into 128-D embeddings. 
 
-# import the necessary packages
-from imutils import paths
+Usage:
+$ python3 encode_faces.py --dataset dataset --encodings encodings.pickle
+
+Part of the smart-zoneminder project:
+See https://github.com/goruck/smart-zoneminder.
+
+Copyright (c) 2018, 2019 Lindo St. Angel
+'''
+
 import face_recognition
 import argparse
 import pickle
 import cv2
-import os
+from os.path import sep
+from glob import glob
 
-# construct the argument parser and parse the arguments
+# Height and / or width to resize all faces to.
+FACE_HEIGHT = None
+FACE_WIDTH = None
+# Jitters for dlib. 
+NUM_JITTERS = 500
+
+print('\n quantifying faces...')
+
+# Construct the argument parser and parse the arguments.
 ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--dataset", required=True,
-    help="path to input directory of faces + images")
-ap.add_argument("-e", "--encodings", required=True,
-    help="path to serialized db of facial encodings")
-ap.add_argument("-d", "--detection-method", type=str, default="cnn",
-    help="face detection model to use: either `hog` or `cnn`")
+ap.add_argument('-i', '--dataset', required=True,
+    help='path to input directory of faces + images')
+ap.add_argument('-e', '--encodings', required=True,
+    help='name of serialized output file of facial encodings')
+ap.add_argument('-d', '--detection-method', type=str, default='cnn',
+    help='face detection model to use: either `hog` or `cnn`')
 args = vars(ap.parse_args())
 
 def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
@@ -52,54 +68,72 @@ def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
     # return the resized image
     return resized
 
-# grab the paths to the input images in our dataset
-print("[INFO] quantifying faces...")
-imagePaths = list(paths.list_images(args["dataset"]))
+# Grab the paths to the input images in our dataset.
+imagePaths = glob(args['dataset'] + '/**/*.*', recursive=True)
 
-# initialize the list of known encodings and known names
+# Initialize the list of known encodings and known names
 knownEncodings = []
 knownNames = []
 
-# loop over the image paths
+# Loop over the image paths.
+# NB: Its assumed that only one face is in each image.
+not_encoded = 0
+encoded = 0
 for (i, imagePath) in enumerate(imagePaths):
-    # extract the person name from the image path
-    print("[INFO] processing image {}/{}".format(i + 1,
-        len(imagePaths)))
-    name = imagePath.split(os.path.sep)[-2]
+    # Extract the person name from the image path.
+    print('processing image {}/{}'.format(i + 1, len(imagePaths)))
+    name = imagePath.split(sep)[-2]
 
-    # load the input image
+    # Load the input image.
     image = cv2.imread(imagePath)
 
-    # resize image
+    # Resize image
     # and convert it from BGR (OpenCV ordering)
-    # to dlib ordering (RGB)
-    resized = image_resize(image, width = 600)
+    # to dlib ordering (RGB).
+    resized = image_resize(image, height=FACE_HEIGHT, width=FACE_WIDTH)
     rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+    #(height, width) = rgb.shape[:2]
+    #print('face height {} width {}'.format(height, width))
+    #cv2.imwrite('./face_rgb.jpg', rgb)
 
-    # detect the (x, y)-coordinates of the bounding boxes
-    # corresponding to each face in the input image
+    # Detect the (x, y)-coordinates of the bounding boxes
+    # corresponding to each face in the input image.
     # Do not increase upsample beyond 1 else you'll run out of memory.
-    boxes = face_recognition.face_locations(rgb, number_of_times_to_upsample=1,
-        model=args["detection_method"])
+    # This is strictly not needed since its assumed the images are
+    # faces but it serves as a check for faces dlib can deal with. 
+    boxes = face_recognition.face_locations(img=rgb,
+        number_of_times_to_upsample=1,
+        model=args['detection_method'])
 
     if len(boxes) == 0:
-     print('*** no face found! ***')
-     continue
+        print('\n *** no face found! ***')
+        print(' image {} \n'.format(imagePath))
+        not_encoded += 1
+        continue
 
-    # compute the facial embedding for the face
-    encodings = face_recognition.face_encodings(rgb, boxes, num_jitters=500)
-    print(encodings)
+    # Compute the facial embedding for the face.
+    encoding = face_recognition.face_encodings(face_image=rgb,
+        known_face_locations=boxes,
+        num_jitters=NUM_JITTERS)[0]
+    #print(encoding)
 
-    # loop over the encodings
-    for encoding in encodings:
-        # add each encoding + name to our set of known names and
-        # encodings
-        knownEncodings.append(encoding)
-        knownNames.append(name)
+    if len(encoding) == 0:
+        print('\n *** no encoding! *** \n')
+        not_encoded += 1
+        continue
 
-# dump the facial encodings + names to disk
-print("[INFO] serializing encodings...")
-data = {"encodings": knownEncodings, "names": knownNames}
-f = open(args["encodings"], "wb")
-f.write(pickle.dumps(data))
-f.close()
+    encoded += 1
+
+    # Add each encoding + name to set of known names and
+    # encodings.
+    knownEncodings.append(encoding)
+    knownNames.append(name)
+
+print('\n faces encoded {} not encoded {} total {}'
+    .format(encoded, not_encoded, encoded+not_encoded))
+
+# Dump the facial encodings + names to disk.
+print('\n serializing encodings')
+data = {'encodings': knownEncodings, 'names': knownNames}
+with open(args['encodings'], 'wb') as outfile:
+    outfile.write(pickle.dumps(data))
