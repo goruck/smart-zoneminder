@@ -27,7 +27,7 @@ from object_detection.utils import label_map_util
 # For tensorrt optimized models...
 #import tensorflow.contrib.tensorrt as trt
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 # Get configuration.
 with open('./config.json') as fp:
