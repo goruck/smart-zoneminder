@@ -22,10 +22,13 @@ ZERO_FILL = 8
 # Add the trailing slash if it's not already there.
 path = os.path.join(args['directory'], '', '')
 
+# List of file types to process.
+suffixes = ['jpg', 'jpeg', 'png']
+
 counter = 1
 for f in sorted(os.listdir(path)):
     suffix = f.split('.')[-1]
-    if suffix == 'jpg' or suffix == 'png':
+    if suffix in suffixes:
         str_cntr = str(counter)
         new = '{}.{}'.format(str_cntr.zfill(ZERO_FILL), suffix)
         if not os.path.isfile(path+new): # skip if file exists
