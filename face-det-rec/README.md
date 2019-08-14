@@ -27,7 +27,7 @@ Thanks to Adrian Rosebrock and his [pyimagesearch project](https://www.pyimagese
 $ sudo systemctl enable face-detect.service && sudo systemctl start face-detect.service
 ```
 # Notes
-1. Use [extract_faces.py](./extract_faces.py) to extract faces from people objects in training images that can be used to fit the face classifier algorithm.
+1. Use [extract_faces.py](./extract_faces.py) to extract faces and / or people from objects in training images that can be used to fit the face classifier algorithm. I found that the face encoder program, [encode_faces.py](./encode_faces.py), works better on images that contain faces that have not been cropped from the person. This is why the default for [extract_faces.py](./extract_faces.py) is to save the person object and not the face. The person objects should be used to encode faces from per step 6 above.
 2. Use [renumber_filenames.py](renumber_filenames.py) to sequentially number the face images used for training. 
 3. Use [view-mongo-images.py](view-mongo-images.py) to quickly test different combinations of face detection parameters for optimization purposes.
 4. I found the XGBoost-based face classifier performs much better than the SVM-based one but is tricker and requires much more compute to optimize its hyperparameters. Your performance may be different but strive for at least 20 images (more is better) per face to train the model and use faces actually captured from your cameras.
