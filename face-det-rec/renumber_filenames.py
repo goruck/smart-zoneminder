@@ -25,7 +25,7 @@ path = os.path.join(args['directory'], '', '')
 # List of file types to process.
 suffixes = ['jpg', 'jpeg', 'png']
 
-counter = 1
+counter = 0
 for f in sorted(os.listdir(path)):
     suffix = f.split('.')[-1]
     if suffix in suffixes:
