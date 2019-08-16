@@ -22,7 +22,9 @@ FACE_DET_MODEL = 'cnn'
 # Where extracted faces are stored.
 EXTRACT_DIR = '/home/lindo/develop/smart-zoneminder/face-det-rec/extracted_faces'
 # Where src images are stored.
-IMG_DIR = '/home/lindo/develop/smart-zoneminder/face-det-rec/train_images' 
+IMG_DIR = '/home/lindo/develop/smart-zoneminder/face-det-rec/train_images'
+# Where a file containing image paths is stored (set to '' to skip)
+TXT_FILE_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/test-imgs.txt'
 ZERORPC_PIPE = 'ipc:///tmp/obj_detect_zmq.pipe'
 
 SAVE_FACE = False
@@ -56,24 +58,18 @@ def detect_and_extract(test_image_paths):
                     # Bad object roi...move on to next image.
                     logging.error('Bad object roi.')
                     continue
-                
-                if SAVE_PERSON:
-                    # Save extracted person object to disk.
-                    obj_img = EXTRACT_DIR+'/'+str(idx)+'-obj'+'.jpg'
-                    print('Writing {}'.format(obj_img))
-                    cv2.imwrite(obj_img, roi)
+
+                # Detect the (x, y)-coordinates of the bounding boxes corresponding
+                # to each face in the input image.
+                rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+                detection = face_recognition.face_locations(
+                    rgb, NUMBER_OF_TIMES_TO_UPSAMPLE, FACE_DET_MODEL)
+                if not detection:
+                    # No face detected...move on to next image.
+                    logging.debug('No face detected.')
+                    continue
 
                 if SAVE_FACE:
-                    # Detect the (x, y)-coordinates of the bounding boxes corresponding
-                    # to each face in the input image.
-                    rgb = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-                    detection = face_recognition.face_locations(
-                        rgb, NUMBER_OF_TIMES_TO_UPSAMPLE, FACE_DET_MODEL)
-                    if not detection:
-                        # No face detected...move on to next image.
-                        logging.debug('No face detected.')
-                        continue
-
                     # Carve out and save face roi. 
                     (face_top, face_right, face_bottom, face_left) = detection[0]
                     #cv2.rectangle(rgb, (face_left, face_top), (face_right, face_bottom), (255,0,0), 2)
@@ -83,17 +79,32 @@ def detect_and_extract(test_image_paths):
                     print('Writing {}'.format(face_img))
                     cv2.imwrite(face_img, face_roi)
 
+                if SAVE_PERSON:
+                    # Save extracted person object to disk.
+                    obj_img = EXTRACT_DIR+'/'+str(idx)+'-obj'+'.jpg'
+                    print('Writing {}'.format(obj_img))
+                    cv2.imwrite(obj_img, roi)
+
                 idx += 1
     return
 
 # Grab the paths to the input images.
-imagePaths = glob(IMG_DIR + '/*.*', recursive=False)
-#print(imagePaths)
+image_paths = glob(IMG_DIR + '/*.*', recursive=False)
+#print(image_paths)
+
+# Grab image paths in text file if given.
+# Its assumed there is one path per line in the file.
+try:
+    with open(TXT_FILE_PATH, 'r') as f:
+        txt_img_paths = f.read().splitlines()
+except IOError:
+    txt_img_paths = []
 
 # Send images to object detect server.
 obj_det = zerorpc.Client(heartbeat=60000)
 obj_det.connect(ZERORPC_PIPE)
-obj_ans = obj_det.detect_objects(imagePaths)
+obj_ans = obj_det.detect_objects(image_paths + txt_img_paths)
 
-# Send detected objects to face detector and extractor. 
+# Send detected objects to face detector and extractor.
+# (first deserialize json to Python objects)
 detect_and_extract(json.loads(obj_ans))
