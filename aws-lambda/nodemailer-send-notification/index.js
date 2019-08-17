@@ -78,9 +78,12 @@ exports.handler = (event, context, callback) => {
  */
 function findFace(labels) {
     function hasFace(obj) {
-        return typeof(obj.Face) === 'undefined' ? false : obj.Face === process.env.FIND_FACE;
+        // Get faces to look for. 
+        const faces = process.env.FIND_FACES.split(',');
+        // If a face exists in the metadata then check if its one we desire. 
+        return typeof(obj.Face) === 'undefined' ? false : faces.includes(obj.Face);
     }
-
+    // Check if at least one desired face is in metadata. 
     return labels.some(hasFace);
 }
 
