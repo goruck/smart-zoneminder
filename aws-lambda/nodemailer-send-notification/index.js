@@ -1,5 +1,5 @@
 /**
- * Lambda function to email alarm frames if person in image matches the env var FIND_FACE.
+ * Lambda function to email alarm frames if person in image matches the env var FIND_FACES.
  * The code contains logic and uses a cache so that only one alarm image is sent from an event. 
  * The /tmp dir is used as a transient cache to hold information about processed alarms.
  * The Reserve Concurrency for this fn must be set to 1. 
@@ -18,15 +18,19 @@ exports.handler = (event, context, callback) => {
 
     console.log(`Current event: ${JSON.stringify(event, null, 2)}`);
 
+    // Extract array of faces from event (if they exist).
+    const faces = extractFaces(event.Labels);
+
     fs.readFile(ALARM_CACHE, 'utf8', (err, data) => {
         if (err) {
-            // Cached alarm does not exist.
+            // Alarm cache does not exist because this lambda is starting cold. 
             // If alarm meets filter criteria email it to user and then cache it.
             if (findFace(event.Labels)) {
                 const cacheObj = [
                     {
                         event: event.metadata.zmeventid,
-                        frame: parseInt(event.metadata.zmframeid, 10)
+                        frame: parseInt(event.metadata.zmframeid, 10),
+                        faces: faces
                     }
                 ];
 
@@ -47,11 +51,15 @@ exports.handler = (event, context, callback) => {
             const cachedAlarms = JSON.parse(data); // array of cached alarms
             console.log(`Read alarm(s) from cache: ${JSON.stringify(cachedAlarms, null, 2)}`);
 
-            // If alarm already in cache and isn't stale then skip. 
+            // If alarm doesn't need to be processed, skip it. 
             // Else email the alarm to user if it meets filter criteria and add to cache. 
-            const newAlarm = {event:event.metadata.zmeventid, frame:parseInt(event.metadata.zmframeid, 10)};
-            if (alarmNotInCacheOrStale(cachedAlarms, newAlarm)) {
-                console.log(`Alarm ${event.metadata.zmeventid}:${event.metadata.zmframeid} too new. Skipping.`);
+            const newAlarm = {
+                event: event.metadata.zmeventid,
+                frame: parseInt(event.metadata.zmframeid, 10),
+                faces: faces
+            };
+            if (!processAlarm(cachedAlarms, newAlarm)) {
+                console.log(`Alarm ${event.metadata.zmeventid}:${event.metadata.zmframeid} does not require processing.`);
             } else if (findFace(event.Labels)) {
                 const cacheObj = updateCachedAlarms(cachedAlarms, newAlarm);
                 fs.writeFile(ALARM_CACHE, JSON.stringify(cacheObj), (err) => {
@@ -72,9 +80,24 @@ exports.handler = (event, context, callback) => {
 };
 
 /**
+ * Extract faces from event.
+ * 
+ * @param {object} labels - Alarm image label metadata.
+ * @returns {Array} - An array with faces from event. 
+ */
+function extractFaces(labels) {
+    const faces = [];
+    labels.forEach(obj => {
+        if (typeof(obj.Face) !== 'undefined' && obj.Face !== null) faces.push(obj.Face);
+    });
+    return faces;
+}
+
+/**
  * Determine if desired face is in alarm image label metadata. 
  * 
  * @param {object} labels - Alarm image label metadata.
+ * @returns {boolean} - If true desired face was found in labels. 
  */
 function findFace(labels) {
     function hasFace(obj) {
@@ -88,24 +111,38 @@ function findFace(labels) {
 }
 
 /**
- * Determine if alarm is in cache or stale. 
+ * Determine if a new alarm should be processed based on cached alarms. 
  * 
  * @param {object} cachedAlarms - Current cache contents. 
- * @param {object} newAlarm - Alarm to check if in cache. 
+ * @param {object} newAlarm - Alarm to check.
+ * @returns {boolean} - if true new alarm should be processed. 
  */
-function alarmNotInCacheOrStale(cachedAlarms, newAlarm) {
+function processAlarm(cachedAlarms, newAlarm) {
     // If alarms are > FRAME_OFFSET old then they are 'stale'.
     // A stale alarm will trigger a refresh of itself in the cache. 
     const FRAME_OFFSET = 600; // 120 secs @ 5 FPS
 
+    // Scan cache for same event as in the new alarm. 
     const findAlarmEvent = cachedAlarms.find(element => {
         return element.event === newAlarm.event; 
     });
 
+    // Scan cache for same faces as in the new alarm.
+    const findSameFaces = () => {
+        let same = false;
+        cachedAlarms.forEach(obj => {
+            same = same || obj.faces.every(face => newAlarm.faces.includes(face));
+        });
+        return same;
+    };
+
     if (typeof findAlarmEvent === 'undefined') {
-        return false; // event not in cache
+        return true; // event not in cache, alarm should be processed
+    } else if (!findSameFaces()) {
+        return true; // faces not in cache, alarm should be processed
     } else {
-        return newAlarm.frame < findAlarmEvent.frame + FRAME_OFFSET; // event in cache; test if stale
+        // event and faces in cache; test if stale and if so, process it
+        return newAlarm.frame > findAlarmEvent.frame + FRAME_OFFSET;
     }
 }
 
@@ -116,6 +153,7 @@ function alarmNotInCacheOrStale(cachedAlarms, newAlarm) {
  * 
  * @param {object} cachedAlarms - Current cache contents.
  * @param {object} newAlarm - Alarm to add / refresh.
+ * @returns {object} - Updated alarms to be cached. 
  */
 function updateCachedAlarms(cachedAlarms, newAlarm) {
     const findAlarmEvent = cachedAlarms.find(element => {
