@@ -198,22 +198,31 @@ function sendMail(alarm, callback) {
     const labels = alarm.Labels;
 
     // Set up HTML Email
-    let htmlString = '<pre><u><b>Label&nbsp;&nbsp;&nbsp;&nbsp;'+
-        'Face&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'+
-        'Confidence</u></b><br>';
+    let htmlString = '<pre><u><b>Label&nbsp;'+
+        '(Conf)&nbsp;'+
+        'Face&nbsp;'+
+        '(Conf)</u></b><br>';
     labels.forEach(item => {
-        htmlString += item.Name + '&nbsp;&nbsp;&nbsp;';
-        htmlString += item.Face + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
-        htmlString += item.Confidence.toFixed(1) + '</b><br>';
+        htmlString += item.Name + '&nbsp;';
+        htmlString += '(' + item.Confidence.toFixed(0) + ')&nbsp;';
+        if (item.Face !== 'undefined') {
+            htmlString += item.Face + '&nbsp;';
+            htmlString += '(' + item.FaceConfidence.toFixed(0) + ')';
+        }
+        htmlString += '</b><br>';
     });
     htmlString += '</pre>';
 
     // Set up Text Email
-    let textString = 'Label    Face      Confidence\n';
+    let textString = 'Label (Conf) Face (Conf)\n';
     labels.forEach(item => {
-        textString += item.Name + '    ';
-        textString += item.Face + '      ';
-        textString += item.Confidence.toFixed(1) + '\n';
+        textString += item.Name + ' ';
+        textString += '(' + item.Confidence.toFixed(0) + ') ';
+        if (item.Face !== 'undefined') {
+            textString += item.Face + ' ';
+            textString += '(' + item.FaceConfidence.toFixed(0) + ')';
+        }
+        textString += '\n';
     });
 
     // Set up email parameters

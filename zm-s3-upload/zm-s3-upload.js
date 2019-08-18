@@ -587,12 +587,15 @@ const getFrames = () => {
                             logger.info(`Processed ${fileName}.`);
                             objectsFound[i - skipped].labels.forEach(item => {
                                 const labelData = {
-                                    'Confidence': (100 * item.score),
-                                    'Name': item.name,
-                                    'Box': item.box
+                                    Confidence: (100 * item.score),
+                                    Name: item.name,
+                                    Box: item.box
                                 };
-                                    // If a person was detected then add (any) face data. 
-                                if (typeof(item.face) !== 'undefined') labelData.Face = item.face;
+                                // If a person was detected then add (any) face data. 
+                                if (typeof(item.face) !== 'undefined') {
+                                    labelData.Face = item.face;
+                                    labelData.FaceConfidence = (100 * item.faceProba);
+                                }
                                 labels.push(labelData);
                                 logger.info(`Image labels: ${util.inspect(labelData, false, null)}`);
                             });

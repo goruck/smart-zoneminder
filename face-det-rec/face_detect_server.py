@@ -81,7 +81,7 @@ def face_classifier(encoding, min_proba):
 	else:
 		name = None # prob too low to recog face
 		logging.debug('face classifier cannot recognize face')
-	return name
+	return name, proba
 
 def variance_of_laplacian(image):
 	# compute the Laplacian of the image and then return the focus
@@ -201,10 +201,13 @@ class DetectRPC(object):
                         known_face_locations=[face_location], num_jitters=NUM_JITTERS)[0]
                     logging.debug('face encoding {}'.format(encoding))
                     # Perform classification on the encodings to recognize the face.
-                    name = face_classifier(encoding, MIN_PROBA)
+                    (name, proba) = face_classifier(encoding, MIN_PROBA)
 
                     # Add face name to label metadata.
                     label['face'] = name
+                    # Add face confidence to label metadata.
+                    # (First convert NumPy value to native Python type for json serialization.)
+                    label['faceProba'] = proba.item()
 
 	        # Add processed image to output list. 
             objects_detected_faces.append(obj)
