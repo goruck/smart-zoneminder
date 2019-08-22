@@ -45,6 +45,7 @@ The object detection results then in turn can be sent to the face detector, an e
             "ymin": 288.86380434036255 },
          "name": "person",
          "face": "lindo_st_angel",
+         "faceProba": 0.88145875,
          "score": 0.98046875,
          "id": 0 } ] },
   { "image": "/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00509-capture.jpg",
@@ -56,6 +57,7 @@ The object detection results then in turn can be sent to the face detector, an e
             "ymin": 290.5584239959717 },
          "name": "person",
          "face": null,
+         "faceProba": null,
          "score": 0.83984375,
          "id": 0 } ] } ]
 ```
@@ -215,21 +217,17 @@ $ sudo swapoff /swapfile
 $ sudo rm -i /swapfile
 ```
 
-10. Copy *detect_server_tpu*, *config.json*, *encode_faces.py*, *train.py*, in this directory to ```/media/mendel/tpu-servers/``` on the Coral dev board. Create the ```tpu-servers``` directory if needed.
+10. Create a directory called *tpu-servers* in ```/media/mendel``` on the Coral dev board.
 
-11. Create the face image data set in ```/media/mendel/tpu-servers/``` needed to train the svm-based face classifier  per the steps in [face-det-rec README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md)  or just copy the images to this directory if you created them before.
+11. Copy *detect_server_tpu* and *config.json* in this directory to ```/media/mendel/tpu-servers```.
 
-12. Download the face embedding dnn model *nn4.v2.t7* from [OpenFace](https://cmusatyalab.github.io/openface/models-and-accuracies/) to the ```/media/mendel/tpu-servers``` directory. You can skip this step if you aren't going to use OpenCV to generate the facial embeddings. Currently this does not work well since face alignment isn't implemented. The default facial embedding method used in the project currently is dlib. 
+12. Copy the pickled label file, svm-, and xgd-based face classifiers (*face_labels.pickle*, *svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but its very slow, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
 
-13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory.
+13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
 
-14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to the ```/media/mendel/tpu-servers``` directory. You can instead use transfer learning to train your own model and use that instead of the Google stock models, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).
+14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```. You can instead use transfer learning to train your own model and use that instead of the Google stock models, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).
 
-15. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images copied above. This will create a pickle file containing the face embeddings used to train the svm-based face classifier. The program can run tpu-, dlib- and openCV-based face detectors and dlib- and OpenCV-based facial embedders. Its currently configured to use tpu-based face detection and dlib-based facial embeddings which gives the best results vs compute. 
-
-16. Run the svm-based face classifier training program, [train.py](./train.py). This will create two pickle files - one for the svm model and one for the model labels. The program will optimize the hyperparameters and evaluate the model, including its F1 score which should be close to 1.0 for good classifier performance. The optimal hyperparameters and model statistics are output after training is completed.
-
-17. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
+15. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
 # Setup sshfs.
 $ sudo apt-get install sshfs
@@ -257,11 +255,11 @@ $ ls /mnt/nvr
 camera-share  lost+found  zoneminder
 ```
 
-18. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+16. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-19. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service```. Then enable and start the service:
+17. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service``` on the Coral dev board. Then enable and start the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-20. Test the entire setup by editing ```detect_servers_test.py``` with paths to test images and running that program.
+18. Test the entire setup by editing *detect_servers_test.py* with paths to test images and running that program.
