@@ -79,7 +79,7 @@ $ cd /media/mendel
 # Create a swapfile else you'll run out of memory compiling.
 $ sudo mkdir swapfile
 # Now let's increase the size of swap file.
-$ sudo dd if=/dev/zero of=/swapfile bs=1M count=1024 oflag=append conv=notrunc
+$ sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 oflag=append conv=notrunc
 # Setup the file as a "swap file".
 $ sudo mkswap /swapfile
 # Enable swapping.
@@ -170,6 +170,20 @@ $ python3
 >>>
 ```
 
+7. Install XGBoost.
+```bash
+# Install - see https://xgboost.readthedocs.io/en/latest/build.html
+# This takes a while...cross compile if impatient.
+$ pip3 install xgboost
+
+# Test...
+$ python3
+>>> import xgboost
+>>> xgboost.__version__
+'0.90'
+>>>
+```
+
 7. Install dlib.
 ```bash
 $ cd /media/mendel
@@ -221,7 +235,7 @@ $ sudo rm -i /swapfile
 
 11. Copy *detect_server_tpu* and *config.json* in this directory to ```/media/mendel/tpu-servers```.
 
-12. Copy the pickled label file, svm-, and xgd-based face classifiers (*face_labels.pickle*, *svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but its very slow, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
+12. Copy the pickled label file, svm-, and xgd-based face classifiers (*face_labels.pickle*, *svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but the xgb-based classifier training takes a long time, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
 
 13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
 
