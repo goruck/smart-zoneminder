@@ -292,7 +292,7 @@ class FaceDetectRPC(object):
                     # Generate encodings. Only one face is assumed so take the 1st element. 
                     encoding = face_recognition.face_encodings(face_image=rgb,
                         known_face_locations=boxes, num_jitters=NUM_JITTERS)[0]
-
+                    logging.debug('face encoding {}'.format(encoding))
                     # Perform svm classification on the encodings to recognize the face.
                     (name, proba) = face_classifier(encoding, MIN_PROBA)
 
