@@ -1,7 +1,7 @@
 chardet==2.3.0
 Click==7.0
 dlib==19.17.0
-edgetpu==1.9.2
+edgetpu==2.11.1
 edgetpuvision==1.0
 face-recognition==1.2.3
 face-recognition-models==0.3.0
