@@ -154,6 +154,31 @@ def skip_inference(frame_num, monitor, labels, image_path, objects_in_image):
                         
     return skip, frame_num, monitor
 
+def resize_to_square(img, size, keep_aspect_ratio=False, interpolation=cv2.INTER_AREA):
+    # Resize image to square shape.
+    # If keep_aspect_ratio=True, then:
+    #   If the original image is lanscape, add black pixels on the bottom-side only.
+    #   If the original image is portrait, add black pixels on the right-side only.
+    (h, w) = img.shape[:2]
+
+    if h == w or keep_aspect_ratio == False:
+        return cv2.resize(img, (size, size), interpolation)
+
+    # Check if image is color. 
+    chan = None if len(img.shape) < 3 else img.shape[2]
+
+    # Determine size of black mask.
+    mask_size = h if h > w else w
+
+    if chan is None:
+        mask = np.zeros((mask_size, mask_size), dtype=img.dtype)
+        mask[:h, :w] = img[:h, :w]
+    else:
+        mask = np.zeros((mask_size, mask_size, chan), dtype=img.dtype)
+        mask[:h, :w, :] = img[:h, :w, :]
+
+    return cv2.resize(mask, (size, size), interpolation)
+
 # zerorpc obj det server.
 class ObjDetectRPC(object):
     def detect_objects(self, test_image_paths):
@@ -182,12 +207,13 @@ class ObjDetectRPC(object):
                 continue
 
             # Resize. The tpu obj det requires (300, 300).
-            res = cv2.resize(img, dsize=(300, 300), interpolation=cv2.INTER_AREA)
+            res = resize_to_square(img=img, size=300, keep_aspect_ratio=True,
+                        interpolation=cv2.INTER_AREA)
             #cv2.imwrite('./obj_res.jpg', res)
 
             # Run object inference.
             detection = obj_engine.DetectWithInputTensor(res.reshape(-1),
-                threshold=0.1, top_k=3)
+                threshold=0.05, top_k=3)
 
             # Get labels and scores of detected objects.
             labels = [] # new detection, clear labels list. 
@@ -247,14 +273,16 @@ class FaceDetectRPC(object):
                     (h, w) = roi.shape[:2]
                     # Resize roi for face detection.
                     # The tpu face det model used requires (320, 320).
-                    res = cv2.resize(roi, dsize=(320, 320), interpolation=cv2.INTER_AREA)
+                    res = resize_to_square(img=roi, size=320, keep_aspect_ratio=True,
+                        interpolation=cv2.INTER_AREA)
                     #cv2.imwrite('./res.jpg', res)
 
                     # Detect the (x, y)-coordinates of the bounding boxes corresponding
-                    # to each face in the input image using the TPU engine.
+                    # to a face in the input image using the TPU engine.
+                    # Its assumed that only one face is in the image. 
                     # NB: reshape(-1) converts the np img array into 1-d. 
                     detection = face_engine.DetectWithInputTensor(res.reshape(-1),
-                        threshold=0.1, top_k=1)
+                        threshold=0.05, top_k=1)
                     if not detection:
                         # No face detected...move on to next image.
                         logging.debug('No face detected.')
