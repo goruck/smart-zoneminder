@@ -5,7 +5,7 @@
         "labelMapPath": "./coco_labels.txt",
         "mountPoint": "/mnt",
         "conseqImagesToSkip": 0,
-        "minScore": 0.5,
+        "minScore": 0.8,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "tcp://192.168.1.131:1234"
     },
