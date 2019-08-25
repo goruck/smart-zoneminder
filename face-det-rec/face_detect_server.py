@@ -23,7 +23,7 @@ import pickle
 import gevent
 import signal
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 # Get configuration.
 with open('./config.json') as fp:
