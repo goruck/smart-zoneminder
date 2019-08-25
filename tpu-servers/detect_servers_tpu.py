@@ -21,7 +21,7 @@ import face_recognition
 from signal import SIGINT, SIGTERM
 from edgetpu.detection.engine import DetectionEngine
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 # Open configuration file. 
 with open('./config.json') as fp:
