@@ -63,6 +63,6 @@ traitlets==4.3.2
 urllib3==1.25.3
 wcwidth==0.1.7
 webencodings==0.5.1
-Werkzeug==0.15.1
+Werkzeug==0.15.5
 xgboost==0.90
 zerorpc==0.6.1
