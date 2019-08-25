@@ -49,7 +49,7 @@ Pygments==2.3.0
 pymongo==3.7.2
 python-dateutil==2.7.5
 pyzmq==17.1.2
-requests==2.20.1
+requests==2.22.0
 scikit-learn==0.20.3
 scipy==1.2.1
 Send2Trash==1.5.0
@@ -60,9 +60,9 @@ terminado==0.8.1
 testpath==0.4.2
 tornado==5.1.1
 traitlets==4.3.2
-urllib3==1.24.2
+urllib3==1.25.3
 wcwidth==0.1.7
 webencodings==0.5.1
-Werkzeug==0.15.1
+Werkzeug==0.15.5
 xgboost==0.90
 zerorpc==0.6.1
