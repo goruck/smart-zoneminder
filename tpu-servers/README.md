@@ -184,7 +184,7 @@ $ python3
 >>>
 ```
 
-7. Install dlib.
+8. Install dlib.
 ```bash
 $ cd /media/mendel
 
@@ -212,7 +212,7 @@ python3
 >>>
 ```
 
-8. Install face_recognition.
+9. Install face_recognition.
 ```bash
 $ pip3 install face_recognition
 
@@ -224,24 +224,26 @@ $ python3
 >>>
 ```
 
-9. Disable and remove swap.
+10. Disable and remove swap.
 ```bash
 $ cd /media/mendel
 $ sudo swapoff /swapfile
 $ sudo rm -i /swapfile
 ```
 
-10. Create a directory called *tpu-servers* in ```/media/mendel``` on the Coral dev board.
+11. Create a directory called *tpu-servers* in ```/media/mendel``` on the Coral dev board.
 
-11. Copy *detect_server_tpu* and *config.json* in this directory to ```/media/mendel/tpu-servers```.
+12. Copy *detect_server_tpu.py* and *config.json* in this directory to ```/media/mendel/tpu-servers```.
 
-12. Copy the pickled label file, svm-, and xgd-based face classifiers (*face_labels.pickle*, *svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but the xgb-based classifier training takes a long time, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
+13. Copy the pickled label file, svm-, and xgd-based face classifiers (*face_labels.pickle*, *svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but the xgb-based classifier training takes a long time, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
 
-13. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
+14. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
 
-14. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```. You can instead use transfer learning to train your own model and use that instead of the Google stock models, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).
+15. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
 
-15. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
+*NB: You can instead use transfer learning to train your own models and use them instead of the Google stock models in the steps above, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).*
+
+16. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
 # Setup sshfs.
 $ sudo apt-get install sshfs
@@ -269,11 +271,11 @@ $ ls /mnt/nvr
 camera-share  lost+found  zoneminder
 ```
 
-16. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in server code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+17. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in the detect_server_tpu.py code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-17. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service``` on the Coral dev board. Then enable and start the service:
+18. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service``` on the Coral dev board. Then enable and start the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-18. Test the entire setup by editing *detect_servers_test.py* with paths to test images and running that program.
+19. Test the entire setup by editing *detect_servers_test.py* with paths to test images and running that program.
