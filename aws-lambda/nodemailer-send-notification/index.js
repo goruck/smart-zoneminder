@@ -205,7 +205,7 @@ function sendMail(alarm, callback) {
     labels.forEach(item => {
         htmlString += item.Name + '&nbsp;';
         htmlString += '(' + item.Confidence.toFixed(0) + ')&nbsp;';
-        if (item.Face !== 'undefined') {
+        if ('Face' in item) {
             htmlString += item.Face + '&nbsp;';
             htmlString += '(' + item.FaceConfidence.toFixed(0) + ')';
         }
@@ -218,7 +218,7 @@ function sendMail(alarm, callback) {
     labels.forEach(item => {
         textString += item.Name + ' ';
         textString += '(' + item.Confidence.toFixed(0) + ') ';
-        if (item.Face !== 'undefined') {
+        if ('Face' in item) {
             textString += item.Face + ' ';
             textString += '(' + item.FaceConfidence.toFixed(0) + ')';
         }
