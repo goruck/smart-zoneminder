@@ -88,7 +88,7 @@ exports.handler = (event, context, callback) => {
 function extractFaces(labels) {
     const faces = [];
     labels.forEach(obj => {
-        if (typeof(obj.Face) !== 'undefined' && obj.Face !== null) faces.push(obj.Face);
+        if ('Face' in obj && obj.Face !== null) faces.push(obj.Face);
     });
     return faces;
 }
@@ -104,7 +104,7 @@ function findFace(labels) {
         // Get faces to look for. 
         const faces = process.env.FIND_FACES.split(',');
         // If a face exists in the metadata then check if its one we desire. 
-        return typeof(obj.Face) === 'undefined' ? false : faces.includes(obj.Face);
+        return 'Face' in obj ? faces.includes(obj.Face) : false;
     }
     // Check if at least one desired face is in metadata. 
     return labels.some(hasFace);
