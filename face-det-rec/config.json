@@ -8,7 +8,7 @@
         "numFaceImgUpsample": 1,
         "minFace": 20,
         "faceDetModel": "cnn",
-        "numJitters": 100,
+        "numJitters": 500,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/face_detect_zmq.pipe"
     }
