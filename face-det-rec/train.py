@@ -49,7 +49,7 @@ le = LabelEncoder()
 labels = le.fit_transform(data_pickle['names'])
 #print('labels {}'.format(labels))
 
-def find_best_svm_estimator(X, y, cv):
+def find_best_svm_estimator(X, y, cv, random_seed):
     # Exhaustive search over specified parameter values for svm.
     # Returns optimized svm estimator.
     print('\n Finding best svm estimator...')
@@ -58,9 +58,10 @@ def find_best_svm_estimator(X, y, cv):
     param_grid = [
         {'C': Cs, 'kernel': ['linear']},
         {'C': Cs, 'gamma': gammas, 'kernel': ['rbf']}]
-    init_est = SVC(probability=True)
+    init_est = SVC(probability=True, class_weight='balanced',
+        random_state=random_seed, verbose=False)
     grid_search = GridSearchCV(estimator=init_est, param_grid=param_grid,
-        verbose=1, iid=False, cv=cv)
+        verbose=1, n_jobs=4, iid=False, cv=cv)
     grid_search.fit(X, y)
     #print('\n All results:')
     #print(grid_search.cv_results_)
@@ -72,7 +73,7 @@ def find_best_svm_estimator(X, y, cv):
     print(grid_search.best_params_)
     return grid_search.best_estimator_
 
-def find_best_xgb_estimator(X, y, cv, param_comb):
+def find_best_xgb_estimator(X, y, cv, param_comb, random_seed):
     # Random search over specified parameter values for XGBoost.
     # Exhaustive search takes many more cycles w/o much benefit.
     # Returns optimized XGBoost estimator.
@@ -86,10 +87,10 @@ def find_best_xgb_estimator(X, y, cv, param_comb):
         'max_depth': [3, 4, 5]
         }
     init_est = xgb(learning_rate=0.02, n_estimators=600, objective='multi:softprob',
-        verbose=1, nthread=1)
+        verbose=1, n_jobs=1, random_state=random_seed)
     random_search = RandomizedSearchCV(estimator=init_est, param_distributions=param_grid,
         n_iter=param_comb, n_jobs=4, iid=False, cv=cv,
-        verbose=1, random_state=RANDOM_SEED)
+        verbose=1, random_state=random_seed)
     random_search.fit(X, y)
     #print('\n All results:')
     #print(random_search.cv_results_)
@@ -109,26 +110,29 @@ def find_best_xgb_estimator(X, y, cv, param_comb):
 
 skf = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=RANDOM_SEED)
 
+target_names = list(le.classes_)
+
 # Find best svm classifier, evaluate and then save it.
-best_svm = find_best_svm_estimator(X_train, y_train, skf.split(X_train, y_train))
+best_svm = find_best_svm_estimator(X_train, y_train, skf.split(X_train, y_train), RANDOM_SEED)
 print('\n Evaluating svm model...')
 y_pred = best_svm.predict(X_test)
 print('\n Confusion matrix:')
 print(confusion_matrix(y_test, y_pred))
 print('\n Classification matrix:')
-print(classification_report(y_test, y_pred))
+print(classification_report(y_test, y_pred, target_names=target_names))
 print('\n Saving svm model...')
 with open(SVM_MODEL_PATH, 'wb') as outfile:
     outfile.write(pickle.dumps(best_svm))
 
 # Find best XGBoost classifier, evaluate and save it. 
-best_xgb = find_best_xgb_estimator(X_train, y_train, skf.split(X_train, y_train), PARA_COMB)
+best_xgb = find_best_xgb_estimator(X_train, y_train, skf.split(X_train, y_train),
+    PARA_COMB, RANDOM_SEED)
 print('\n Evaluating xgb model...')
 y_pred = best_xgb.predict(X_test)
 print('\n Confusion matrix:')
 print(confusion_matrix(y_test, y_pred))
 print('\n Classification matrix:')
-print(classification_report(y_test, y_pred))
+print(classification_report(y_test, y_pred, target_names=target_names))
 print('\n Saving xgb model...')
 with open(XGB_MODEL_PATH, 'wb') as outfile:
     outfile.write(pickle.dumps(best_xgb))
