@@ -12,7 +12,7 @@ Thanks to Adrian Rosebrock and his [pyimagesearch project](https://www.pyimagese
 
 4. Create a directory for each person's face images that you want recognized, named for the person's face, in a directory called "dataset". Also create a directory called 'Unknown' that will hold faces of random strangers that is needed for the training of the [SVM](https://scikit-learn.org/stable/modules/svm.html) or [XGBoost](https://xgboost.readthedocs.io/en/latest/index.html) face classifier.
 
-5. Place 20 or so images of the person's face in each directory you created above plus about 20 random stranger faces in the 'Unknown' folder.
+5. Place 20 or so images of the person's face in each directory you created above plus about 20 random stranger faces in the 'Unknown' folder (see note 5 below).
 
 6. Run the face encoder program, [encode_faces.py](./encode_faces.py), using the images in the directories created above. See the "Encoding the faces using OpenCV and deep learning" in the guide mentioned above.
 
@@ -30,4 +30,5 @@ $ sudo systemctl enable face-detect.service && sudo systemctl start face-detect.
 1. Use [extract_faces.py](./extract_faces.py) to extract faces and / or people from objects in training images that can be used to fit the face classifier algorithm. I found that the face encoder program, [encode_faces.py](./encode_faces.py), works better on images that contain faces that have not been cropped from the person. This is why the default for [extract_faces.py](./extract_faces.py) is to save the person object and not the face. The person objects should be used to encode faces from per step 6 above.
 2. Use [renumber_filenames.py](renumber_filenames.py) to sequentially number the face images used for training. 
 3. Use [view-mongo-images.py](view-mongo-images.py) to quickly test different combinations of face detection parameters for optimization purposes.
-4. I found the XGBoost-based face classifier performs much better than the SVM-based one but is tricker and requires much more compute to optimize its hyperparameters. Your performance may be different but strive for at least 20 images (more is better) per face to train the model and use faces actually captured from your cameras.
+4. I found the XGBoost-based face classifier performs somewhat better than the SVM-based one but is tricker and requires much more compute to optimize its hyperparameters. Your performance may be different but strive for at least 20 images (more is better) per face to train the model and use faces actually captured from your cameras.
+5. Use [fetch_lfw_faces.py](fetch_lfw_faces.py) to download random faces from the Labeled Faces in the Wild (LFW) people dataset that you can place in the 'Unknown' folder. 
