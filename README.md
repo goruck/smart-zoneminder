@@ -121,9 +121,11 @@ Click on image below to see video of Alexa response:
 [![Specific example 3](https://img.youtube.com/vi/rbGPW3MvDoo/0.jpg)](https://www.youtube.com/watch?v=rbGPW3MvDoo)
 
 ## Send Emails of Alarms
-smart-zoneminder can email alarms based on the face detected in the image. Here's an an example of an alarm email sent to a mobile device:
+smart-zoneminder can email alarms based on the face detected in the image. Here are examples of alarm emails sent to a mobile device:
 
-![Alt text](./img/alarm-email-example.png?raw=true "example of alarm email.")
+![Alt text](./img/alarm-email-example.png?raw=true "example one of alarm email.")
+
+![Alt text](./img/alarm-email-example-2.png?raw=true "example two of alarm email.")
 
 ## Alexa Notifications
 As soon as the [Alexa Skills Kit supports notifications](https://developer.amazon.com/blogs/alexa/post/833b9af4-26e6-47d2-a13d-bdbd9a257512/expanded-developer-preview-of-notifications-for-alexa-skills) they will be added.
