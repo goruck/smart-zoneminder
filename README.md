@@ -121,7 +121,7 @@ Click on image below to see video of Alexa response:
 [![Specific example 3](https://img.youtube.com/vi/rbGPW3MvDoo/0.jpg)](https://www.youtube.com/watch?v=rbGPW3MvDoo)
 
 ## Send Emails of Alarms
-smart-zoneminder can email alarms based on the face detected in the image. Here are examples of alarm emails sent to a mobile device:
+smart-zoneminder can email alarms based on the face detected in the image. Below are examples of alarm emails sent to a mobile device with filter criterion set to any of my family members. 
 
 ![Alt text](./img/alarm-email-example.png?raw=true "example one of alarm email.")
 
