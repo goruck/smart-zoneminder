@@ -27,8 +27,12 @@ IMG_DIR = '/home/lindo/develop/smart-zoneminder/face-det-rec/train_images'
 TXT_FILE_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/test-imgs.txt'
 ZERORPC_PIPE = 'ipc:///tmp/obj_detect_zmq.pipe'
 
+# Set to True to save extracted faces.
 SAVE_FACE = False
-SAVE_PERSON = True
+# Set to True to save objects classified as people with faces.
+SAVE_PERSON_FACE = True
+# Set to True to save objects classified as people with no faces. 
+SAVE_PERSON_NO_FACE = True
 
 def detect_and_extract(test_image_paths):
     # Loop over the images paths provided.
@@ -65,8 +69,14 @@ def detect_and_extract(test_image_paths):
                 detection = face_recognition.face_locations(
                     rgb, NUMBER_OF_TIMES_TO_UPSAMPLE, FACE_DET_MODEL)
                 if not detection:
-                    # No face detected...move on to next image.
+                    # No face detected.
                     logging.debug('No face detected.')
+                    if SAVE_PERSON_NO_FACE:
+                        # Save extracted person (w/o face) object to disk.
+                        obj_img = EXTRACT_DIR+'/'+str(idx)+'-obj'+'.jpg'
+                        print('Writing {}'.format(obj_img))
+                        cv2.imwrite(obj_img, roi)
+                        idx += 1
                     continue
 
                 if SAVE_FACE:
@@ -79,8 +89,8 @@ def detect_and_extract(test_image_paths):
                     print('Writing {}'.format(face_img))
                     cv2.imwrite(face_img, face_roi)
 
-                if SAVE_PERSON:
-                    # Save extracted person object to disk.
+                if SAVE_PERSON_FACE:
+                    # Save extracted person (w/face) object to disk.
                     obj_img = EXTRACT_DIR+'/'+str(idx)+'-obj'+'.jpg'
                     print('Writing {}'.format(obj_img))
                     cv2.imwrite(obj_img, roi)
