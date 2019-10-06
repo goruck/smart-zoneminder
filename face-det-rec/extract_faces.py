@@ -13,30 +13,35 @@ import logging
 import face_recognition
 import zerorpc
 import json
+import argparse
 from glob import glob
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
+
+# Construct the argument parser and parse the arguments.
+ap = argparse.ArgumentParser()
+ap.add_argument('-sf', '--save_face', type=bool, default=False,
+    help='save detected faces (defaults to False')
+ap.add_argument('-spf', '--save_person_face', type=bool, default=True,
+    help='save detected people with faces (defaults to True)')
+ap.add_argument('-spnf', '--save_person_no_face', type=bool, default=False,
+    help='save detected people with no faces (defaults to False')
+ap.add_argument('-d', '--dataset', type=str,
+    default='/home/lindo/develop/smart-zoneminder/face-det-rec/train_images',
+    help='location of input dataset (defaults to ./train_images.')
+ap.add_argument('-o', '--output', type=str, default='./extracted_faces',
+    help='location of output folder (defaults to ./extracted_faces).')
+ap.add_argument('-f', '--file_path', type=str, default=None,
+    help='location of file containing image paths (defaults to None)')
+args = vars(ap.parse_args())
 
 NUMBER_OF_TIMES_TO_UPSAMPLE = 1
 FACE_DET_MODEL = 'cnn'
-# Where extracted faces are stored.
-EXTRACT_DIR = '/home/lindo/develop/smart-zoneminder/face-det-rec/extracted_faces'
-# Where src images are stored.
-IMG_DIR = '/home/lindo/develop/smart-zoneminder/face-det-rec/train_images'
-# Where a file containing image paths is stored (set to '' to skip)
-TXT_FILE_PATH = '/home/lindo/develop/smart-zoneminder/face-det-rec/test-imgs.txt'
 ZERORPC_PIPE = 'ipc:///tmp/obj_detect_zmq.pipe'
-
-# Set to True to save extracted faces.
-SAVE_FACE = False
-# Set to True to save objects classified as people with faces.
-SAVE_PERSON_FACE = True
-# Set to True to save objects classified as people with no faces. 
-SAVE_PERSON_NO_FACE = True
 
 def detect_and_extract(test_image_paths):
     # Loop over the images paths provided.
-    idx = 0
+    idx = 1
     for obj in test_image_paths:
         logging.debug('**********Processing {}'.format(obj['image']))
         for label in obj['labels']:
@@ -71,43 +76,43 @@ def detect_and_extract(test_image_paths):
                 if not detection:
                     # No face detected.
                     logging.debug('No face detected.')
-                    if SAVE_PERSON_NO_FACE:
+                    if args['save_person_no_face']:
                         # Save extracted person (w/o face) object to disk.
-                        obj_img = EXTRACT_DIR+'/'+str(idx)+'-obj'+'.jpg'
-                        print('Writing {}'.format(obj_img))
+                        obj_img = args['output']+'/'+str(idx)+'-obj'+'.jpg'
+                        logging.info('Writing {}'.format(obj_img))
                         cv2.imwrite(obj_img, roi)
                         idx += 1
                     continue
 
-                if SAVE_FACE:
+                if args['save_face']:
                     # Carve out and save face roi. 
                     (face_top, face_right, face_bottom, face_left) = detection[0]
                     #cv2.rectangle(rgb, (face_left, face_top), (face_right, face_bottom), (255,0,0), 2)
                     #cv2.imwrite('./face_rgb.jpg', rgb)
                     face_roi = roi[face_top:face_bottom, face_left:face_right]
-                    face_img = EXTRACT_DIR+'/'+str(idx)+'-face'+'.jpg'
-                    print('Writing {}'.format(face_img))
+                    face_img = args['output']+'/'+str(idx)+'-face'+'.jpg'
+                    logging.info('Writing {}'.format(face_img))
                     cv2.imwrite(face_img, face_roi)
 
-                if SAVE_PERSON_FACE:
+                if args['save_person_face']:
                     # Save extracted person (w/face) object to disk.
-                    obj_img = EXTRACT_DIR+'/'+str(idx)+'-obj'+'.jpg'
-                    print('Writing {}'.format(obj_img))
+                    obj_img = args['output']+'/'+str(idx)+'-obj'+'.jpg'
+                    logging.info('Writing {}'.format(obj_img))
                     cv2.imwrite(obj_img, roi)
 
                 idx += 1
     return
 
 # Grab the paths to the input images.
-image_paths = glob(IMG_DIR + '/*.*', recursive=False)
-#print(image_paths)
+image_paths = glob(args['dataset'] + '/*.*', recursive=False)
+logging.debug('image_paths: {}'.format(image_paths))
 
 # Grab image paths in text file if given.
 # Its assumed there is one path per line in the file.
 try:
-    with open(TXT_FILE_PATH, 'r') as f:
+    with open(args['file_path'], 'r') as f:
         txt_img_paths = f.read().splitlines()
-except IOError:
+except (IOError, TypeError) as e:
     txt_img_paths = []
 
 # Send images to object detect server.
