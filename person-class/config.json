@@ -1,0 +1,16 @@
+{
+    "personClassifierServer": {
+        "comment": "Configuration for person_classifier_server.py.",
+        "modelPath": "./person-classifier.pb",
+        "labelMap": [
+            "Unknown",
+            "eva_st_angel",
+            "lindo_st_angel",
+            "nico_st_angel",
+            "nikki_st_angel"
+        ],
+        "minProba": 0.98,
+        "zerorpcHeartBeat": 60000,
+        "zerorpcPipe": "ipc:///tmp/face_detect_zmq.pipe"
+    }
+}
