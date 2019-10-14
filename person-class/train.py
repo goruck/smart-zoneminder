@@ -8,13 +8,14 @@ Copyright (c) 2019 Lindo St. Angel
 
 import os
 import matplotlib.pyplot as plt
+from collections import Counter
 from keras.applications import VGG16
 from keras import models
 from keras import layers
 from keras import optimizers
 from keras.preprocessing.image import ImageDataGenerator
 
-base_dir = '/home/lindo/develop/smart-zoneminder/dataset'
+base_dir = '/home/lindo/develop/smart-zoneminder/person-class/dataset'
 
 train_dir = os.path.join(base_dir, 'train')
 validation_dir = os.path.join(base_dir, 'validation')
@@ -68,26 +69,25 @@ conv_base.trainable = False
 model.summary()
 
 model.compile(loss='categorical_crossentropy',
-              optimizer=optimizers.RMSprop(lr=2e-5),
+              #optimizer=optimizers.RMSprop(lr=2e-5),
+              optimizer=optimizers.Adam(lr=8e-5),
               metrics=['acc'])
 
 # Training data is unbalanced so use class weighting.
 # Ref: https://datascience.stackexchange.com/questions/13490/how-to-set-class-weights-for-imbalanced-classes-in-keras
-class_weight = {
-  0: 2.04931, # Unknown
-  1: 1.66204, # Eva
-  2: 1.0,     # Lindo
-  3: 2.1118, # Nico
-  4: 1.8995  # Nikki
-}
+# Ref: https://stackoverflow.com/questions/42586475/is-it-possible-to-automatically-infer-the-class-weight-from-flow-from-directory
+counter = Counter(train_generator.classes)                          
+max_val = float(max(counter.values()))       
+class_weights = {class_id : max_val/num_images for class_id, num_images in counter.items()}
+print('class weights {}'.format(class_weights))
 
 history = model.fit_generator(
       train_generator,
       steps_per_epoch=100,
-      epochs=50,
+      epochs=80,
       validation_data=validation_generator,
-      validation_steps=50,
-      class_weight=class_weight,
+      validation_steps=35,
+      class_weight=class_weights,
       verbose=2)
 
 """
@@ -144,16 +144,17 @@ model.summary()
 
 # proceed with fine-tuning
 model.compile(loss='categorical_crossentropy',
-              optimizer=optimizers.RMSprop(lr=1e-5),
+              #optimizer=optimizers.RMSprop(lr=1e-5),
+              optimizer=optimizers.Adam(lr=1e-5),
               metrics=['acc'])
 
 history = model.fit_generator(
       train_generator,
       steps_per_epoch=100,
-      epochs=80,
+      epochs=50,
       validation_data=validation_generator,
-      validation_steps=50,
-      class_weight=class_weight,
+      validation_steps=35,
+      class_weight=class_weights,
       verbose=2)
 
 model.save('person-classifier.h5')
@@ -193,7 +194,7 @@ test_generator = test_datagen.flow_from_directory(
         batch_size=20,
         class_mode='categorical')
 
-test_loss, test_acc = model.evaluate_generator(test_generator, steps=50)
+test_loss, test_acc = model.evaluate_generator(test_generator, steps=20)
 print('test acc:', test_acc)
 
 """
