@@ -1,9 +1,9 @@
 {
     "faceDetServer": {
         "comment": "Configuration for face_detect_server.py.",
-        "modelPath": "./xgb_face_recognizer.pickle",
+        "modelPath": "./svm_face_recognizer.pickle",
         "labelPath": "./face_labels.pickle",
-        "minProba": 0.8,
+        "minProba": 0.9,
         "focusMeasureThreshold": 200,
         "numFaceImgUpsample": 1,
         "minFace": 20,
