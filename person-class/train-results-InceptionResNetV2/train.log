@@ -1,0 +1,11 @@
+INFO:root:train gen length: 144
+INFO:root:class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+INFO:root:validation gen length: 18
+WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/tensorflow/python/framework/op_def_library.py:263: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+INFO:root:class weights {0: 1.0, 1: 2.0393518518518516, 2: 1.405103668261563, 3: 1.8392484342379958, 4: 1.970917225950783}
+WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/tensorflow/python/ops/math_ops.py:3066: to_int32 (from tensorflow.python.ops.math_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.cast instead.
+INFO:root:test acc: 0.8895027663826284
