@@ -4,43 +4,43 @@ Encoding labels...
  Finding best svm estimator...
 Fitting 5 folds for each of 42 candidates, totalling 210 fits
 [Parallel(n_jobs=4)]: Using backend LokyBackend with 4 concurrent workers.
-[Parallel(n_jobs=4)]: Done  42 tasks      | elapsed:   16.9s
-[Parallel(n_jobs=4)]: Done 192 tasks      | elapsed:  1.5min
-[Parallel(n_jobs=4)]: Done 210 out of 210 | elapsed:  1.7min finished
+[Parallel(n_jobs=4)]: Done  42 tasks      | elapsed:   33.5s
+[Parallel(n_jobs=4)]: Done 192 tasks      | elapsed:  3.1min
+[Parallel(n_jobs=4)]: Done 210 out of 210 | elapsed:  3.3min finished
 
  Best estimator:
-SVC(C=10, cache_size=200, class_weight='balanced', coef0=0.0,
+SVC(C=100, cache_size=200, class_weight='balanced', coef0=0.0,
   decision_function_shape='ovr', degree=3, gamma=10, kernel='rbf',
   max_iter=-1, probability=True, random_state=1234, shrinking=True,
   tol=0.001, verbose=False)
 
  Best score for 5-fold search:
-0.9108029840197782
+0.8915818237410427
 
  Best hyperparameters:
-{'C': 10, 'gamma': 10, 'kernel': 'rbf'}
+{'C': 100, 'gamma': 10, 'kernel': 'rbf'}
 
  Evaluating svm model...
 
  Confusion matrix:
-[[96  0  1  1  0]
- [ 5 60  2  0  1]
- [ 2  1 83  0  0]
- [ 2  1  1 53  0]
- [ 3  0  1  2 58]]
+[[155   4   6   3   2]
+ [  6  79   1   0   3]
+ [  7   1 113   0   0]
+ [  2   1   3  66   1]
+ [  3   0   1   3  71]]
 
  Classification matrix:
                 precision    recall  f1-score   support
 
-       Unknown       0.89      0.98      0.93        98
-  eva_st_angel       0.97      0.88      0.92        68
-lindo_st_angel       0.94      0.97      0.95        86
- nico_st_angel       0.95      0.93      0.94        57
-nikki_st_angel       0.98      0.91      0.94        64
+       Unknown       0.90      0.91      0.90       170
+  eva_st_angel       0.93      0.89      0.91        89
+lindo_st_angel       0.91      0.93      0.92       121
+ nico_st_angel       0.92      0.90      0.91        73
+nikki_st_angel       0.92      0.91      0.92        78
 
-     micro avg       0.94      0.94      0.94       373
-     macro avg       0.95      0.93      0.94       373
-  weighted avg       0.94      0.94      0.94       373
+     micro avg       0.91      0.91      0.91       531
+     macro avg       0.92      0.91      0.91       531
+  weighted avg       0.91      0.91      0.91       531
 
 
  Saving svm model...
@@ -48,45 +48,45 @@ nikki_st_angel       0.98      0.91      0.94        64
  Finding best XGBoost estimator...
 Fitting 5 folds for each of 20 candidates, totalling 100 fits
 [Parallel(n_jobs=4)]: Using backend LokyBackend with 4 concurrent workers.
-[Parallel(n_jobs=4)]: Done  42 tasks      | elapsed:  4.3min
-[Parallel(n_jobs=4)]: Done 100 out of 100 | elapsed: 10.1min finished
+[Parallel(n_jobs=4)]: Done  42 tasks      | elapsed:  6.5min
+[Parallel(n_jobs=4)]: Done 100 out of 100 | elapsed: 14.9min finished
 
  Best estimator:
 XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
-       colsample_bynode=1, colsample_bytree=0.6, gamma=0.5,
-       learning_rate=0.02, max_delta_step=0, max_depth=5,
+       colsample_bynode=1, colsample_bytree=1.0, gamma=0.5,
+       learning_rate=0.02, max_delta_step=0, max_depth=4,
        min_child_weight=5, missing=None, n_estimators=600, n_jobs=1,
        nthread=None, objective='multi:softprob', random_state=1234,
        reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,
        silent=None, subsample=0.8, verbose=1, verbosity=1)
 
  Best score for 5-fold search with 20 parameter combinations:
-0.8765535576055321
+0.8661727990000403
 
  Best hyperparameters:
-{'subsample': 0.8, 'min_child_weight': 5, 'max_depth': 5, 'gamma': 0.5, 'colsample_bytree': 0.6}
+{'subsample': 0.8, 'min_child_weight': 5, 'max_depth': 4, 'gamma': 0.5, 'colsample_bytree': 1.0}
 
  Evaluating xgb model...
 
  Confusion matrix:
-[[90  0  5  1  2]
- [ 3 63  1  0  1]
- [ 4  1 79  2  0]
- [ 0  1  3 53  0]
- [ 3  0  2  1 58]]
+[[146   8   8   4   4]
+ [  4  82   1   0   2]
+ [  5   1 115   0   0]
+ [  1   3   4  63   2]
+ [  4   1   3   3  67]]
 
  Classification matrix:
                 precision    recall  f1-score   support
 
-       Unknown       0.90      0.92      0.91        98
-  eva_st_angel       0.97      0.93      0.95        68
-lindo_st_angel       0.88      0.92      0.90        86
- nico_st_angel       0.93      0.93      0.93        57
-nikki_st_angel       0.95      0.91      0.93        64
+       Unknown       0.91      0.86      0.88       170
+  eva_st_angel       0.86      0.92      0.89        89
+lindo_st_angel       0.88      0.95      0.91       121
+ nico_st_angel       0.90      0.86      0.88        73
+nikki_st_angel       0.89      0.86      0.88        78
 
-     micro avg       0.92      0.92      0.92       373
-     macro avg       0.93      0.92      0.92       373
-  weighted avg       0.92      0.92      0.92       373
+     micro avg       0.89      0.89      0.89       531
+     macro avg       0.89      0.89      0.89       531
+  weighted avg       0.89      0.89      0.89       531
 
 
  Saving xgb model...
