@@ -146,7 +146,7 @@ plt.plot(epochs,
     smooth_curve(val_acc), 'b', label='Smoothed validation acc')
 plt.title('Pass 1 Training and validation accuracy')
 plt.legend()
-plt.savefig(RESULTS_DIR + './pass1-acc.png')
+plt.savefig(RESULTS_DIR + '/pass1-acc.png')
 #plt.show()
 
 plt.clf()
@@ -157,7 +157,7 @@ plt.plot(epochs,
     smooth_curve(val_loss), 'b', label='Smoothed validation loss')
 plt.title('Pass 1 Training and validation loss')
 plt.legend()
-plt.savefig(RESULTS_DIR + './pass1-loss.png')
+plt.savefig(RESULTS_DIR + '/pass1-loss.png')
 #plt.show()
 
 plt.close()
