@@ -189,7 +189,7 @@ best_pass1_model.compile(loss='categorical_crossentropy',
 early_stop = EarlyStopping(monitor='val_loss',
     mode='min',
     verbose=2,
-    patience=5)
+    patience=10)
 
 csv_logger = CSVLogger(RESULTS_DIR + '/pass2-history.csv', append=False)
 
