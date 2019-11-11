@@ -103,17 +103,19 @@ class DetectRPC(object):
 
                     # Format image to what the model expects for input.
                     # Resize.
-                    roi = cv2.resize(roi, dsize=(224, 224), interpolation=cv2.INTER_AREA)
+                    #roi = cv2.resize(roi, dsize=(224, 224), interpolation=cv2.INTER_AREA)
+                    roi = cv2.resize(roi, dsize=(299, 299), interpolation=cv2.INTER_AREA)
                     # Scale.
                     roi = roi.astype('float32')/255
                     # Expand dimensions.
                     roi = np.expand_dims(roi, axis=0)
 
                     # Define input tensor.
-                    input_tensor = detection_graph.get_tensor_by_name('vgg16_input:0')
+                    #input_tensor = detection_graph.get_tensor_by_name('vgg16_input:0')
+                    input_tensor = detection_graph.get_tensor_by_name('inception_resnet_v2_input:0')
 
                     # Define output tensor.
-                    output_tensor = detection_graph.get_tensor_by_name('dense_2/Softmax:0')
+                    output_tensor = detection_graph.get_tensor_by_name('dense_3/Softmax:0')
 
                     # Actual predictions per class.
                     predictions = self.sess.run(output_tensor, {input_tensor: roi})[0]
