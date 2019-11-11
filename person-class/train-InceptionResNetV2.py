@@ -50,7 +50,7 @@ train_datagen = ImageDataGenerator(
 train_generator = train_datagen.flow_from_directory(
     # This is the target directory
     train_dir,
-    # All images will be resized to 224x224
+    # All images will be resized to 299x299
     target_size=(299, 299),
     batch_size=20,
     shuffle=True,
