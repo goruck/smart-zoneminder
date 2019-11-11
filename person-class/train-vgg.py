@@ -84,9 +84,9 @@ conv_base = VGG16(weights='imagenet',
 model = models.Sequential()
 model.add(conv_base)
 model.add(layers.Flatten())
-model.add(layers.Dense(64, activation='relu', kernel_regularizer=l2(0.001)))
+model.add(layers.Dense(64, activation='relu', kernel_regularizer=l2(0.01)))
 #model.add(layers.Dropout(0.5))
-model.add(layers.Dense(64, activation='relu', kernel_regularizer=l2(0.001)))
+model.add(layers.Dense(64, activation='relu', kernel_regularizer=l2(0.01)))
 #model.add(layers.Dropout(0.5))
 model.add(layers.Dense(5, activation='softmax'))
 
