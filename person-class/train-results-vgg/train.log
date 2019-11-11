@@ -8,4 +8,4 @@ INFO:root:class weights {0: 1.0, 1: 2.0393518518518516, 2: 1.405103668261563, 3:
 WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/tensorflow/python/ops/math_ops.py:3066: to_int32 (from tensorflow.python.ops.math_ops) is deprecated and will be removed in a future version.
 Instructions for updating:
 Use tf.cast instead.
-INFO:root:test acc: 0.7983425473639978
+INFO:root:test acc: 0.8839778959421821
