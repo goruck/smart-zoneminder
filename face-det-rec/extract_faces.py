@@ -39,6 +39,39 @@ NUMBER_OF_TIMES_TO_UPSAMPLE = 1
 FACE_DET_MODEL = 'cnn'
 ZERORPC_PIPE = 'ipc:///tmp/obj_detect_zmq.pipe'
 
+def image_resize(image, width=None, height=None, inter=cv2.INTER_AREA):
+    # ref: https://stackoverflow.com/questions/44650888/resize-an-image-without-distortion-opencv
+
+    # initialize the dimensions of the image to be resized and
+    # grab the image size
+    dim = None
+    (h, w) = image.shape[:2]
+
+    # if both the width and height are None, then return the
+    # original image
+    if width is None and height is None:
+        return image
+
+    # check to see if the width is None
+    if width is None:
+        # calculate the ratio of the height and construct the
+        # dimensions
+        r = height / float(h)
+        dim = (int(w * r), height)
+
+    # otherwise, the height is None
+    else:
+        # calculate the ratio of the width and construct the
+        # dimensions
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    # resize the image
+    resized = cv2.resize(image, dim, interpolation=inter)
+
+    # return the resized image
+    return resized
+
 def detect_and_extract(test_image_paths):
     # Loop over the images paths provided.
     idx = 1
@@ -67,6 +100,9 @@ def detect_and_extract(test_image_paths):
                     # Bad object roi...move on to next image.
                     logging.error('Bad object roi.')
                     continue
+
+                # Resize all images to have width = 300 pixels. 
+                roi = image_resize(roi, width=300)
 
                 # Detect the (x, y)-coordinates of the bounding boxes corresponding
                 # to each face in the input image.
