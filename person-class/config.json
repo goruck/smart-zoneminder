@@ -1,7 +1,7 @@
 {
     "personClassifierServer": {
         "comment": "Configuration for person_classifier_server.py.",
-        "modelPath": "./train-results-InceptionResNetV2/person-classifier-InceptionResNetV2.pb",
+        "modelPath": "./train-results/person-classifier-InceptionResNetV2.pb",
         "labelMap": [
             "Unknown",
             "eva_st_angel",
