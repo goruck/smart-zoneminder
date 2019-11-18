@@ -1,0 +1,328 @@
+"""
+Fine-tune a CNN to classify persons in my family.
+
+Needs to be run in the "keras" Python virtenv.
+
+This is part of the smart-zoneminder project.
+See https://github.com/goruck/smart-zoneminder
+
+Copyright (c) 2019 Lindo St. Angel
+"""
+
+import os
+import logging
+import argparse
+import matplotlib.pyplot as plt
+from collections import Counter
+from sys import exit
+from keras import models, layers, optimizers
+from keras.applications import VGG16, InceptionResNetV2
+from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
+from keras.constraints import maxnorm
+from keras.regularizers import l2
+
+# Construct the argument parser and parse the arguments.
+ap = argparse.ArgumentParser()
+ap.add_argument('-bs', '--batch_size', type=int, default=32,
+    help='batch size')
+ap.add_argument('-cb', '--cnn_base', type=str, default='InceptionResNetV2',
+    help='keras CNN base model name (InceptionResNetV2 or VGG16)')
+ap.add_argument('-r', '--regularizer', type=str, default='dropout',
+    help='regularizer method (dropout or l2)')
+ap.add_argument('-p1', '--pass1', type=bool, default=False,
+    help='run pass 1 training')
+ap.add_argument('-d', '--dataset', type=str,
+    default='/home/lindo/develop/smart-zoneminder/person-class/dataset',
+    help='location of input dataset (defaults to ./dataset.')
+ap.add_argument('-o', '--output', type=str,
+    default='/home/lindo/develop/smart-zoneminder/person-class/train-results',
+    help='location of output folder (defaults to ./train-results).')
+args = vars(ap.parse_args())
+
+BATCH_SIZE = args['batch_size']
+CNN_BASE = args['cnn_base']
+REGULARIZER = args['regularizer']
+RUN_PASS1 = args['pass1']
+DATA_DIR = args['dataset']
+RESULTS_DIR = args['output']
+
+logging.basicConfig(filename= RESULTS_DIR+'/train-'+CNN_BASE+'.log',
+    filemode='w',
+    level=20)
+
+def smooth_curve(points, factor=0.8):
+    smoothed_points = []
+    for point in points:
+        if smoothed_points:
+            previous = smoothed_points[-1]
+            smoothed_points.append(previous * factor + point * (1 - factor))
+        else:
+            smoothed_points.append(point)
+    return smoothed_points
+
+def plot_two_and_save(x, y1, y2, label1, label2, title, save_name, smooth=True):
+    plt.figure()
+    plt.plot(x, (y1, smooth_curve(y1))[smooth], 'bo', label=label1)
+    plt.plot(x, (y2, smooth_curve(y2))[smooth], 'b',  label=label2)
+    plt.title(title)
+    plt.legend()
+    plt.savefig(save_name)
+    #plt.show()
+    plt.clf()
+    plt.close()
+
+def freeze_layers(model):
+    base_model_name = model.layers[0].name
+    base_model = model.get_layer(base_model_name)
+    """
+    To visualize layer names and indices to understand what to freeze:
+    See https://ai.googleblog.com/2016/08/improving-inception-and-image.html
+    for i, layer in enumerate(base_model.layers):
+       print(i, layer.name)
+
+    InceptionResNetV2:
+
+    Inception Block   1st Layer Name    Layer Index
+    ===============   ==============    ===========
+    1                 conv2d_201        762
+    2                 conv2d_197        746
+    3                 conv2d_193        730
+    4                 conv2d_189        714
+    5                 conv2d_185        698
+    6                 conv2d_181        682 <-- Unfreeze up from here
+    7                 conv2d_177        666
+    8                 conv2d_173        650
+    9                 conv2d_169        634
+    10                conv2d_165        618
+    
+    VGG16:
+
+    Layer Name      Layer Index
+    ==========      ===========
+    input_1         0
+    block1_conv1    1
+    block1_conv2    2
+    block1_pool     3
+    block2_conv1    4
+    block2_conv2    5
+    block2_pool     6
+    block3_conv1    7
+    block3_conv2    8
+    block3_conv3    9
+    block3_pool     10
+    block4_conv1    11
+    block4_conv2    12
+    block4_conv3    13
+    block4_pool     14
+    block5_conv1    15 <-- Unfreeze up from here
+    block5_conv2    16
+    block5_conv3    17
+    block5_pool     18
+    """
+
+    if base_model_name == 'inception_resnet_v2':
+        freeze = 682
+    elif base_model_name == 'vgg16':
+        freeze = 15
+    else:
+        logging.error('error: unknown base model name')
+        exit()
+
+    # Freeze up to 'freeze' layers and then unfreeze rest.
+    for layer in base_model.layers[:freeze]:
+        layer.trainable = False
+
+    for layer in base_model.layers[freeze:]:
+        layer.trainable = True
+
+    return
+
+class CreateModel:
+    def __init__(self, base_model):
+        if base_model == 'InceptionResNetV2':
+            self.base_model = InceptionResNetV2(weights='imagenet',
+                include_top=False,
+                input_shape=(299,299,3))
+            self.base_model.trainable = False
+        elif base_model == 'VGG16':
+            self.base_model = VGG16(weights='imagenet',
+                include_top=False,
+                input_shape=(224, 224, 3))
+            self.base_model.trainable = False
+        else:
+            logging.error('error: unknown model name')
+            exit()
+    def l2(self):
+        learning_rate = 1e-4
+        model = models.Sequential()
+        model.add(self.base_model)
+        model.add(layers.GlobalAveragePooling2D())
+        model.add(layers.Dense(128, activation='relu', kernel_regularizer=l2(0.01)))
+        model.add(layers.Dense(128, activation='relu', kernel_regularizer=l2(0.01)))
+        model.compile(loss='categorical_crossentropy',
+            optimizer=optimizers.Adam(lr=learning_rate),
+            metrics=['acc'])
+        return model, learning_rate
+    def dropout(self):
+        # See http://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
+        learning_rate = 1e-3
+        model = models.Sequential()
+        model.add(self.base_model)
+        model.add(layers.GlobalAveragePooling2D())
+        model.add(layers.Dense(183, activation='relu', kernel_constraint=maxnorm(3)))
+        model.add(layers.Dropout(0.3))
+        model.add(layers.Dense(183, activation='relu', kernel_constraint=maxnorm(3)))
+        model.add(layers.Dropout(0.3))
+        model.add(layers.Dense(5, activation='softmax'))
+        model.compile(loss='categorical_crossentropy',
+            optimizer=optimizers.Adam(lr=learning_rate),
+            metrics=['acc'])
+        return model, learning_rate
+
+if REGULARIZER == 'dropout':
+    model, learning_rate = CreateModel(CNN_BASE).dropout()
+elif REGULARIZER == 'l2':
+    model, learning_rate = CreateModel(CNN_BASE).l2()
+else:
+    logging.error('error: unknown regularizer')
+    exit()
+
+input_size = model.input_shape[1:3]
+
+train_dir = os.path.join(DATA_DIR, 'train')
+validation_dir = os.path.join(DATA_DIR, 'validation')
+test_dir = os.path.join(DATA_DIR, 'test')
+
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest')
+
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=input_size,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    class_mode='categorical')
+
+logging.info('train gen length: {}'.format(len(train_generator)))
+logging.info('class dict: {}'.format(train_generator.class_indices))
+
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+validation_generator = test_datagen.flow_from_directory(
+    validation_dir,
+    target_size=input_size,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    class_mode='categorical')
+
+logging.info('validation gen length: {}'.format(len(validation_generator)))
+
+# Training data is unbalanced so use class weighting.
+# Ref: https://datascience.stackexchange.com/questions/13490/how-to-set-class-weights-for-imbalanced-classes-in-keras
+# Ref: https://stackoverflow.com/questions/42586475/is-it-possible-to-automatically-infer-the-class-weight-from-flow-from-directory
+counter = Counter(train_generator.classes)                          
+max_val = float(max(counter.values()))       
+class_weights = {class_id : max_val/num_images for class_id, num_images in counter.items()}
+logging.info('class weights {}'.format(class_weights))
+
+if RUN_PASS1:
+    # Pass 1: train only the top layers (which were randomly initialized)
+    logging.info('Starting pass1.')
+
+    early_stop = EarlyStopping(monitor='val_loss',
+        mode='min',
+        verbose=2,
+        patience=10)
+    csv_logger = CSVLogger(RESULTS_DIR+'/pass1-history-'+CNN_BASE+'.csv', append=False)
+    model_ckpt = ModelCheckpoint(filepath=RESULTS_DIR+'/pass1-'+CNN_BASE+'.h5',
+        monitor='val_loss',
+        verbose=2,
+        save_best_only=True)
+    history = model.fit_generator(
+        train_generator,
+        steps_per_epoch=len(train_generator),
+        epochs=500,
+        validation_data=validation_generator,
+        validation_steps=len(validation_generator),
+        class_weight=class_weights,
+        verbose=2,
+        workers=4,
+        callbacks=[early_stop, model_ckpt, csv_logger])
+
+    # Plot and save pass 1 results.
+    acc = history.history['acc']
+    val_acc = history.history['val_acc']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    epochs = range(len(acc))
+    plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed validation acc',
+        'Pass 1 Training and validation acc', RESULTS_DIR + '/pass1-acc-'+CNN_BASE+'.png')
+    plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
+        'Pass 1 Training and validation loss', RESULTS_DIR + '/pass1-loss-'+CNN_BASE+'.png')
+
+# Pass 2: fine-tune.
+logging.info('Starting pass2.')
+best_pass1_model = models.load_model(RESULTS_DIR+'/pass1-'+CNN_BASE+'.h5')
+
+# Selectively freeze layers to mitigate overfitting. 
+freeze_layers(best_pass1_model)
+
+best_pass1_model.compile(loss='categorical_crossentropy',
+    optimizer=optimizers.Adam(lr=learning_rate/5),
+    metrics=['acc'])
+
+early_stop = EarlyStopping(monitor='val_loss',
+    mode='min',
+    verbose=2,
+    patience=10)
+
+csv_logger = CSVLogger(RESULTS_DIR+'/pass2-history-'+CNN_BASE+'.csv', append=False)
+
+model_ckpt = ModelCheckpoint(filepath=RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5',
+    monitor='val_loss',
+    verbose=2,
+    save_best_only=True)
+
+history = best_pass1_model.fit_generator(
+    train_generator,
+    steps_per_epoch=len(train_generator),
+    epochs=500,
+    validation_data=validation_generator,
+    validation_steps=len(validation_generator),
+    class_weight=class_weights,
+    verbose=2,
+    workers=4,
+    callbacks=[early_stop, model_ckpt, csv_logger])
+
+# Plot and save pass 2 results.
+acc = history.history['acc']
+val_acc = history.history['val_acc']
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs = range(len(acc))
+plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed validation acc',
+    'Pass 2 Training and validation acc', RESULTS_DIR + '/pass2-acc-'+CNN_BASE+'.png')
+plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
+    'Pass 2 Training and validation loss', RESULTS_DIR + '/pass2-loss-'+CNN_BASE+'.png')
+
+# Evaluate this model on the test data:
+test_generator = test_datagen.flow_from_directory(
+    test_dir,
+    target_size=input_size,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    class_mode='categorical')
+
+# Load the best model from disk that was the last saved checkpoint.
+best_model = models.load_model(RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5')
+
+test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
+logging.info('test acc: {}'.format(test_acc))
