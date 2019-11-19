@@ -18,10 +18,10 @@ This server uses a cnn to classify that a person object detected by the [Object 
 
 6. Modify [config.json](./config.json) to suit your installation.
 
-7. Start the person classification server. NB: [face_detect_server.py](../face-det-rec/face_detect_server.py) must be disabled first.
+7. Use systemd to run the Person Classification Server as a Linux service. Edit [person-class.service](./person-class.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable and start the service but first disable the face-detect.service (since only one of the two can run at the same time):
 ```bash
-$ sudo systemctl stop face-detect
-$ python3 ./person_classifier_server.py
+$ sudo systemctl stop face-detect.service && sudo systemctl disable face-detect.service
+$ sudo systemctl enable person-class.service && sudo systemctl start person-class.service
 ```
 
 # Notes
