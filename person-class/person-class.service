@@ -1,0 +1,21 @@
+# Copy to /lib/systemd/system/person-class.service
+[Unit]
+Description=smart-zoneminder's person classification service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+# NVidia CUDA and TensorRT paths
+Environment="PATH=$PATH:/usr/local/cuda/bin"
+Environment="LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/home/lindo/develop/TensorRT-4.0.1.6/lib"
+# Tensorflow paths
+Environment="PYTHONPATH=$PYTHONPATH:/home/lindo/develop/tensorflow/models/research:/home/lindo/develop/tensorflow/models/research/slim:/home/lindo/develop/t$
+Type=simple
+Restart=always
+RestartSec=1
+User=lindo
+WorkingDirectory=/home/lindo/develop/smart-zoneminder/person-class
+ExecStart=/home/lindo/.virtualenvs/od/bin/python3 person_classifier_server.py
+
+[Install]
+WantedBy=multi-user.target
