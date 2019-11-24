@@ -1,8 +1,12 @@
 /**
- * Lambda function to email alarm frames if person in image matches the env var FIND_FACES.
+ * Lambda function to email or save to an S3 bucket alarm frames if person in image matches
+ * the env var FIND_FACES.
+ * 
  * The code contains logic and uses a cache so that only one alarm image is sent from an event. 
  * The /tmp dir is used as a transient cache to hold information about processed alarms.
- * The Reserve Concurrency for this fn must be set to 1. 
+ * 
+ * The Reserve Concurrency for this function must be set to 1.
+ * 
  * This is normally the last task in the state machine.
  * 
  * This is part of the smart-zoneminder project. See https://github.com/goruck/smart-zoneminder.
@@ -40,8 +44,7 @@ exports.handler = (event, context, callback) => {
                         callback(err);
                     } else {
                         console.log(`Wrote to cache: ${JSON.stringify(cacheObj, null, 2)}`);
-                        console.log(`Emailing alarm ${event.metadata.zmeventid}:${event.metadata.zmframeid} to user.`);
-                        sendMail(event, callback);
+                        mailOrSave(event, callback);
                     }
                 });
             } else {
@@ -68,8 +71,7 @@ exports.handler = (event, context, callback) => {
                         callback(err);
                     } else {
                         console.log(`Wrote to cache: ${JSON.stringify(cacheObj, null, 2)}`);
-                        console.log(`Emailing alarm ${event.metadata.zmeventid}:${event.metadata.zmframeid} to user.`);
-                        sendMail(event, callback);
+                        mailOrSave(event, callback);
                     }
                 });
             } else {
@@ -176,11 +178,11 @@ function updateCachedAlarms(cachedAlarms, newAlarm) {
 }
 
 /**
- * Email alarm image. 
+ * Email or copy alarm image. 
  * 
- * @param {object} alarm - Alarm to email. 
+ * @param {object} alarm - Alarm to email and/or copy. 
  */
-function sendMail(alarm, callback) {
+async function mailOrSave(alarm, callback) {
     const aws = require('aws-sdk');
     const nodemailer = require('nodemailer');
     const sesTransport = require('nodemailer-ses-transport');
@@ -196,6 +198,7 @@ function sendMail(alarm, callback) {
     const bucket = alarm.bucket;
     const filename = alarm.newFilename;
     const labels = alarm.Labels;
+    const storageClass = alarm.storageClass;
 
     // Set up HTML Email
     let htmlString = '<pre><u><b>Label&nbsp;'+
@@ -225,7 +228,8 @@ function sendMail(alarm, callback) {
         textString += '\n';
     });
 
-    // Set up email parameters
+    // Set up email parameters.
+    const mail = (process.env.MAIL === 'yes') ? true : false;
     const mailOptions = {
         from: process.env.EMAIL_FROM,
         to: process.env.EMAIL_RECIPIENT,
@@ -235,21 +239,37 @@ function sendMail(alarm, callback) {
         attachments: [
             {
                 filename: filename.replace('upload/', ''),
-                // Get a presigned S3 URL that will expire after one minute.
+                // Get a pre-signed S3 URL that will expire after one minute.
                 path: s3.getSignedUrl('getObject', {Bucket: bucket, Key: filename, Expires: 60})
             }
         ]
     };
 
-    return transport.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            const errorMessage =  'Error in [nodemailer-send-notification].\r' +
-                              '   Function input ['+JSON.stringify(alarm, null, 2)+'].\r' +
-                              '   Error ['+error + '].';
-            console.log(errorMessage);
-            callback(errorMessage);
-        } else {
-            console.log('Message sent: ' + info.messageId);
+    // Set up copy parameters.
+    const copy = (process.env.COPY === 'yes') ? true : false;
+    const filePaths = filename.split('/');
+    const copyParams = {
+        Bucket: process.env.COPY_BUCKET,
+        Key: filePaths[filePaths.length - 1],
+        CopySource: bucket + '/' + filename,
+        StorageClass: storageClass
+    };
+
+    try {
+        if (mail) {
+            console.log(`Emailing alarm ${alarm.metadata.zmeventid}:${alarm.metadata.zmframeid}.`);
+            const sendMailResponse = await transport.sendMail(mailOptions);
+            console.log(`Email sent: ${JSON.stringify(sendMailResponse, null, 2)}`);
         }
-    });
+        if (copy) {
+            console.log(`Saving alarm ${alarm.metadata.zmeventid}:${alarm.metadata.zmframeid}.`);
+            const copyObjectResponse = await s3.copyObject(copyParams).promise();
+            console.log(`Save complete: ${JSON.stringify(copyObjectResponse, null, 2)}`);
+        }
+    } catch (err) {
+        console.log(`Error: ${err}`);
+        callback(err);
+    }
+
+    return;
 }
