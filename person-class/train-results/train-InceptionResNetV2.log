@@ -1,16 +1,15 @@
-WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/tensorflow/python/framework/op_def_library.py:263: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1630: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
 Instructions for updating:
-Colocations handled automatically by placer.
-WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:3445: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.
-Instructions for updating:
-Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.
-INFO:root:train gen length: 106
+If using Keras pass *_constraint arguments to layers.
+WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:4070: The name tf.nn.max_pool is deprecated. Please use tf.nn.max_pool2d instead.
+
+WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:4074: The name tf.nn.avg_pool is deprecated. Please use tf.nn.avg_pool2d instead.
+
+INFO:root:train gen length: 136
 INFO:root:class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
-INFO:root:validation gen length: 14
-INFO:root:class weights {0: 1.0, 1: 2.6548672566371683, 2: 1.8181818181818181, 3: 2.2388059701492535, 4: 2.3076923076923075}
+INFO:root:validation gen length: 34
+INFO:root:class weights {0: 1.0, 1: 3.64375, 2: 2.072274881516588, 3: 2.7328125, 4: 2.8485342019543975}
 INFO:root:Starting pass1.
-WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/tensorflow/python/ops/math_ops.py:3066: to_int32 (from tensorflow.python.ops.math_ops) is deprecated and will be removed in a future version.
-Instructions for updating:
-Use tf.cast instead.
-INFO:root:Starting pass2
-INFO:root:test acc: 0.9054373522458629
+WARNING:tensorflow:From /home/lindo/.virtualenvs/keras/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:422: The name tf.global_variables is deprecated. Please use tf.compat.v1.global_variables instead.
+
+INFO:root:Starting pass2.
