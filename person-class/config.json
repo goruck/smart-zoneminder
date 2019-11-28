@@ -1,7 +1,8 @@
 {
     "personClassifierServer": {
         "comment": "Configuration for person_classifier_server.py.",
-        "modelPath": "./train-results/person-classifier-InceptionResNetV2.pb",
+        "modelPath": "./train-results/person-classifier-VGG16.pb",
+        "modelArch": "VGG16",
         "labelMap": [
             "Unknown",
             "eva_st_angel",
