@@ -21,8 +21,10 @@ import zerorpc
 import logging
 import gevent
 import signal
+from keras.applications.vgg16 import preprocess_input as VGG16_preprocess_input
+from keras.applications.inception_resnet_v2 import preprocess_input as inception_preprocess_input
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 
 # Get configuration.
 with open('./config.json') as fp:
@@ -44,6 +46,20 @@ ZRPC_PIPE = config['zerorpcPipe']
 
 # Get tf label map. 
 LABEL_MAP = config['labelMap']
+
+# Get model architecture type.
+MODEL_ARCH = config['modelArch']
+assert MODEL_ARCH in {'VGG16','InceptionResNetV2'},'Must be "VGG16" or "InceptionResNetV2"'
+if MODEL_ARCH == 'VGG16':
+    input_size = (224, 224)
+    preprocessor = VGG16_preprocess_input
+    model_input_name = 'vgg16_input:0'
+    model_output_name = 'dense_3/Softmax:0'
+else:
+    input_size = (299, 299)
+    preprocessor = inception_preprocess_input
+    model_input_name = 'inception_resnet_v2_input:0'
+    model_output_name = 'dense_3/Softmax:0'
 
 # Only grow the gpu memory tf usage as required.
 # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
@@ -103,19 +119,18 @@ class DetectRPC(object):
 
                     # Format image to what the model expects for input.
                     # Resize.
-                    #roi = cv2.resize(roi, dsize=(224, 224), interpolation=cv2.INTER_AREA)
-                    roi = cv2.resize(roi, dsize=(299, 299), interpolation=cv2.INTER_AREA)
-                    # Scale.
-                    roi = roi.astype('float32')/255
+                    roi = cv2.resize(roi, dsize=input_size, interpolation=cv2.INTER_AREA)
                     # Expand dimensions.
                     roi = np.expand_dims(roi, axis=0)
+                    # Preprocess.
+                    roi = preprocessor(roi.astype('float32'))
 
                     # Define input tensor.
                     #input_tensor = detection_graph.get_tensor_by_name('vgg16_input:0')
-                    input_tensor = detection_graph.get_tensor_by_name('inception_resnet_v2_input:0')
+                    input_tensor = detection_graph.get_tensor_by_name(model_input_name)
 
                     # Define output tensor.
-                    output_tensor = detection_graph.get_tensor_by_name('dense_3/Softmax:0')
+                    output_tensor = detection_graph.get_tensor_by_name(model_output_name)
 
                     # Actual predictions per class.
                     predictions = self.sess.run(output_tensor, {input_tensor: roi})[0]
