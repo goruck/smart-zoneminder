@@ -1,7 +1,7 @@
 """
 Fine-tune a CNN to classify persons in my family.
 
-Needs to be run in the "keras" Python virtenv.
+Needs to be run in the "od" Python virtenv.
 
 This is part of the smart-zoneminder project.
 See https://github.com/goruck/smart-zoneminder
@@ -16,21 +16,28 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from sys import exit
 from keras import models, layers, optimizers
-from keras.applications import VGG16, InceptionResNetV2
+from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
+from keras.applications.inception_resnet_v2 import InceptionResNetV2
+from keras.applications.inception_resnet_v2 import preprocess_input as inception_preprocess_input
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
-from keras.constraints import maxnorm
+from keras.constraints import max_norm
 from keras.regularizers import l2
 
 # Construct the argument parser and parse the arguments.
 ap = argparse.ArgumentParser()
-ap.add_argument('-bs', '--batch_size', type=int, default=32,
+ap.add_argument('-bs', '--batch_size', type=int,
+    default=32,
     help='batch size')
-ap.add_argument('-cb', '--cnn_base', type=str, default='InceptionResNetV2',
+ap.add_argument('-cb', '--cnn_base', type=str,
+    default='InceptionResNetV2',
     help='keras CNN base model name (InceptionResNetV2 or VGG16)')
-ap.add_argument('-r', '--regularizer', type=str, default='dropout',
+ap.add_argument('-r', '--regularizer', type=str,
+    default='dropout',
     help='regularizer method (dropout or l2)')
-ap.add_argument('-p1', '--pass1', type=bool, default=False,
+ap.add_argument('-p1', '--pass1', type=bool,
+    default=False,
     help='run pass 1 training')
 ap.add_argument('-d', '--dataset', type=str,
     default='/home/lindo/develop/smart-zoneminder/person-class/dataset',
@@ -38,18 +45,26 @@ ap.add_argument('-d', '--dataset', type=str,
 ap.add_argument('-o', '--output', type=str,
     default='/home/lindo/develop/smart-zoneminder/person-class/train-results',
     help='location of output folder (defaults to ./train-results).')
+ap.add_argument('-t', '--test', type=bool,
+    default=False,
+    help='Make predictions from final model on test set.')
 args = vars(ap.parse_args())
 
 BATCH_SIZE = args['batch_size']
 CNN_BASE = args['cnn_base']
+assert CNN_BASE in {'VGG16','InceptionResNetV2'},'Must be "VGG16" or "InceptionResNetV2"'
 REGULARIZER = args['regularizer']
+assert REGULARIZER in {'dropout','l2'},'Must be "dropout" or "l2"'
 RUN_PASS1 = args['pass1']
 DATA_DIR = args['dataset']
 RESULTS_DIR = args['output']
+RUN_TEST = args['test']
+DENSE1_UNITS = 128
+DENSE2_UNITS = 128
 
-logging.basicConfig(filename= RESULTS_DIR+'/train-'+CNN_BASE+'.log',
+logging.basicConfig(filename=RESULTS_DIR+'/train-'+CNN_BASE+'.log',
     filemode='w',
-    level=20)
+    level=logging.INFO)
 
 def smooth_curve(points, factor=0.8):
     smoothed_points = []
@@ -87,10 +102,10 @@ def freeze_layers(model):
     ===============   ==============    ===========
     1                 conv2d_201        762
     2                 conv2d_197        746
-    3                 conv2d_193        730
+    3                 conv2d_193        730 <-- Unfreeze up from here
     4                 conv2d_189        714
     5                 conv2d_185        698
-    6                 conv2d_181        682 <-- Unfreeze up from here
+    6                 conv2d_181        682
     7                 conv2d_177        666
     8                 conv2d_173        650
     9                 conv2d_169        634
@@ -122,7 +137,7 @@ def freeze_layers(model):
     """
 
     if base_model_name == 'inception_resnet_v2':
-        freeze = 682
+        freeze = 730
     elif base_model_name == 'vgg16':
         freeze = 15
     else:
@@ -138,64 +153,66 @@ def freeze_layers(model):
 
     return
 
-class CreateModel:
+class CreateModel(object):
     def __init__(self, base_model):
         if base_model == 'InceptionResNetV2':
             self.base_model = InceptionResNetV2(weights='imagenet',
                 include_top=False,
                 input_shape=(299,299,3))
             self.base_model.trainable = False
+            self.preprocessor = inception_preprocess_input
         elif base_model == 'VGG16':
             self.base_model = VGG16(weights='imagenet',
                 include_top=False,
                 input_shape=(224, 224, 3))
             self.base_model.trainable = False
-        else:
-            logging.error('error: unknown model name')
-            exit()
+            self.preprocessor = vgg16_preprocess_input
     def l2(self):
-        learning_rate = 1e-4
+        LEARNING_RATE = 1e-4
         model = models.Sequential()
         model.add(self.base_model)
         model.add(layers.GlobalAveragePooling2D())
-        model.add(layers.Dense(128, activation='relu', kernel_regularizer=l2(0.01)))
-        model.add(layers.Dense(128, activation='relu', kernel_regularizer=l2(0.01)))
-        model.compile(loss='categorical_crossentropy',
-            optimizer=optimizers.Adam(lr=learning_rate),
-            metrics=['acc'])
-        return model, learning_rate
-    def dropout(self):
-        # See http://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
-        learning_rate = 1e-3
-        model = models.Sequential()
-        model.add(self.base_model)
-        model.add(layers.GlobalAveragePooling2D())
-        model.add(layers.Dense(183, activation='relu', kernel_constraint=maxnorm(3)))
-        model.add(layers.Dropout(0.3))
-        model.add(layers.Dense(183, activation='relu', kernel_constraint=maxnorm(3)))
-        model.add(layers.Dropout(0.3))
+        model.add(layers.Dense(DENSE1_UNITS, activation='relu',
+            kernel_regularizer=l2(0.01)))
+        model.add(layers.Dense(DENSE2_UNITS, activation='relu',
+            kernel_regularizer=l2(0.01)))
         model.add(layers.Dense(5, activation='softmax'))
         model.compile(loss='categorical_crossentropy',
-            optimizer=optimizers.Adam(lr=learning_rate),
+            optimizer=optimizers.Adam(lr=LEARNING_RATE),
             metrics=['acc'])
-        return model, learning_rate
+        return model, LEARNING_RATE, self.preprocessor
+    def dropout(self):
+        # See http://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
+        LEARNING_RATE = 1e-3
+        DROPOUT = 0.5
+        model = models.Sequential()
+        model.add(self.base_model)
+        model.add(layers.GlobalAveragePooling2D())
+        model.add(layers.Dense(int(DENSE1_UNITS/(1-DROPOUT)), activation='relu',
+            kernel_constraint=max_norm(3.)))
+        model.add(layers.Dropout(DROPOUT))
+        model.add(layers.Dense(int(DENSE2_UNITS/(1-DROPOUT)), activation='relu',
+            kernel_constraint=max_norm(3.)))
+        model.add(layers.Dropout(DROPOUT))
+        model.add(layers.Dense(5, activation='softmax'))
+        model.compile(loss='categorical_crossentropy',
+            optimizer=optimizers.Adam(lr=LEARNING_RATE),
+            metrics=['acc'])
+        return model, LEARNING_RATE, self.preprocessor
 
 if REGULARIZER == 'dropout':
-    model, learning_rate = CreateModel(CNN_BASE).dropout()
-elif REGULARIZER == 'l2':
-    model, learning_rate = CreateModel(CNN_BASE).l2()
+    model, learning_rate, preprocessor = CreateModel(CNN_BASE).dropout()
 else:
-    logging.error('error: unknown regularizer')
-    exit()
+    model, learning_rate, preprocessor = CreateModel(CNN_BASE).l2()
 
 input_size = model.input_shape[1:3]
 
 train_dir = os.path.join(DATA_DIR, 'train')
 validation_dir = os.path.join(DATA_DIR, 'validation')
-test_dir = os.path.join(DATA_DIR, 'test')
 
 train_datagen = ImageDataGenerator(
-    rescale=1./255,
+    rescale=None,
+    preprocessing_function=preprocessor,
     rotation_range=40,
     width_shift_range=0.2,
     height_shift_range=0.2,
@@ -214,7 +231,9 @@ train_generator = train_datagen.flow_from_directory(
 logging.info('train gen length: {}'.format(len(train_generator)))
 logging.info('class dict: {}'.format(train_generator.class_indices))
 
-test_datagen = ImageDataGenerator(rescale=1./255)
+test_datagen = ImageDataGenerator(
+    rescale=None,
+    preprocessing_function=preprocessor)
 
 validation_generator = test_datagen.flow_from_directory(
     validation_dir,
@@ -313,16 +332,16 @@ plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed valid
 plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
     'Pass 2 Training and validation loss', RESULTS_DIR + '/pass2-loss-'+CNN_BASE+'.png')
 
-# Evaluate this model on the test data:
-test_generator = test_datagen.flow_from_directory(
-    test_dir,
-    target_size=input_size,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    class_mode='categorical')
-
-# Load the best model from disk that was the last saved checkpoint.
-best_model = models.load_model(RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5')
-
-test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
-logging.info('test acc: {}'.format(test_acc))
+# Evaluate best model on the test data.
+if RUN_TEST:
+    test_dir = os.path.join(DATA_DIR, 'test')
+    test_generator = test_datagen.flow_from_directory(
+        test_dir,
+        target_size=input_size,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        class_mode='categorical')
+    # Load the best model from disk that was the last saved checkpoint.
+    best_model = models.load_model(RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5')
+    test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
+    logging.info('test acc: {}'.format(test_acc))
