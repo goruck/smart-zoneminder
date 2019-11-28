@@ -63,14 +63,14 @@ else:
 
 # Only grow the gpu memory tf usage as required.
 # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
-tf_config = tf.ConfigProto()
+tf_config = tf.compat.v1.ConfigProto()
 tf_config.gpu_options.allow_growth=True
 
 # Load frozen tf model into memory.
 detection_graph = tf.Graph()
 with detection_graph.as_default():
-    od_graph_def = tf.GraphDef()
-    with tf.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
+    od_graph_def = tf.compat.v1.GraphDef()
+    with tf.io.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
         serialized_graph = fid.read()
         od_graph_def.ParseFromString(serialized_graph)
         tf.import_graph_def(od_graph_def, name='')
@@ -79,7 +79,7 @@ with detection_graph.as_default():
 class DetectRPC(object):
     def __init__(self):
         logging.debug('Starting tf sess for person classification.')
-        self.sess = tf.Session(config=tf_config, graph=detection_graph)
+        self.sess = tf.compat.v1.Session(config=tf_config, graph=detection_graph)
 
     def close_sess(self):
         logging.debug('Closing tf sess for person classification.')
