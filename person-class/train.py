@@ -20,10 +20,13 @@ from keras.applications.vgg16 import VGG16
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
 from keras.applications.inception_resnet_v2 import InceptionResNetV2
 from keras.applications.inception_resnet_v2 import preprocess_input as inception_preprocess_input
-from keras.preprocessing.image import ImageDataGenerator
+# Avoid "TypeError: init() got an unexpected keyword argument 'interpolation_order'" in Keras 2.3.0
+#from keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras.constraints import max_norm
 from keras.regularizers import l2
+from keras import backend as K
 
 # Construct the argument parser and parse the arguments.
 ap = argparse.ArgumentParser()
@@ -153,6 +156,18 @@ def freeze_layers(model):
 
     return
 
+def recall(y_true, y_pred):
+     true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+     possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+     recall = true_positives / (possible_positives + K.epsilon())
+     return recall
+
+def precision(y_true, y_pred):
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
+    precision = true_positives / (predicted_positives + K.epsilon())
+    return precision
+
 class CreateModel(object):
     def __init__(self, base_model):
         if base_model == 'InceptionResNetV2':
@@ -179,12 +194,12 @@ class CreateModel(object):
         model.add(layers.Dense(5, activation='softmax'))
         model.compile(loss='categorical_crossentropy',
             optimizer=optimizers.Adam(lr=LEARNING_RATE),
-            metrics=['acc'])
+            metrics=['acc', precision, recall])
         return model, LEARNING_RATE, self.preprocessor
     def dropout(self):
         # See http://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
         LEARNING_RATE = 1e-3
-        DROPOUT = 0.5
+        DROPOUT = 0.3
         model = models.Sequential()
         model.add(self.base_model)
         model.add(layers.GlobalAveragePooling2D())
@@ -197,7 +212,7 @@ class CreateModel(object):
         model.add(layers.Dense(5, activation='softmax'))
         model.compile(loss='categorical_crossentropy',
             optimizer=optimizers.Adam(lr=LEARNING_RATE),
-            metrics=['acc'])
+            metrics=['acc', precision, recall])
         return model, LEARNING_RATE, self.preprocessor
 
 if REGULARIZER == 'dropout':
@@ -289,14 +304,15 @@ if RUN_PASS1:
 
 # Pass 2: fine-tune.
 logging.info('Starting pass2.')
-best_pass1_model = models.load_model(RESULTS_DIR+'/pass1-'+CNN_BASE+'.h5')
+best_pass1_model = models.load_model(RESULTS_DIR+'/pass1-'+CNN_BASE+'.h5',
+    custom_objects={'precision': precision, 'recall': recall})
 
 # Selectively freeze layers to mitigate overfitting. 
 freeze_layers(best_pass1_model)
 
 best_pass1_model.compile(loss='categorical_crossentropy',
     optimizer=optimizers.Adam(lr=learning_rate/5),
-    metrics=['acc'])
+    metrics=['acc', precision, recall])
 
 early_stop = EarlyStopping(monitor='val_loss',
     mode='min',
@@ -342,6 +358,7 @@ if RUN_TEST:
         shuffle=True,
         class_mode='categorical')
     # Load the best model from disk that was the last saved checkpoint.
-    best_model = models.load_model(RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5')
+    best_model = models.load_model(RESULTS_DIR+'/pass1-'+CNN_BASE+'.h5',
+        custom_objects={'precision': precision, 'recall': recall})
     test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
     logging.info('test acc: {}'.format(test_acc))
