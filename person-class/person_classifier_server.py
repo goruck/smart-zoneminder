@@ -126,7 +126,6 @@ class DetectRPC(object):
                     roi = preprocessor(roi.astype('float32'))
 
                     # Define input tensor.
-                    #input_tensor = detection_graph.get_tensor_by_name('vgg16_input:0')
                     input_tensor = detection_graph.get_tensor_by_name(model_input_name)
 
                     # Define output tensor.
