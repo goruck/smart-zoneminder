@@ -15,6 +15,8 @@ import argparse
 import matplotlib.pyplot as plt
 from collections import Counter
 from sys import exit
+from tensorflow.python.framework import graph_util
+from tensorflow.python.framework import graph_io
 from keras import models, layers, optimizers
 from keras.applications.vgg16 import VGG16
 from keras.applications.vgg16 import preprocess_input as vgg16_preprocess_input
@@ -51,6 +53,9 @@ ap.add_argument('-o', '--output', type=str,
 ap.add_argument('-t', '--test', type=bool,
     default=False,
     help='Make predictions from final model on test set.')
+ap.add_argument('-stf', '--save_TF', type=bool,
+    default=False,
+    help='Save inference-optimized TF model to output folder.')
 args = vars(ap.parse_args())
 
 BATCH_SIZE = args['batch_size']
@@ -62,6 +67,7 @@ RUN_PASS1 = args['pass1']
 DATA_DIR = args['dataset']
 RESULTS_DIR = args['output']
 RUN_TEST = args['test']
+SAVE_TF = args['save_TF']
 DENSE1_UNITS = 128
 DENSE2_UNITS = 128
 
@@ -157,16 +163,39 @@ def freeze_layers(model):
     return
 
 def recall(y_true, y_pred):
-     true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-     possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-     recall = true_positives / (possible_positives + K.epsilon())
-     return recall
+    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
+    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
+    recall = true_positives / (possible_positives + K.epsilon())
+    return recall
 
 def precision(y_true, y_pred):
     true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
     predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
     precision = true_positives / (predicted_positives + K.epsilon())
     return precision
+
+def keras_to_tensorflow(keras_model_path, tf_model_path):
+    """
+    Save a keras .h5 model as frozen TF .pb model for inference.
+    """
+    logging.info('Starting coversion of keras model to frozen TF model.')
+    dirname = os.path.dirname(tf_model_path)
+    fname = os.path.basename(tf_model_path)
+    K.set_learning_phase(0)
+    model = models.load_model(keras_model_path,
+        custom_objects={'precision': precision, 'recall': recall})
+    input_node_names = [node.op.name for node in model.inputs]
+    logging.info('Input node name(s) are: {}'.format(input_node_names))
+    output_node_names = [node.op.name for node in model.outputs]
+    logging.info('Output node name(s) are: {}'.format(output_node_names))
+    sess = K.get_session()
+    constant_graph = graph_util.convert_variables_to_constants(
+        sess,
+        sess.graph.as_graph_def(),
+        output_node_names)
+    graph_io.write_graph(constant_graph, dirname, fname, as_text=False)
+    logging.info('Saved the frozen graph at {}'.format(tf_model_path))
+    return
 
 class CreateModel(object):
     def __init__(self, base_model):
@@ -358,7 +387,12 @@ if RUN_TEST:
         shuffle=True,
         class_mode='categorical')
     # Load the best model from disk that was the last saved checkpoint.
-    best_model = models.load_model(RESULTS_DIR+'/pass1-'+CNN_BASE+'.h5',
+    best_model = models.load_model(RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5',
         custom_objects={'precision': precision, 'recall': recall})
     test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
-    logging.info('test acc: {}'.format(test_acc))
+    logging.info('test acc: {} test loss {}'.format(test_acc, test_loss))
+
+# Save inference-optimized TF model.
+if SAVE_TF:
+    keras_to_tensorflow(RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.h5',
+        RESULTS_DIR+'/person-classifier-'+CNN_BASE+'.pb')
