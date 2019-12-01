@@ -26,7 +26,7 @@ from keras.applications.inception_resnet_v2 import preprocess_input as inception
 #from keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
-from keras.constraints import max_norm
+from keras.constraints import MaxNorm
 from keras.regularizers import l2
 from keras import backend as K
 
@@ -233,10 +233,10 @@ class CreateModel(object):
         model.add(self.base_model)
         model.add(layers.GlobalAveragePooling2D())
         model.add(layers.Dense(int(DENSE1_UNITS/(1-DROPOUT)), activation='relu',
-            kernel_constraint=max_norm(3.)))
+            kernel_constraint=MaxNorm(max_value=3.)))
         model.add(layers.Dropout(DROPOUT))
         model.add(layers.Dense(int(DENSE2_UNITS/(1-DROPOUT)), activation='relu',
-            kernel_constraint=max_norm(3.)))
+            kernel_constraint=MaxNorm(max_value=3.)))
         model.add(layers.Dropout(DROPOUT))
         model.add(layers.Dense(5, activation='softmax'))
         model.compile(loss='categorical_crossentropy',
@@ -298,8 +298,8 @@ logging.info('class weights {}'.format(class_weights))
 
 if RUN_PASS1:
     # Pass 1: train only the top layers (which were randomly initialized)
-    logging.info('Starting pass1.')
-
+    logging.info('Starting pass 1.')
+    # Define some useful callbacks. 
     early_stop = EarlyStopping(monitor='val_loss',
         mode='min',
         verbose=2,
@@ -309,6 +309,7 @@ if RUN_PASS1:
         monitor='val_loss',
         verbose=2,
         save_best_only=True)
+    # Actual training. 
     history = model.fit_generator(
         train_generator,
         steps_per_epoch=len(train_generator),
@@ -319,7 +320,6 @@ if RUN_PASS1:
         verbose=2,
         workers=4,
         callbacks=[early_stop, model_ckpt, csv_logger])
-
     # Plot and save pass 1 results.
     acc = history.history['acc']
     val_acc = history.history['val_acc']
@@ -330,6 +330,9 @@ if RUN_PASS1:
         'Pass 1 Training and validation acc', RESULTS_DIR + '/pass1-acc-'+CNN_BASE+'.png')
     plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
         'Pass 1 Training and validation loss', RESULTS_DIR + '/pass1-loss-'+CNN_BASE+'.png')
+    # Clear graph in prep for Pass 2.
+    K.clear_session()
+    logging.info('Finished pass 1.')
 
 # Pass 2: fine-tune.
 logging.info('Starting pass2.')
@@ -377,6 +380,9 @@ plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed valid
 plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
     'Pass 2 Training and validation loss', RESULTS_DIR + '/pass2-loss-'+CNN_BASE+'.png')
 
+# Clear graph in prep for next step.
+K.clear_session()
+
 # Evaluate best model on the test data.
 if RUN_TEST:
     test_dir = os.path.join(DATA_DIR, 'test')
@@ -391,6 +397,8 @@ if RUN_TEST:
         custom_objects={'precision': precision, 'recall': recall})
     test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
     logging.info('test acc: {} test loss {}'.format(test_acc, test_loss))
+    # Clear graph in prep for next step.
+    K.clear_session()
 
 # Save inference-optimized TF model.
 if SAVE_TF:
