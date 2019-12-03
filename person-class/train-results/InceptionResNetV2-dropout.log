@@ -1,0 +1,35 @@
+INFO:root:Creating model.
+INFO:root:base: InceptionResNetV2, regularizer: dropout
+INFO:root:dropout: 0.3, learning rate: 0.001
+INFO:root:dense units: 92
+INFO:root:pooling: max, kernel_regularizer: NoneType, kernel_constraint: MaxNorm
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1630: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+Instructions for updating:
+If using Keras pass *_constraint arguments to layers.
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:4070: The name tf.nn.max_pool is deprecated. Please use tf.nn.max_pool2d instead.
+
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:4074: The name tf.nn.avg_pool is deprecated. Please use tf.nn.avg_pool2d instead.
+
+INFO:root:Batch size: 32
+INFO:root:Train gen length: 141
+INFO:root:Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+INFO:root:Validation gen length: 36
+INFO:root:Class weights {0: 1.0, 1: 3.793388429752066, 2: 2.0887372013651877, 3: 2.7945205479452055, 4: 2.9376}
+INFO:root:Starting pass 1.
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/keras/backend/tensorflow_backend.py:422: The name tf.global_variables is deprecated. Please use tf.compat.v1.global_variables instead.
+
+INFO:root:Finished pass 1.
+INFO:root:Starting pass 2 with learning rate: 0.0002
+INFO:root:Finished pass 2.
+INFO:root:Starting coversion of keras model to frozen TF model.
+INFO:root:Input node name(s) are: ['inception_resnet_v2_input']
+INFO:root:Output node name(s) are: ['dense_2/Softmax']
+WARNING:tensorflow:From ./train.py:195: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.convert_variables_to_constants`
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/framework/graph_util_impl.py:277: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use `tf.compat.v1.graph_util.extract_sub_graph`
+INFO:tensorflow:Froze 900 variables.
+INFO:tensorflow:Converted 900 variables to const ops.
+INFO:root:Saved the frozen graph at /home/lindo/develop/smart-zoneminder/person-class/train-results/InceptionResNetV2-dropout-person-classifier.pb
