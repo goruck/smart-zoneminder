@@ -1,7 +1,7 @@
 {
     "personClassifierServer": {
         "comment": "Configuration for person_classifier_server.py.",
-        "modelPath": "./train-results/person-classifier-VGG16.pb",
+        "modelPath": "./train-results/VGG16-l2-person-classifier.pb",
         "modelArch": "VGG16",
         "labelMap": [
             "Unknown",
