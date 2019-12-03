@@ -240,6 +240,15 @@ FOCUS_MEASURE_THRESHOLD | 200 | Images with Variance of Laplacian less than this
 
 Please see the Face Recognition's [README](https://github.com/goruck/smart-zoneminder/blob/master/face-det-rec/README.md) for installation instructions.
 
+## Person Classification (person-class)
+The Person Classification Server, [person_classifier_server.py](./person-class/person_classifier_server.py), runs a TensorFlow deep convolutional neural network (CNN)-based person classifier using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the server can easily be run on another machine, apart from the machine running ZoneMinder. The Person Classification Server is run as a Linux service using systemd. 
+
+This server uses a fine-tuned CNN to classify that a person object detected by [obj-detect](./obj-detect) is member of my family or a stranger. It is an alternative to [face-det-rec](./face-det-rec) and so one or the other must be run but not both.
+
+Note that [face-det-rec](./face-det-rec) includes shallow learning methods (SVM or XGBoost classifiers) in the final stage of a pipeline to recognize faces in alarm images. CNNs [have been shown to outperform](https://towardsdatascience.com/deep-learning-vs-classical-machine-learning-9a42c6d48aa) shallow learning methods for many computer vision tasks given sufficient training data; this was the main motivation for developing person-class.
+
+Please see the Person Classification Server's [README](./person-class/README.md) for installation instructions.
+
 ## Alarm Clip Generator (gen-vid)
 The Alarm Clip Generator, [gen-vid](https://github.com/goruck/smart-zoneminder/blob/master/cgi/gen-vid.py), is a python script run in Apache's CGI on the local server that generates an MP4 video of an alarm event given its Event ID, starting Frame ID and ending Frame ID. The script is initiated via the CGI by the Alexa skill handler and the resulting video is played back on an Echo device with a screen upon a user's request.
 
