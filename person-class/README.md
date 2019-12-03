@@ -1,5 +1,3 @@
-***This section is under construction***
-
 # person-class
 The Person Classification Server, [person_classifier_server.py](./person_classifier_server.py), runs a TensorFlow deep convolutional neural network (CNN)-based person classifier using Python APIs and employees [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the server can easily be run on another machine, apart from the machine running ZoneMinder. The Person Classification Server is run as a Linux service using systemd.
 
@@ -8,7 +6,7 @@ This server uses a fine-tuned CNN to classify that a person object detected by t
 # Installation
 1. Clone this git repo to your local machine running ZoneMinder and cd to it.
 
-2. Create a python virtual environment called 'od' and install all required packages using the requirements.txt file in this directory. If you have already created 'od' as part of installing [obj-detect](../obj-det) you can skip this step. 
+2. Create a python virtual environment called 'od' and install all required packages using the requirements.txt file in this directory. If you have already created 'od' as part of installing [obj-detect](../obj-detect) you can skip this step. 
 
 3. Create a folder called ```dataset``` with ```train```, ```test```, and ```valdation``` subfolders.
 
