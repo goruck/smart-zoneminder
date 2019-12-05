@@ -1,3 +1,5 @@
+***New - added support for a CNN-based person recognizer.***
+
 # smart-zoneminder
 smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via a [TensorFlow](https://www.tensorflow.org/)-based CNN dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) can be used to identify people detected in the alarm images, alternatively people can be recognized by another TensorFlow-based CNN. Alexa allows a user to ask to see an image or a video corresponding to an alarm and to get information on what caused the alarm and when it occurred.
 
