@@ -10,7 +10,7 @@ $ /home/lindo/.virtualenvs/od/bin/python ./person_classifier_server.py
 This is part of the smart-zoneminder project.
 See https://github.com/goruck/smart-zoneminder
 
-Copyright (c) 2019 Lindo St. Angel
+Copyright (c) 2019, 2020 Lindo St. Angel
 """
 
 import numpy as np
@@ -21,8 +21,6 @@ import zerorpc
 import logging
 import gevent
 import signal
-from keras.applications.vgg16 import preprocess_input as VGG16_preprocess_input
-from keras.applications.inception_resnet_v2 import preprocess_input as inception_preprocess_input
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -52,14 +50,14 @@ MODEL_ARCH = config['modelArch']
 assert MODEL_ARCH in {'VGG16','InceptionResNetV2'},'Must be "VGG16" or "InceptionResNetV2"'
 if MODEL_ARCH == 'VGG16':
     input_size = (224, 224)
-    preprocessor = VGG16_preprocess_input
+    preprocessor = tf.keras.applications.vgg16.preprocess_input
     model_input_name = 'vgg16_input:0'
-    model_output_name = 'dense_3/Softmax:0'
+    model_output_name = 'dense_1/Softmax:0'
 else:
     input_size = (299, 299)
-    preprocessor = inception_preprocess_input
+    preprocessor = tf.keras.applications.inception_resnet_v2.preprocess_input
     model_input_name = 'inception_resnet_v2_input:0'
-    model_output_name = 'dense_3/Softmax:0'
+    model_output_name = 'dense_1/Softmax:0'
 
 # Only grow the gpu memory tf usage as required.
 # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
