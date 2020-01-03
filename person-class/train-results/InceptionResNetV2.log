@@ -1,0 +1,26 @@
+INFO:root:Creating model.
+INFO:root:cnn base: InceptionResNetV2
+INFO:root:dense units 128, dropout: 0.2, learning rate: 0.0005, l2 penalty: 0.0001
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1630: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+Instructions for updating:
+If using Keras pass *_constraint arguments to layers.
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling GlorotUniform.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+Instructions for updating:
+Call initializer instance with the dtype argument instead of passing it to the constructor
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Zeros.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+Instructions for updating:
+Call initializer instance with the dtype argument instead of passing it to the constructor
+WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Ones.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+Instructions for updating:
+Call initializer instance with the dtype argument instead of passing it to the constructor
+INFO:root:Getting dataframe.
+INFO:root:Batch size: 32
+INFO:root:Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+INFO:root:Number of training samples: 5144
+INFO:root:Number of validation samples: 1286
+INFO:root:Class weights {0: 1.0, 2: 1.8602941176470589, 4: 2.5331664580725906, 1: 3.869980879541109, 3: 2.850704225352113}
+INFO:root:Steps per epoch: 160
+INFO:root:Validation steps: 40
+INFO:root:Starting pass 1.
+INFO:root:Finished pass 1.
+INFO:root:Starting pass 2 with learning rate: 5e-05
