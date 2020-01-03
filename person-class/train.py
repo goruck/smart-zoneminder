@@ -195,10 +195,10 @@ def create_model(base='VGG16'):
     logging.info('Creating model with cnn base: {}'.format(base))
     if base == 'InceptionResNetV2': 
         # Setup hyperparamters.
-        BATCH_SIZE = 20
+        BATCH_SIZE = 32
         DENSE_UNITS = 128
         DROPOUT = 0.2
-        LEARNING_RATE = 5e-4
+        LEARNING_RATE = 1e-4
         L2_PENALTY = 1e-4
         FREEZE = 350 # Freeze all layers less than this (InceptionResNetV2 has 780 layers).
 
