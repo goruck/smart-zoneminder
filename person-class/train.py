@@ -448,21 +448,20 @@ if run_pass1:
 # Pass 2: fine-tune.
 logging.info('Starting pass 2 with learning rate: {}'.format(pass2_lr))
 
-# Start pass 2 training with existing pass 2 (priority) or pass 1 checkpoint. 
-if os.path.isfile(save_path+'-person-classifier.h5'):
-    best_pass1_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
+# Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
+if run_pass1:
+    model = tf.keras.models.load_model(save_path+'-pass1.h5',
         custom_objects={'precision': precision, 'recall': recall},
         compile=False)
-    logging.info('Starting pass 2 with last checkpoint.')
-elif os.path.isfile(save_path+'-pass1.h5'):
-    best_pass1_model = tf.keras.models.load_model(save_path+'-pass1.h5',
+    logging.info('Initiating pass 2 with final pass 1 model.')
+elif os.path.isfile(save_path+'-person-classifier.h5'):
+    model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
         custom_objects={'precision': precision, 'recall': recall},
         compile=False)
-    logging.info('Starting pass 2 with final pass 1 model.')
+    logging.info('Initiating pass 2 with last pass 2 checkpoint.')
 else:
-    logging.error('Cannot start pass 2 without a pass 1 or 2 checkpoint.')
+    logging.error('Cannot init pass 2 without a pass 1 or 2 checkpoint.')
     exit()
-
 
 # Freeze layers of base model to mitigate overfitting during fine-tuning.
 # Ref: https://ai.googleblog.com/2016/08/improving-inception-and-image.html
@@ -473,8 +472,8 @@ else:
 # To visualize layer names and indices to understand what to freeze:
 #   for i, layer in enumerate(base_model.layers):
 #       print(i, layer.name)
-base_model_name = best_pass1_model.layers[0].name
-base_model = best_pass1_model.get_layer(base_model_name)
+base_model_name = model.layers[0].name
+base_model = model.get_layer(base_model_name)
 # Freeze up to 'freeze_layers' layers...
 for layer in base_model.layers[:freeze_layers]:
     layer.trainable = False
@@ -483,7 +482,7 @@ for layer in base_model.layers[freeze_layers:]:
     layer.trainable = True
 
 # Compile.
-best_pass1_model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
     optimizer=tf.keras.optimizers.Adam(lr=pass2_lr),
     metrics=['acc', precision, recall])
 
@@ -499,7 +498,7 @@ model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-person-clas
     save_best_only=True)
 
 # Fit.
-history = best_pass1_model.fit_generator(
+history = model.fit_generator(
     train_generator,
     steps_per_epoch=steps_per_epoch,
     epochs=500,
