@@ -1,8 +1,8 @@
 {
     "personClassifierServer": {
         "comment": "Configuration for person_classifier_server.py.",
-        "modelPath": "./train-results/VGG16-l2-person-classifier.pb",
-        "modelArch": "VGG16",
+        "modelPath": "./train-results/InceptionResNetV2-person-classifier.pb",
+        "modelArch": "InceptionResNetV2",
         "labelMap": [
             "Unknown",
             "eva_st_angel",
@@ -10,7 +10,7 @@
             "nico_st_angel",
             "nikki_st_angel"
         ],
-        "minProba": 0.95,
+        "minProba": 0.9,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/face_detect_zmq.pipe"
     }
