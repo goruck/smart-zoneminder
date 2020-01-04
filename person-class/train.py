@@ -363,7 +363,8 @@ validation_generator = test_datagen.flow_from_dataframe(
     subset='validation',
     shuffle=False,
     target_size=input_size,
-    batch_size=batch_size)
+    batch_size=batch_size,
+    validate_filenames=False)
 
 if data_augment:
     train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
@@ -384,7 +385,8 @@ train_generator = train_datagen.flow_from_dataframe(
     subset='training',
     shuffle=True,
     target_size=input_size,
-    batch_size=batch_size)
+    batch_size=batch_size,
+    validate_filenames=False)
 
 logging.info('Class dict: {}'.format(train_generator.class_indices))
 logging.info('Number of training samples: {}'.format(train_generator.samples))
@@ -427,7 +429,9 @@ if run_pass1:
         validation_steps=validation_steps,
         class_weight=class_weights,
         verbose=1,
+        max_queue_size=20,
         workers=4,
+        use_multiprocessing=True,
         callbacks=[early_stop, model_ckpt, csv_logger])
 
     # Plot and save pass 1 results.
