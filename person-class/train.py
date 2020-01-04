@@ -16,61 +16,12 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import keras_to_frozen_tf
 from collections import Counter
 from sys import exit
 from glob import glob
 
-# Construct the argument parser and parse the arguments.
-ap = argparse.ArgumentParser()
-ap.add_argument('--cnn_base',
-    default='MobileNetV2',
-    help='keras CNN base model name')
-ap.add_argument('--no_pass1',
-    action='store_true',
-    default=False,
-    help='do not run pass 1 training')
-ap.add_argument('--dataset',
-    default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset',
-    help='location of input dataset')
-ap.add_argument('--output',
-    default='/home/lindo/develop/smart-zoneminder/person-class/train-results',
-    help='location of output folder')
-ap.add_argument('--test',
-    action='store_true',
-    default=False,
-    help='make predictions on final model from test set')
-ap.add_argument('--test_dir',
-    default='./test',
-    help='location of test data')
-ap.add_argument('--no_save_TF',
-    action='store_true',
-    default=False,
-    help='do not save inference-optimized TF model to output folder')
-ap.add_argument('--export_model',
-    action='store_true',
-    default=False,
-    help='export best pass 2 model to SavedModel format')
-ap.add_argument('--no_data_augment',
-    action='store_true',
-    default=False,
-    help='do not augment training data')
-args = vars(ap.parse_args())
-
-cnn_base = args['cnn_base']
-assert cnn_base in {'VGG16','InceptionResNetV2', 'MobileNetV2', 'ResNet50'},'Unknown base'
-
-run_pass1 = not args['no_pass1']
-data_dir = args['dataset']
-test_dir = args['test_dir']
-run_test = args['test']
-save_tf = not args['no_save_TF']
-saved_model = args['export_model']
-data_augment = not args['no_data_augment']
-save_path = args['output']+'/'+cnn_base
-
-logging.basicConfig(filename=save_path+'.log',
-    filemode='w',
-    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def smooth_curve(points, factor=0.8):
     smoothed_points = []
@@ -108,39 +59,10 @@ def precision(y_true, y_pred):
     precision = true_positives / (predicted_positives + K.epsilon())
     return precision
 
-def keras_to_tensorflow(keras_model_path, tf_model_path):
-    #Save a keras .h5 model as frozen TF .pb model for inference.
-    logging.info('Starting coversion of keras model to frozen TF model.')
-
-    dirname = os.path.dirname(tf_model_path)
-    fname = os.path.basename(tf_model_path)
-
-    tf.compat.v1.keras.backend.set_learning_phase(0)
-
-    model = tf.keras.models.load_model(keras_model_path,
-        custom_objects={'precision': precision, 'recall': recall})
-
-    input_node_names = [node.op.name for node in model.inputs]
-    logging.info('Input node name(s) are: {}'.format(input_node_names))
-
-    output_node_names = [node.op.name for node in model.outputs]
-    logging.info('Output node name(s) are: {}'.format(output_node_names))
-
-    sess = tf.compat.v1.keras.backend.get_session()
-    constant_graph = tf.compat.v1.graph_util.convert_variables_to_constants(
-        sess,
-        sess.graph.as_graph_def(),
-        output_node_names)
-
-    tf.io.write_graph(constant_graph, dirname, fname, as_text=False)
-    logging.info('Saved the frozen graph at {}'.format(tf_model_path))
-
-    return
-
 def add_regularization(model, regularizer=tf.keras.regularizers.l2(0.0001)):
     # Ref: https://sthalles.github.io/keras-regularizer
     if not isinstance(regularizer, tf.keras.regularizers.Regularizer):
-        logging.error('Regularizer must be a subclass of tf.keras.regularizers.Regularizer.')
+        logger.error('Regularizer must be a subclass of tf.keras.regularizers.Regularizer.')
         return model
 
     for layer in model.layers:
@@ -166,7 +88,7 @@ def add_regularization(model, regularizer=tf.keras.regularizers.l2(0.0001)):
 def get_dataframe(dataset, shuffle=True):
     # Generate dataframe from dataset.
     # Using dataframes to enable easy shuffling of dataset. 
-    logging.info('Getting dataframe.')
+    logger.info('Getting dataframe.')
     imagePaths = glob(dataset + '/**/*.*', recursive=True)
     filenames = []
     labels = []
@@ -192,7 +114,7 @@ def create_model(base='VGG16'):
     dropout ref: # http://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
     """
     NUM_CLASSES = 5
-    logging.info('Creating model with cnn base: {}'.format(base))
+    logger.info('Creating model with cnn base: {}'.format(base))
     if base == 'InceptionResNetV2': 
         # Setup hyperparamters.
         BATCH_SIZE = 32
@@ -202,9 +124,9 @@ def create_model(base='VGG16'):
         L2_PENALTY = 1e-4
         FREEZE = 350 # Freeze all layers less than this (InceptionResNetV2 has 780 layers).
 
-        logging.info('batch size: {}, dense units {}, dropout: {}'
+        logger.info('batch size: {}, dense units {}, dropout: {}'
             .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
-        logging.info('learning rate: {}, l2 penalty: {}, freeze {}'
+        logger.info('learning rate: {}, l2 penalty: {}, freeze {}'
             .format(LEARNING_RATE, L2_PENALTY, FREEZE))
 
         base_model = tf.keras.applications.inception_resnet_v2.InceptionResNetV2(weights='imagenet',
@@ -240,9 +162,9 @@ def create_model(base='VGG16'):
         L2_PENALTY = 1e-4
         FREEZE = 75 # Freeze all layers less than this (MobileNetV2 has 155 layers).
 
-        logging.info('batch size: {}, dense units {}, dropout: {}'
+        logger.info('batch size: {}, dense units {}, dropout: {}'
             .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
-        logging.info('learning rate: {}, l2 penalty: {}, freeze {}'
+        logger.info('learning rate: {}, l2 penalty: {}, freeze {}'
             .format(LEARNING_RATE, L2_PENALTY, FREEZE))
 
         base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(weights='imagenet',
@@ -278,9 +200,9 @@ def create_model(base='VGG16'):
         L2_PENALTY = 1e-4
         FREEZE = 85 # Freeze all layers less than this (ResNet50 has 175 layers).
 
-        logging.info('batch size: {}, dense units {}, dropout: {}'
+        logger.info('batch size: {}, dense units {}, dropout: {}'
             .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
-        logging.info('learning rate: {}, l2 penalty: {}, freeze {}'
+        logger.info('learning rate: {}, l2 penalty: {}, freeze {}'
             .format(LEARNING_RATE, L2_PENALTY, FREEZE))
 
         base_model = tf.keras.applications.resnet50.ResNet50(weights='imagenet',
@@ -316,9 +238,9 @@ def create_model(base='VGG16'):
         L2_PENALTY = 1e-4
         FREEZE = 10 # Freeze all layers less than this (VGG16 has 19 layers).
 
-        logging.info('batch size: {}, dense units {}, dropout: {}'
+        logger.info('batch size: {}, dense units {}, dropout: {}'
             .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
-        logging.info('learning rate: {}, l2 penalty: {}, freeze {}'
+        logger.info('learning rate: {}, l2 penalty: {}, freeze {}'
             .format(LEARNING_RATE, L2_PENALTY, FREEZE))
 
         base_model = tf.keras.applications.vgg16.VGG16(weights='imagenet',
@@ -348,79 +270,214 @@ def create_model(base='VGG16'):
 
     return model, pass2_lr, preprocessor, BATCH_SIZE, FREEZE
 
-(model, pass2_lr, preprocessor, batch_size, freeze_layers) = create_model(cnn_base)
+def main():
+    # Construct the argument parser and parse the arguments.
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--cnn_base',
+        default='MobileNetV2',
+        help='keras CNN base model name')
+    ap.add_argument('--no_pass1',
+        action='store_true',
+        default=False,
+        help='do not run pass 1 training')
+    ap.add_argument('--dataset',
+        default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset',
+        help='location of input dataset')
+    ap.add_argument('--output',
+        default='/home/lindo/develop/smart-zoneminder/person-class/train-results',
+        help='location of output folder')
+    ap.add_argument('--test',
+        action='store_true',
+        default=False,
+        help='make predictions on final model from test set')
+    ap.add_argument('--test_dir',
+        default='./test',
+        help='location of test data')
+    ap.add_argument('--no_save_TF',
+        action='store_true',
+        default=False,
+        help='do not save inference-optimized TF model to output folder')
+    ap.add_argument('--export_model',
+        action='store_true',
+        default=False,
+        help='export best pass 2 model to SavedModel format')
+    ap.add_argument('--no_data_augment',
+        action='store_true',
+        default=False,
+        help='do not augment training data')
+    args = vars(ap.parse_args())
 
-input_size = model.input_shape[1:3]
+    cnn_base = args['cnn_base']
+    assert cnn_base in {'VGG16','InceptionResNetV2', 'MobileNetV2', 'ResNet50'},'Unknown base'
 
-df = get_dataframe(dataset=data_dir)
+    run_pass1 = not args['no_pass1']
+    data_dir = args['dataset']
+    test_dir = args['test_dir']
+    run_test = args['test']
+    save_tf = not args['no_save_TF']
+    saved_model = args['export_model']
+    data_augment = not args['no_data_augment']
+    save_path = args['output']+'/'+cnn_base
 
-test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-    validation_split=.20,
-    preprocessing_function=preprocessor)
+    logging.basicConfig(filename=save_path+'.log',
+        filemode='w',
+        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        level=logging.INFO)
 
-validation_generator = test_datagen.flow_from_dataframe(
-    df,
-    subset='validation',
-    shuffle=False,
-    target_size=input_size,
-    batch_size=batch_size,
-    validate_filenames=False)
+    (model, pass2_lr, preprocessor, batch_size, freeze_layers) = create_model(cnn_base)
 
-if data_augment:
-    train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+    input_size = model.input_shape[1:3]
+
+    df = get_dataframe(dataset=data_dir)
+
+    test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         validation_split=.20,
-        preprocessing_function=preprocessor,
-        rotation_range=40,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
-        shear_range=0.2,
-        zoom_range=0.2,
-        horizontal_flip=True,
-        fill_mode='nearest')
-else:
-    train_datagen = test_datagen
+        preprocessing_function=preprocessor)
 
-train_generator = train_datagen.flow_from_dataframe(
-    df,
-    subset='training',
-    shuffle=True,
-    target_size=input_size,
-    batch_size=batch_size,
-    validate_filenames=False)
+    validation_generator = test_datagen.flow_from_dataframe(
+        df,
+        subset='validation',
+        shuffle=False,
+        target_size=input_size,
+        batch_size=batch_size,
+        validate_filenames=False)
 
-logging.info('Class dict: {}'.format(train_generator.class_indices))
-logging.info('Number of training samples: {}'.format(train_generator.samples))
-logging.info('Number of validation samples: {}'.format(validation_generator.samples))
+    if data_augment:
+        train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+            validation_split=.20,
+            preprocessing_function=preprocessor,
+            rotation_range=40,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            shear_range=0.2,
+            zoom_range=0.2,
+            horizontal_flip=True,
+            fill_mode='nearest')
+    else:
+        train_datagen = test_datagen
 
-# Training data is unbalanced so use class weighting.
-# Ref: https://datascience.stackexchange.com/questions/13490/how-to-set-class-weights-for-imbalanced-classes-in-keras
-# Ref: https://stackoverflow.com/questions/42586475/is-it-possible-to-automatically-infer-the-class-weight-from-flow-from-directory
-counter = Counter(train_generator.classes)                          
-max_val = float(max(counter.values()))       
-class_weights = {class_id : max_val/num_images for class_id, num_images in counter.items()}
-logging.info('Class weights: {}'.format(class_weights))
+    train_generator = train_datagen.flow_from_dataframe(
+        df,
+        subset='training',
+        shuffle=True,
+        target_size=input_size,
+        batch_size=batch_size,
+        validate_filenames=False)
 
-steps_per_epoch = train_generator.samples // train_generator.batch_size
-validation_steps = validation_generator.samples // validation_generator.batch_size
-logging.info('Steps per epoch: {}'.format(steps_per_epoch))
-logging.info('Validation steps: {}'.format(validation_steps))
+    logger.info('Class dict: {}'.format(train_generator.class_indices))
+    logger.info('Number of training samples: {}'.format(train_generator.samples))
+    logger.info('Number of validation samples: {}'.format(validation_generator.samples))
 
-if run_pass1:
-    # Pass 1: train only the top layers (which were randomly initialized)
-    logging.info('Starting pass 1.')
+    # Training data is unbalanced so use class weighting.
+    # Ref: https://datascience.stackexchange.com/questions/13490/how-to-set-class-weights-for-imbalanced-classes-in-keras
+    # Ref: https://stackoverflow.com/questions/42586475/is-it-possible-to-automatically-infer-the-class-weight-from-flow-from-directory
+    counter = Counter(train_generator.classes)                          
+    max_val = float(max(counter.values()))       
+    class_weights = {class_id : max_val/num_images for class_id, num_images in counter.items()}
+    logger.info('Class weights: {}'.format(class_weights))
 
-    # Define some useful callbacks. 
+    steps_per_epoch = train_generator.samples // train_generator.batch_size
+    validation_steps = validation_generator.samples // validation_generator.batch_size
+    logger.info('Steps per epoch: {}'.format(steps_per_epoch))
+    logger.info('Validation steps: {}'.format(validation_steps))
+
+    if run_pass1:
+        # Pass 1: train only the top layers (which were randomly initialized)
+        logger.info('Starting pass 1.')
+
+        # Define some useful callbacks. 
+        early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
+            mode='min',
+            verbose=2,
+            patience=10)
+        csv_logger = tf.keras.callbacks.CSVLogger(save_path+'-pass1.csv', append=False)
+        model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-pass1.h5',
+            monitor='val_loss',
+            verbose=2,
+            save_best_only=True)
+
+        # Actual training. 
+        history = model.fit_generator(
+            train_generator,
+            steps_per_epoch=steps_per_epoch,
+            epochs=500,
+            validation_data=validation_generator,
+            validation_steps=validation_steps,
+            class_weight=class_weights,
+            verbose=1,
+            max_queue_size=20,
+            workers=4,
+            use_multiprocessing=True,
+            callbacks=[early_stop, model_ckpt, csv_logger])
+
+        # Plot and save pass 1 results.
+        acc = history.history['acc']
+        val_acc = history.history['val_acc']
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
+        epochs = range(len(acc))
+        plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed validation acc',
+            'Pass 1 Training and validation acc', save_path+'-pass1-acc.png')
+        plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
+            'Pass 1 Training and validation loss', save_path+'-pass1-loss.png')
+
+        # Clear graph in prep for Pass 2.
+        tf.keras.backend.clear_session()
+        logger.info('Finished pass 1.')
+
+    #Pass 2: fine-tune.
+    logger.info('Starting pass 2 with learning rate: {}'.format(pass2_lr))
+
+    # Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
+    if run_pass1:
+        model = tf.keras.models.load_model(save_path+'-pass1.h5',
+            custom_objects={'precision': precision, 'recall': recall},
+            compile=False)
+        logger.info('Initiating pass 2 with final pass 1 model.')
+    elif os.path.isfile(save_path+'-person-classifier.h5'):
+        model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
+            custom_objects={'precision': precision, 'recall': recall},
+            compile=False)
+        logger.info('Initiating pass 2 with last pass 2 checkpoint.')
+    else:
+        logger.error('Cannot init pass 2 without a pass 1 or 2 checkpoint.')
+        exit()
+
+    # Freeze layers of base model to mitigate overfitting during fine-tuning.
+    # Ref: https://ai.googleblog.com/2016/08/improving-inception-and-image.html
+    #
+    # An input layer is always the first layer (0).
+    # A pooling layer (if included) is alaways the last layer.
+    #
+    # To visualize layer names and indices to understand what to freeze:
+    #   for i, layer in enumerate(base_model.layers):
+    #       print(i, layer.name)
+    base_model_name = model.layers[0].name
+    base_model = model.get_layer(base_model_name)
+    # Freeze up to 'freeze_layers' layers...
+    for layer in base_model.layers[:freeze_layers]:
+        layer.trainable = False
+    # ...then unfreeze the rest. 
+    for layer in base_model.layers[freeze_layers:]:
+        layer.trainable = True
+
+    # Compile.
+    model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+        optimizer=tf.keras.optimizers.Adam(lr=pass2_lr),
+        metrics=['acc', precision, recall])
+
+    # Callbacks.
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
         mode='min',
         verbose=2,
         patience=10)
-    csv_logger = tf.keras.callbacks.CSVLogger(save_path+'-pass1.csv', append=False)
-    model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-pass1.h5',
+    csv_logger = tf.keras.callbacks.CSVLogger(save_path+'-person-classifier.csv', append=False)
+    model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-person-classifier.h5',
         monitor='val_loss',
         verbose=2,
         save_best_only=True)
 
-    # Actual training. 
+    # Fit.
     history = model.fit_generator(
         train_generator,
         steps_per_epoch=steps_per_epoch,
@@ -429,135 +486,57 @@ if run_pass1:
         validation_steps=validation_steps,
         class_weight=class_weights,
         verbose=1,
-        max_queue_size=20,
         workers=4,
-        use_multiprocessing=True,
         callbacks=[early_stop, model_ckpt, csv_logger])
 
-    # Plot and save pass 1 results.
+    # Plot and save pass 2 (final) results.
     acc = history.history['acc']
     val_acc = history.history['val_acc']
     loss = history.history['loss']
     val_loss = history.history['val_loss']
     epochs = range(len(acc))
     plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed validation acc',
-        'Pass 1 Training and validation acc', save_path+'-pass1-acc.png')
+        'Person classifier training and validation accuracy', save_path+'-person-classifier-acc.png')
     plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
-        'Pass 1 Training and validation loss', save_path+'-pass1-loss.png')
-
-    # Clear graph in prep for Pass 2.
-    tf.keras.backend.clear_session()
-    logging.info('Finished pass 1.')
-
-# Pass 2: fine-tune.
-logging.info('Starting pass 2 with learning rate: {}'.format(pass2_lr))
-
-# Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
-if run_pass1:
-    model = tf.keras.models.load_model(save_path+'-pass1.h5',
-        custom_objects={'precision': precision, 'recall': recall},
-        compile=False)
-    logging.info('Initiating pass 2 with final pass 1 model.')
-elif os.path.isfile(save_path+'-person-classifier.h5'):
-    model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-        custom_objects={'precision': precision, 'recall': recall},
-        compile=False)
-    logging.info('Initiating pass 2 with last pass 2 checkpoint.')
-else:
-    logging.error('Cannot init pass 2 without a pass 1 or 2 checkpoint.')
-    exit()
-
-# Freeze layers of base model to mitigate overfitting during fine-tuning.
-# Ref: https://ai.googleblog.com/2016/08/improving-inception-and-image.html
-#
-# An input layer is always the first layer (0).
-# A pooling layer (if included) is alaways the last layer.
-#
-# To visualize layer names and indices to understand what to freeze:
-#   for i, layer in enumerate(base_model.layers):
-#       print(i, layer.name)
-base_model_name = model.layers[0].name
-base_model = model.get_layer(base_model_name)
-# Freeze up to 'freeze_layers' layers...
-for layer in base_model.layers[:freeze_layers]:
-    layer.trainable = False
-# ...then unfreeze the rest. 
-for layer in base_model.layers[freeze_layers:]:
-    layer.trainable = True
-
-# Compile.
-model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
-    optimizer=tf.keras.optimizers.Adam(lr=pass2_lr),
-    metrics=['acc', precision, recall])
-
-# Callbacks.
-early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
-    mode='min',
-    verbose=2,
-    patience=10)
-csv_logger = tf.keras.callbacks.CSVLogger(save_path+'-person-classifier.csv', append=False)
-model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-person-classifier.h5',
-    monitor='val_loss',
-    verbose=2,
-    save_best_only=True)
-
-# Fit.
-history = model.fit_generator(
-    train_generator,
-    steps_per_epoch=steps_per_epoch,
-    epochs=500,
-    validation_data=validation_generator,
-    validation_steps=validation_steps,
-    class_weight=class_weights,
-    verbose=1,
-    workers=4,
-    callbacks=[early_stop, model_ckpt, csv_logger])
-
-# Plot and save pass 2 (final) results.
-acc = history.history['acc']
-val_acc = history.history['val_acc']
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(len(acc))
-plot_two_and_save(epochs, acc, val_acc, 'Smoothed training acc', 'Smoothed validation acc',
-    'Person classifier training and validation accuracy', save_path+'-person-classifier-acc.png')
-plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
-    'Person classifier training and validation loss', save_path+'-person-classifier-loss.png')
-logging.info('Finished pass 2.')
-
-# Clear graph in prep for next step.
-tf.keras.backend.clear_session()
-
-# Evaluate best model on test data.
-if run_test:
-    logging.info('Running test.')
-
-    test_generator = test_datagen.flow_from_directory(
-        test_dir,
-        target_size=input_size,
-        batch_size=batch_size,
-        shuffle=False)
-
-    # Load the best model from disk that was the last saved checkpoint.
-    best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-        custom_objects={'precision': precision, 'recall': recall})
-
-    test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
-    logging.info('Test acc: {} test loss {}'.format(test_acc, test_loss))
+        'Person classifier training and validation loss', save_path+'-person-classifier-loss.png')
+    logger.info('Finished pass 2.')
 
     # Clear graph in prep for next step.
     tf.keras.backend.clear_session()
 
-# Save inference-optimized TF model.
-if save_tf:
-    keras_to_tensorflow(save_path+'-person-classifier.h5',
-        save_path+'-person-classifier.pb')
-    # Clear graph in prep for next step.
-    tf.keras.backend.clear_session()
+    # Evaluate best model on test data.
+    if run_test:
+        logger.info('Running test.')
 
-# Export best pass 2 model to SavedModel.
-if saved_model:
-    best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-        custom_objects={'precision': precision, 'recall': recall})
-    best_model.save(save_path, save_format='tf')
-    logging.info('Exported SavedModel to {}'.format(save_path))
+        test_generator = test_datagen.flow_from_directory(
+            test_dir,
+            target_size=input_size,
+            batch_size=batch_size,
+            shuffle=False)
+
+        # Load the best model from disk that was the last saved checkpoint.
+        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
+            custom_objects={'precision': precision, 'recall': recall})
+
+        test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
+        logger.info('Test acc: {} test loss {}'.format(test_acc, test_loss))
+
+        # Clear graph in prep for next step.
+        tf.keras.backend.clear_session()
+
+    # Save inference-optimized TF model.
+    if save_tf:
+        keras_to_frozen_tf.convert(save_path+'-person-classifier.h5',
+            save_path+'-person-classifier.pb')
+        # Clear graph in prep for next step.
+        tf.keras.backend.clear_session()
+
+    # Export best pass 2 model to SavedModel.
+    if saved_model:
+        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
+            custom_objects={'precision': precision, 'recall': recall})
+        best_model.save(save_path, save_format='tf')
+        logger.info('Exported SavedModel to {}'.format(save_path))
+
+if __name__ == "__main__":
+    main()
