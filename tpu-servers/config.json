@@ -1,26 +1,39 @@
 {
     "objDetServer": {
-        "comment": "Configuration for obj_detect_server_tpu.py",
-        "objModelPath": "./mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite",
-        "labelMapPath": "./coco_labels.txt",
-        "mountPoint": "/mnt",
+        "comment": "Configuration for object detector server",
+        "objModelPath": "./models/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite",
+        "labelMapPath": "./labels/coco_labels.txt",
         "conseqImagesToSkip": 0,
         "minScore": 0.8,
-        "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "tcp://192.168.1.131:1234"
     },
     "faceDetServer": {
-        "comment": "Configuration for face_detect_server_tpu.py",
-        "faceDetModelPath": "./mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite",
-        "faceEmbModelPath": "./nn4.v2.t7",
-        "modelPath": "./xgb_face_recognizer.pickle",
-        "labelPath": "./face_labels.pickle",
+        "comment": "Configuration for face recognizer server",
+        "faceDetModelPath": "./models/mobilenet_ssd_v2_face_quant_postprocess_edgetpu.tflite",
+        "faceEmbModelPath": "./models/nn4.v2.t7",
+        "modelPath": "./models/svm_face_recognizer.pickle",
+        "labelPath": "./labels/face_labels.pickle",
         "minProba": 0.6,
         "focusMeasureThreshold": 200,
         "minFace": 20,
         "numJitters": 10,
-        "mountPoint": "/mnt",
-        "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "tcp://192.168.1.131:1235"
-    }
+    },
+    "personClassServer": {
+        "comment": "Configuration for person classifier server",
+        "personClassModelPath": "./models/ResNet50-person-classifier_edgetpu.tflite",
+        "labelMap": [
+            "Unknown",
+            "eva_st_angel",
+            "lindo_st_angel",
+            "nico_st_angel",
+            "nikki_st_angel"
+        ],
+        "minProba": 0.7,
+        "zerorpcPipe": "tcp://192.168.1.131:1235"
+    },
+    "comment": "Global configuration parameters",
+    "recognizeMode": "person",
+    "mountPoint": "/mnt",
+    "zerorpcHeartBeat": 60000
 }
