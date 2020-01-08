@@ -12,7 +12,7 @@ Note that [face-det-rec](../face-det-rec) includes shallow learning methods (SVM
 
 3. Create a python virtual environment called 'od' and install all required packages using the requirements.txt file in this directory. If you have already created 'od' as part of installing [obj-detect](../obj-detect) you can skip this step. 
 
-4. Run [train.py](./train.py) to fine-tune a CNN (MobileNetV2, ResNet50, ResNetInceptionV2 and VGG16 are currently supported) from the images contained in the dataset used to train face-det-rec. Tune the hyperparamters used in program to suit your situation. This program can also generate an inference-optimized TensorFlow model. Run ```$python3 ./train.py -h``` for command line options.
+4. Run [train.py](./train.py) to fine-tune a CNN (MobileNetV2, ResNet50, ResNetInceptionV2 and VGG16 are currently supported) from the images contained in the dataset used to train face-det-rec. Tune the hyperparamters used in program to suit your situation. By default the program will generate an inference-optimized TensorFlow model. Run ```$python3 ./train.py -h``` for command line options.
 
 5. Modify [config.json](./config.json) to suit your installation.
 
@@ -26,3 +26,14 @@ $ sudo systemctl enable person-class.service && sudo systemctl start person-clas
 
 # Notes
 1. Training results and models are saved by default to the folder [train-results](./train-results).
+
+2. Use [tf_to_tflite_quant.py](./tf_to_tflite_quant.py) to generate a ```uint8``` quantized tflite version of the classifier.
+```bash
+(od) $ python3 ./tf_to_tflite_quant.py -m <model_name>.pb
+```
+
+3. Use the Coral edge tpu compiler to generate a model from the tflite quantized model than can be run on the edge tpu.
+
+```bash
+$ edgetpu_compiler <model_name>-quant.tflite
+```
