@@ -73,6 +73,9 @@ PERSON_CLASS_MODEL = person_config['personClassModelPath']
 PERSON_LABEL_MAP = person_config['labelMap']
 # Classification threshold.
 PERSON_MIN_PROBA = person_config['minProba']
+# IPC (or TCP) socket for zerorpc.
+# This must match the zerorpc client config.
+PERSON_ZRPC_PIPE = person_config['zerorpcPipe']
 
 ### Global configuration parameters.
 # Use dlib-based face detector or cnn-based person detector.
@@ -432,13 +435,15 @@ class PersonClassRPC(object):
 # Setup face detection or person classifier server.
 if RECOGNIZE_MODE == 'person':
     zerorpc_obj = PersonClassRPC()
+    zerorpc_pipe = PERSON_ZRPC_PIPE
 elif RECOGNIZE_MODE == 'face':
     zerorpc_obj = FaceDetectRPC()
+    zerorpc_pipe = FACE_ZRPC_PIPE
 else:
     logging.error('Unknown recognizer mode.')
     sys.exit()
 face_s = zerorpc.Server(zerorpc_obj, heartbeat=ZRPC_HEARTBEAT)
-face_s.bind(FACE_ZRPC_PIPE)
+face_s.bind(zerorpc_pipe)
 # Register graceful ways to stop server. 
 gevent.signal(SIGINT, face_s.stop) # Ctrl-C
 gevent.signal(SIGTERM, face_s.stop) # termination
