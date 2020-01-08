@@ -29,7 +29,7 @@ $ sudo systemctl enable person-class.service && sudo systemctl start person-clas
 
 2. Use [tf_to_tflite_quant.py](./tf_to_tflite_quant.py) to generate a ```uint8``` quantized tflite version of the classifier.
 ```bash
-(od) $ python3 ./tf_to_tflite_quant.py -m <model_name>.pb
+(od) $ python3 ./tf_to_tflite_quant.py -m <model_name>.pb -mi <model_input> -mo <model_output>
 ```
 
 3. Use the Coral edge tpu compiler to generate a model from the tflite quantized model than can be run on the edge tpu.
