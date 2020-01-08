@@ -1,14 +1,14 @@
 # tpu-servers
-This folder contains code and collateral for running the object and face detection servers using the Google edge TensorFlow Processing Unit (TPU). The Alarm Uploader can be configured to use these servers instead of GPU-based ones normally co-resident with the machine running ZoneMinder. 
+This folder contains code and collateral for running the object detection and face recognition or person classification servers using the Google edge TensorFlow Processing Unit (TPU). The Alarm Uploader can be configured to use these servers instead of GPU-based ones normally co-resident with the machine running ZoneMinder. 
 
-The TPU-based object and face detection server, [detect_servers_tpu.py](./detect_servers_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) TensorFlow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employs [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the object detection server can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)). The object detection can optionally skip inference on consecutive ZoneMinder Alarm frames to minimize processing time which obviously assumes the same object is in every frame. The server is run as a Linux service using systemd.
+The TPU-based server, [detect_servers_tpu.py](./detect_servers_tpu.py), runs [TPU-based](https://cloud.google.com/edge-tpu/) TensorFlow Lite inference engines using the [Google Coral](https://coral.withgoogle.com/) Python APIs and employs [zerorpc](http://www.zerorpc.io/) to communicate with the Alarm Uploader. One of the benefits of using zerorpc is that the servers can easily be run on another machine, apart from the machine running ZoneMinder (in this case a [Coral Dev Board](https://coral.withgoogle.com/products/dev-board/)).
 
 Images are sent to the object detection as an array of strings, in the following form.
 ```javascript
 ['path_to_image_1','path_to_image_2','path_to_image_n']
 ```
 
-Object detection results are returned as json, an example is shown below.
+Object detection results are returned as json. An example is shown below.
 ```json
 [ { "image": "/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00506-capture.jpg",
     "labels": 
@@ -34,7 +34,7 @@ Object detection results are returned as json, an example is shown below.
     "labels": [] } ]
 ```
 
-The object detection results then in turn can be sent to the face detector, an example of the face detection results returned is shown below.
+The object detection results then in turn can be sent to the face detector/recognizer or person classifier. An example of the face or person recognition results returned is shown below.
 ```json
 [ {"image": "/nvr/zoneminder/events/PlayroomDoor/19/04/04/04/30/00/00506-capture.jpg",
     "labels": 
@@ -63,7 +63,7 @@ The object detection results then in turn can be sent to the face detector, an e
 ```
 
 # Installation
-1. Using the [Get Started Guide](https://coral.withgoogle.com/tutorials/devboard/), flash the Dev Board with the latest software image from Google.
+1. Using the [Get Started Guide](https://coral.withgoogle.com/tutorials/devboard/), flash the Dev Board with the latest software image from Google and [install](https://www.tensorflow.org/lite/guide/python) the TensorFlow Lite interpreter.
 
 2. The Dev Board has a modest 8GB on-board eMMC. You need to insert a MicroSD card (at least 32 GB) into the Dev Board to have enough space to install the software in the next steps. The SD card should be auto-mounted so on power-up and reboots the board can operate unattended. I mounted the SD card at ```/media/mendel```. My corresponding ```/etc/fstab``` entry for the SD card is shown below.  
 
@@ -235,15 +235,19 @@ $ sudo rm -i /swapfile
 
 12. Copy *detect_server_tpu.py* and *config.json* in this directory to ```/media/mendel/tpu-servers```.
 
-13. Copy the pickled label file, svm-, and xgd-based face classifiers (*face_labels.pickle*, *svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but the xgb-based classifier training takes a long time, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
+13. Create a directory called *models* and another called *labels* in ```/media/mendel/tpu-servers```.
 
-14. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
+13. Copy the pickled label file (*face_labels.pickle*) to ```/media/mendel/tpu-servers/labels```, and the svm-, and xgd-based face classifiers (*svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers/models```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but the xgb-based classifier training takes a long time, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
 
-15. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers```.
+14. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers/models```.
+
+15. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers/models``` and ```/media/mendel/tpu-servers/labels``` respectively.
 
 *NB: You can instead use transfer learning to train your own models and use them instead of the Google stock models in the steps above, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).*
 
-16. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
+16. Copy the person classification tflite models that have been compiled for the edge tpu from [person-class/train-results](../person-class/train-results) to ```/media/mendel/tpu-servers/models```. See the [person-class README](../person-class/README.md) on how to generate these models. 
+
+17. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
 # Setup sshfs.
 $ sudo apt-get install sshfs
@@ -271,11 +275,11 @@ $ ls /mnt/nvr
 camera-share  lost+found  zoneminder
 ```
 
-17. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in the detect_server_tpu.py code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+18. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in the detect_server_tpu.py code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
 
-18. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service``` on the Coral dev board. Then enable and start the service:
+19. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service``` on the Coral dev board. Then enable and start the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-19. Test the entire setup by editing *detect_servers_test.py* with paths to test images and running that program.
+20. Test the entire setup by editing *detect_servers_test.py* with paths to test images and running that program.
