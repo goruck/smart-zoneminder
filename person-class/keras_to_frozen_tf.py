@@ -16,20 +16,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def recall(y_true, y_pred):
-    K = tf.compat.v1.keras.backend
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-    recall = true_positives / (possible_positives + K.epsilon())
-    return recall
-
-def precision(y_true, y_pred):
-    K = tf.compat.v1.keras.backend
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    precision = true_positives / (predicted_positives + K.epsilon())
-    return precision
-
 def convert(keras_model_path, tf_model_path):
     logger.info('Starting conversion of keras model to frozen TF model.')
 
@@ -38,9 +24,7 @@ def convert(keras_model_path, tf_model_path):
 
     tf.compat.v1.keras.backend.set_learning_phase(0)
 
-    model = tf.keras.models.load_model(keras_model_path,
-        custom_objects={'precision': precision, 'recall': recall},
-        compile=False)
+    model = tf.keras.models.load_model(keras_model_path, compile=False)
 
     input_node_names = [node.op.name for node in model.inputs]
     logger.info('Input node name(s) are: {}'.format(input_node_names))
@@ -77,8 +61,7 @@ def main():
     logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
         level=logging.INFO)
 
-    convert(save_path+'-person-classifier.h5',
-        save_path+'-person-classifier.pb')
+    convert(save_path+'-person-classifier.h5', save_path+'-person-classifier.pb')
 
 if __name__ == "__main__":
     main()
