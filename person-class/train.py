@@ -17,6 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import keras_to_frozen_tf
+import keras_to_tflite_quant
 from collections import Counter
 from sys import exit
 from glob import glob
@@ -44,20 +45,6 @@ def plot_two_and_save(x, y1, y2, label1, label2, title, save_name, smooth=True):
     plt.clf()
     plt.close()
     return
-
-def recall(y_true, y_pred):
-    K = tf.compat.v1.keras.backend
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-    recall = true_positives / (possible_positives + K.epsilon())
-    return recall
-
-def precision(y_true, y_pred):
-    K = tf.compat.v1.keras.backend
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    precision = true_positives / (predicted_positives + K.epsilon())
-    return precision
 
 def add_regularization(model, regularizer=tf.keras.regularizers.l2(0.0001)):
     # Ref: https://sthalles.github.io/keras-regularizer
@@ -149,7 +136,8 @@ def create_model(base='VGG16'):
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
             optimizer=tf.keras.optimizers.Adam(lr=LEARNING_RATE),
-            metrics=['acc', precision, recall])
+            metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
 
         pass2_lr = LEARNING_RATE/10
         preprocessor = tf.keras.applications.inception_resnet_v2.preprocess_input
@@ -187,7 +175,8 @@ def create_model(base='VGG16'):
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
             optimizer=tf.keras.optimizers.Adam(lr=LEARNING_RATE),
-            metrics=['acc', precision, recall])
+            metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
 
         pass2_lr = LEARNING_RATE/10
         preprocessor = tf.keras.applications.mobilenet_v2.preprocess_input
@@ -225,7 +214,8 @@ def create_model(base='VGG16'):
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
             optimizer=tf.keras.optimizers.Adam(lr=LEARNING_RATE),
-            metrics=['acc', precision, recall])
+            metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
 
         pass2_lr = LEARNING_RATE/10
         preprocessor = tf.keras.applications.resnet50.preprocess_input
@@ -263,7 +253,8 @@ def create_model(base='VGG16'):
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
             optimizer=tf.keras.optimizers.Adam(lr=LEARNING_RATE),
-            metrics=['acc', precision, recall])
+            metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
 
         pass2_lr = LEARNING_RATE/10
         preprocessor = tf.keras.applications.vgg16.preprocess_input
@@ -305,6 +296,10 @@ def main():
         action='store_true',
         default=False,
         help='do not augment training data')
+    ap.add_argument('--no_save_tflite',
+        action='store_true',
+        default=False,
+        help='do not save quantized tflite model')
     args = vars(ap.parse_args())
 
     cnn_base = args['cnn_base']
@@ -317,6 +312,7 @@ def main():
     save_tf = not args['no_save_TF']
     saved_model = args['export_model']
     data_augment = not args['no_data_augment']
+    save_tflite = not args['no_save_tflite']
     save_path = args['output']+'/'+cnn_base
 
     logging.basicConfig(filename=save_path+'.log',
@@ -339,8 +335,7 @@ def main():
         subset='validation',
         shuffle=False,
         target_size=input_size,
-        batch_size=batch_size,
-        validate_filenames=False)
+        batch_size=batch_size)
 
     if data_augment:
         train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
@@ -361,8 +356,7 @@ def main():
         subset='training',
         shuffle=True,
         target_size=input_size,
-        batch_size=batch_size,
-        validate_filenames=False)
+        batch_size=batch_size)
 
     logger.info('Class dict: {}'.format(train_generator.class_indices))
     logger.info('Number of training samples: {}'.format(train_generator.samples))
@@ -407,7 +401,6 @@ def main():
             verbose=1,
             max_queue_size=20,
             workers=4,
-            use_multiprocessing=True,
             callbacks=[early_stop, model_ckpt, csv_logger])
 
         # Plot and save pass 1 results.
@@ -430,14 +423,10 @@ def main():
 
     # Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
     if run_pass1:
-        model = tf.keras.models.load_model(save_path+'-pass1.h5',
-            custom_objects={'precision': precision, 'recall': recall},
-            compile=False)
+        model = tf.keras.models.load_model(save_path+'-pass1.h5', compile=False)
         logger.info('Initiating pass 2 with final pass 1 model.')
     elif os.path.isfile(save_path+'-person-classifier.h5'):
-        model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-            custom_objects={'precision': precision, 'recall': recall},
-            compile=False)
+        model = tf.keras.models.load_model(save_path+'-person-classifier.h5', compile=False)
         logger.info('Initiating pass 2 with last pass 2 checkpoint.')
     else:
         logger.error('Cannot init pass 2 without a pass 1 or 2 checkpoint.')
@@ -464,7 +453,8 @@ def main():
     # Compile.
     model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
         optimizer=tf.keras.optimizers.Adam(lr=pass2_lr),
-        metrics=['acc', precision, recall])
+        metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
 
     # Callbacks.
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
@@ -516,7 +506,7 @@ def main():
 
         # Load the best model from disk that was the last saved checkpoint.
         best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-            custom_objects={'precision': precision, 'recall': recall})
+            compile=False)
 
         test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
         logger.info('Test acc: {} test loss {}'.format(test_acc, test_loss))
@@ -531,10 +521,32 @@ def main():
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
 
+    # Save quantized tflite model.
+    if save_tflite:
+        # Reference dataset for quantization calibration.
+        ref_dataset = data_dir + '/Unknown/'
+        # Number of calibration images to use from ref dataset.
+        num_cal=100
+
+        tflite_quant_model = keras_to_tflite_quant.convert(
+            keras_model_path=save_path+'-person-classifier.h5',
+            ref_dataset=ref_dataset, num_cal=num_cal,
+            input_size=input_size, preprocessor=preprocessor)
+
+        output = save_path+'-person-classifier-quant.tflite'
+
+        with open(output, 'wb') as file:
+            file.write(tflite_quant_model)
+
+        logger.info('Quantized tflite model saved to {}'.format(output))
+
+        # Clear graph in prep for next step.
+        tf.keras.backend.clear_session()
+
     # Export best pass 2 model to SavedModel.
     if saved_model:
         best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-            custom_objects={'precision': precision, 'recall': recall})
+            compile=False)
         best_model.save(save_path, save_format='tf')
         logger.info('Exported SavedModel to {}'.format(save_path))
 
