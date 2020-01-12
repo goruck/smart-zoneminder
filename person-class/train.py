@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import keras_to_frozen_tf
 import keras_to_tflite_quant
+import subprocess
 from collections import Counter
 from sys import exit
 from glob import glob
@@ -300,6 +301,10 @@ def main():
         action='store_true',
         default=False,
         help='do not save quantized tflite model')
+    ap.add_argument('--no_save_edge_tpu',
+        action='store_true',
+        default=False,
+        help='do not save edge tpu model')
     args = vars(ap.parse_args())
 
     cnn_base = args['cnn_base']
@@ -313,6 +318,7 @@ def main():
     saved_model = args['export_model']
     data_augment = not args['no_data_augment']
     save_tflite = not args['no_save_tflite']
+    save_edge_tpu = not args['no_save_edge_tpu']
     save_path = args['output']+'/'+cnn_base
 
     logging.basicConfig(filename=save_path+'.log',
@@ -522,6 +528,7 @@ def main():
         tf.keras.backend.clear_session()
 
     # Save quantized tflite model.
+    # Model is quantized to 8-bits (uint8) for use on edge tpu. 
     if save_tflite:
         # Reference dataset for quantization calibration.
         ref_dataset = data_dir + '/Unknown/'
@@ -542,6 +549,19 @@ def main():
 
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
+
+    # Save quantized tflite model for Coral edge tpu.
+    if save_edge_tpu:
+        cmd = ['edgetpu_compiler',
+            save_path+'-person-classifier-quant.tflite', '-o', args['output']]
+
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.PIPE)
+        except FileNotFoundError as err:
+            logger.error('The edge tpu complier is not installed:\n{}.'.format(err))
+            exit()
+
+        logger.info('Compiled model for edge tpu:\n{}'.format(res.stdout.decode('utf-8')))
 
     # Export best pass 2 model to SavedModel.
     if saved_model:
