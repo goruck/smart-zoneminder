@@ -19,6 +19,8 @@ import tensorflow as tf
 import keras_to_frozen_tf
 import keras_to_tflite_quant
 import subprocess
+import numpy as np
+from sklearn.metrics import classification_report
 from collections import Counter
 from sys import exit
 from glob import glob
@@ -422,6 +424,7 @@ def main():
 
         # Clear graph in prep for Pass 2.
         tf.keras.backend.clear_session()
+
         logger.info('Finished pass 1.')
 
     #Pass 2: fine-tune.
@@ -432,6 +435,8 @@ def main():
         model = tf.keras.models.load_model(save_path+'-pass1.h5', compile=False)
         logger.info('Initiating pass 2 with final pass 1 model.')
     elif os.path.isfile(save_path+'-person-classifier.h5'):
+        # Clear graph in case another TF session was active. 
+        tf.keras.backend.clear_session()
         model = tf.keras.models.load_model(save_path+'-person-classifier.h5', compile=False)
         logger.info('Initiating pass 2 with last pass 2 checkpoint.')
     else:
@@ -495,9 +500,28 @@ def main():
         'Person classifier training and validation accuracy', save_path+'-person-classifier-acc.png')
     plot_two_and_save(epochs, loss, val_loss, 'Smoothed training loss', 'Smoothed validation loss',
         'Person classifier training and validation loss', save_path+'-person-classifier-loss.png')
+
     logger.info('Finished pass 2.')
 
-    # Clear graph in prep for next step.
+    # Generate classification report.
+    validation_steps = np.math.ceil(
+        validation_generator.samples / validation_generator.batch_size)
+
+    predictions = model.predict_generator(
+        validation_generator,
+        steps=validation_steps,
+        verbose=1,
+        workers=4)
+
+    predicted_classes = np.argmax(predictions, axis=1)
+    true_classes = validation_generator.classes
+    class_labels = list(validation_generator.class_indices.keys())
+
+    class_report = classification_report(true_classes,
+        predicted_classes, target_names=class_labels)
+
+    logger.info('Classification report:\n{}'.format(class_report))
+
     tf.keras.backend.clear_session()
 
     # Evaluate best model on test data.
@@ -545,7 +569,7 @@ def main():
         with open(output, 'wb') as file:
             file.write(tflite_quant_model)
 
-        logger.info('Quantized tflite model saved to {}'.format(output))
+        logger.info('Quantized tflite model saved to: {}'.format(output))
 
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
