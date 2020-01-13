@@ -1,0 +1,15 @@
+Edge TPU Compiler version 2.0.267685300
+Input: train-results/InceptionResNetV2-person-classifier.tflite
+Output: train-results/InceptionResNetV2-person-classifier_edgetpu.tflite
+
+Operator                       Count      Status
+
+ADD                            40         Mapped to Edge TPU
+MAX_POOL_2D                    4          Mapped to Edge TPU
+AVERAGE_POOL_2D                1          Mapped to Edge TPU
+CONCATENATION                  43         Mapped to Edge TPU
+QUANTIZE                       60         Mapped to Edge TPU
+CONV_2D                        244        Mapped to Edge TPU
+MEAN                           1          Mapped to Edge TPU
+FULLY_CONNECTED                2          Mapped to Edge TPU
+SOFTMAX                        1          Mapped to Edge TPU
