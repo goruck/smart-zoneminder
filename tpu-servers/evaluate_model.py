@@ -12,7 +12,6 @@ import logging
 import time
 import json
 from os import path
-from sys import exit
 from glob import glob
 
 logger = logging.getLogger(__name__)
