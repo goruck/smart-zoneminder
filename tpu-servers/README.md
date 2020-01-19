@@ -239,13 +239,13 @@ $ sudo rm -i /swapfile
 
 13. Copy the pickled label file (*face_labels.pickle*) to ```/media/mendel/tpu-servers/labels```, and the svm-, and xgd-based face classifiers (*svm_face_recognizer.pickle*, and *xgb_face_recognizer.pickle*, respectively) created in the [face-det-rec train step](../face-det-rec/README.md) to ```/media/mendel/tpu-servers/models```. Alternatively, you can generate facial embeddings and train face classifiers on them directly on the Coral dev board but the xgb-based classifier training takes a long time, see [edge-tpu-servers](https://github.com/goruck/edge-tpu-servers) on how to do this. 
 
-14. Download the tpu face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers/models```.
+14. Download the TPU face recognition dnn model *MobileNet SSD v2 (Faces)* from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers/models```.
 
 15. Download both the *MobileNet SSD v2 (COCO)* tpu object detection dnn model and label file from [Google Coral](https://coral.withgoogle.com/models/) to ```/media/mendel/tpu-servers/models``` and ```/media/mendel/tpu-servers/labels``` respectively.
 
 *NB: You can instead use transfer learning to train your own models and use them instead of the Google stock models in the steps above, see [TensorFlow Models with Edge TPU Training](https://github.com/goruck/models/tree/edge-tpu).*
 
-16. Copy the person classification tflite models that have been compiled for the edge tpu from [person-class/train-results](../person-class/train-results) to ```/media/mendel/tpu-servers/models```. See the [person-class README](../person-class/README.md) on how to generate these models. 
+16. Copy the person classification tflite models that have been compiled for the edge TPU from [person-class/train-results](../person-class/train-results) to ```/media/mendel/tpu-servers/models```. See the [person-class README](../person-class/README.md) on how to generate these models. 
 
 17. Mount ZoneMinder's alarm image store on the Dev Board so the server can find the alarm images and process them. The store should be auto-mounted using ```sshfs``` at startup which is done by an entry in ```/etc/fstab```.
 ```bash
@@ -275,11 +275,14 @@ $ ls /mnt/nvr
 camera-share  lost+found  zoneminder
 ```
 
-18. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in the detect_server_tpu.py code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket.
+18. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in the [detect_servers_tpu.py](./detect_servers_tpu.py) code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket. The parameter *recognizeMode* must be set to either *face* to use the face recognizer or *person* to use the person classifier. 
 
 19. Use systemd to run the server as a Linux service. Edit [detect-tpu.service](./detect-tpu.service) to suit your configuration and copy the file to ```/lib/systemd/system/detect-tpu.service``` on the Coral dev board. Then enable and start the service:
 ```bash
 $ sudo systemctl enable detect-tpu.service && sudo systemctl start detect-tpu.service
 ```
 
-20. Test the entire setup by editing *detect_servers_test.py* with paths to test images and running that program.
+20. Test the entire setup by editing [detect_servers_test.py](detect_servers_test.py) with paths to test images and running that program.
+
+# Notes
+1. Use [evaluate_model.py](./evaluate_model.py) to determine the classification accuracy of the tflite quantized person classifier running on the TPU. 
