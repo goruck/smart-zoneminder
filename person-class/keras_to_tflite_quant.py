@@ -22,12 +22,21 @@ import numpy as np
 import cv2
 import argparse
 import logging
+import time
+import json
 from random import shuffle
-from os import listdir
+from os import listdir, path
 from functools import partial
 from sys import exit
+from glob import glob
 
 logger = logging.getLogger(__name__)
+
+# Use same config as person_classifier_server.py.
+with open('./config.json') as fp:
+    config = json.load(fp)
+
+LABEL_MAP = config['personClassifierServer']['labelMap']
 
 def get_preprocessor(model):
     base_model_name = model.layers[0].name
@@ -77,16 +86,64 @@ def convert(keras_model_path, ref_dataset, num_cal, input_size, preprocessor):
 
     return converter.convert()
 
+def evaluate_model(interpreter, test_gen):
+    """
+    This is dog slow on an Intel machine. Use an Arm machine or edge tpu.
+    Ref: https://stackoverflow.com/questions/54093424/why-is-tensorflow-lite-slower-than-tensorflow-on-desktop
+    """
+    input_details = interpreter.get_input_details()
+    input_index = input_details[0]['index']
+    input_shape = input_details[0]['shape']
+    input_size = tuple(input_shape[1:3])
+
+    output_index = interpreter.get_output_details()[0]['index']
+    
+    accurate_count = 0
+    num_images = 0
+    start = time.time()
+
+    for test_image, test_label in test_gen:
+        img = cv2.imread(test_image) # read as np.uint8
+
+        # Pre-processing: resize, add batch dimension to match with
+        # the model's input data format.
+        img = cv2.resize(img, input_size)
+        img = np.expand_dims(img, axis=0)
+        interpreter.set_tensor(input_index, img)
+
+        # Run inference.
+        interpreter.invoke()
+
+        # Post-processing: remove batch dimension and find the digit with highest
+        # probability.
+        output = interpreter.tensor(output_index)
+        class_id = np.argmax(output()[0])
+        prediction = LABEL_MAP[class_id]
+
+        # Compare prediction results with ground truth labels to calculate accuracy.
+        if prediction == test_label:
+            accurate_count += 1
+
+        num_images += 1
+
+        logger.debug('image: {} | ground truth: {} | prediction: {}'
+            .format(path.basename(test_image), test_label, prediction))
+
+    end = time.time()
+    
+    accuracy = accurate_count * 1.0 / num_images
+
+    return accuracy, end - start
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--input',
         type=str,
         required=True,
         help='keras .h5 model to convert ')
-    ap.add_argument('--ref_dataset',
-        type=str,
-        default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset/Unknown/',
-        help='input dataset for calibration')
+    ap.add_argument('--dataset',
+        default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset',
+        help='location of input dataset')
     ap.add_argument('--num_cal',
         type=int,
         default=100,
@@ -95,10 +152,14 @@ def main():
         type=str,
         required=True,
         help='name of converted output model')
+    ap.add_argument('--eval_model',
+        action='store_true',
+        default=False,
+        help='evaluate quantized model accuracy on dataset')
     args = vars(ap.parse_args())
 
     logging.basicConfig(format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-        level=logging.INFO)
+        level=logging.DEBUG)
 
     logger.info('Converting keras model {}'.format(args['input']))
 
@@ -118,9 +179,9 @@ def main():
     # Clear graph to prepare for conversion. 
     tf.keras.backend.clear_session()
 
-    # Actual conversion. 
+    # Actual conversion.
     tflite_quant_model = convert(args['input'],
-        args['ref_dataset'],
+        args['dataset'] + '/Unknown/', # Use Unknown images for calibration
         args['num_cal'],
         input_size,
         preprocessor)
@@ -130,6 +191,31 @@ def main():
         file.write(tflite_quant_model)
 
     logger.info('Quantized tflite model saved to {}'.format(args['output']))
+
+    if args['eval_model']:
+        # Grab test images paths.
+        imagePaths = glob(args['dataset'] + '/**/*.*', recursive=True)
+
+        # Create a test image generator comprehension.
+        # Generates (image path, image label) tuples.
+        test_gen = ((path.abspath(imagePath), imagePath.split(path.sep)[-2])
+            for imagePath in imagePaths)
+
+        # Start the tflite interpreter on the tpu and allocate tensors.
+        interpreter = tf.lite.Interpreter(model_path=args['output'])
+        interpreter.allocate_tensors()
+
+        logger.info(interpreter.get_input_details())
+        logger.info(interpreter.get_output_details())
+
+        # Compute accuracy on the test image set.
+        accuracy, inference_time = evaluate_model(interpreter=interpreter,
+            test_gen=test_gen)
+
+        num_images = len(imagePaths)
+
+        logger.info('accuracy: {:.4f}, num test images: {}, inferences / sec: {:.4f}'
+            .format(accuracy, num_images, num_images / inference_time))
 
 if __name__ == '__main__':
     main()
