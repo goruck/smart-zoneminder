@@ -21,7 +21,7 @@
     },
     "personClassServer": {
         "comment": "Configuration for person classifier server",
-        "personClassModelPath": "./models/ResNet50-person-classifier_edgetpu.tflite",
+        "personClassModelPath": "./models/ResNet50-person-classifier-quant_edgetpu.tflite",
         "labelMap": [
             "Unknown",
             "eva_st_angel",
