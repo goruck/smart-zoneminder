@@ -310,7 +310,7 @@ def main():
     ap.add_argument('--epochs',
         type=int,
         default=100,
-        help='max number of epochs')
+        help='max number of fit epochs')
     args = vars(ap.parse_args())
 
     cnn_base = args['cnn_base']
@@ -325,7 +325,7 @@ def main():
     data_augment = not args['no_data_augment']
     save_tflite = not args['no_save_tflite']
     save_edge_tpu = not args['no_save_edge_tpu']
-    epochs = args['epochs']
+    fit_epochs = args['epochs']
     save_path = args['output']+'/'+cnn_base
 
     logging.basicConfig(filename=save_path+'.log',
@@ -407,7 +407,7 @@ def main():
         history = model.fit_generator(
             train_generator,
             steps_per_epoch=steps_per_epoch,
-            epochs=epochs,
+            epochs=fit_epochs,
             validation_data=validation_generator,
             validation_steps=validation_steps,
             class_weight=class_weights,
@@ -487,7 +487,7 @@ def main():
     history = model.fit_generator(
         train_generator,
         steps_per_epoch=steps_per_epoch,
-        epochs=epochs,
+        epochs=fit_epochs,
         validation_data=validation_generator,
         validation_steps=validation_steps,
         class_weight=class_weights,
