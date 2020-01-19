@@ -1,7 +1,10 @@
-***New - added support for a CNN-based person recognizer.***
 
 # smart-zoneminder
-smart-zoneminder enables fast object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa. The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via a [TensorFlow](https://www.tensorflow.org/)-based CNN dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) can be used to identify people detected in the alarm images, alternatively people can be recognized by another TensorFlow-based CNN. Alexa allows a user to ask to see an image or a video corresponding to an alarm and to get information on what caused the alarm and when it occurred.
+smart-zoneminder enables fast and accurate object detection, face recognition and upload of [ZoneMinder](https://www.zoneminder.com/) alarm images to an S3 archive where they are made accessible by voice via Alexa.
+
+The use of object detection remotely via [Rekognition](https://aws.amazon.com/rekognition) or locally via a [TensorFlow](https://www.tensorflow.org/)-based CNN dramatically reduces the number of false alarms and provides for robust scene and object detection. Face recognition via [ageitgey's](https://github.com/ageitgey/face_recognition) Python API to [dlib](http://dlib.net/) can be used to identify people detected in the alarm images, alternatively people can be recognized by another TensorFlow-based CNN. Alexa allows a user to ask to see an image or a video corresponding to an alarm and to get information on what caused the alarm and when it occurred.
+
+The local processing of the machine learning workloads employed by this project can be configured to run on GPU or TPU hardware. 
 
 smart-zoneminder in its default configuration stores about three weeks of continuous video at the edge and one year of alarm images in the cloud. It costs as little as $8 per year per camera to operate.
 
@@ -168,7 +171,7 @@ The figure below shows the smart-zoneminder image processing pipeline.
 ![Alt text](./img/sz-image-pipeline.jpg?raw=true "smart-zoneminder image processing pipeline.") 
 
 # Edge Setup and Configuration
-A Linux server and a [Google Coral Dev Board](https://coral.withgoogle.com/products/dev-board/) are the hardware used for local compute and storage in this project. Object and face recognition can be run on either the server or the Coral dev board. Please see the TPU-based Object and Face Detection's [README](./tpu-servers/README.md) for installation and configuration instructions associated with the Google Coral dev board components. Some details regarding the server hardware used in this project can be found in the appendix. The rest of this section describes the Linux server components and how to install and configure them.
+A Linux server and a [Google Coral Dev Board](https://coral.withgoogle.com/products/dev-board/) are the hardware used for local compute and storage in this project. Object and face/person recognition can be run on either the server or the Coral dev board. See [tpu-servers](./tpu-servers/README.md) for installation and configuration instructions associated with the Google Coral dev board software components. Some details regarding the server hardware used in this project can be found in the appendix. The rest of this section describes the Linux server components and how to install and configure them.
 
 ## ZoneMinder
 
@@ -419,7 +422,7 @@ I'm very happy with the resnet101-based model running on the server as well as t
 
 Subjectively, face detection with the models tested is fairly accurate and works well in most camera lighting conditions including when the camera's IR illuminators are active. My guess is that its over 90% accurate with the dlib models and an svm face classifier. I plan to modify the test script [view-mongo-images.py](./face-det-rec/view-mongo-images.py) to allow ground truth tagging of images to get a quantitative measure.
 
-I'm not satisfied with the current level of face recognition accuracy and improving it will be a focus of current work for the project. Face recognition on the Coral system using the supplied models is partially challenged, the accuracy of it is much less than with dlib which is far too slow to run on the Coral system. 
+I'm not satisfied with the current level of face recognition accuracy and improving it will be a focus of current work for the project. Face recognition on the Coral system using the "stock" models is particularly challenged, the accuracy of it is much less than with dlib which runs very slowly on the Coral system. To address some of these issues I have developed an alternative to the face recognizer, a CNN-based person classifier which is described above. This classifier can be run on either server hardware or the edge TPU. 
 
 ## Make it easy and intuitive to access ZoneMinder information
 *Requirement: Use voice to interact with ZoneMinder, implemented by an Amazon Alexa Skill.* 
