@@ -1,41 +1,74 @@
-INFO:root:Creating model with cnn base: ResNet50
-INFO:root:batch size: 32, dense units 128, dropout: 0.2
-INFO:root:learning rate: 0.0001, l2 penalty: 0.0001, freeze 85
-WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1630: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+2020-01-12 19:27:24,936 __main__     INFO     Creating model with cnn base: ResNet50
+2020-01-12 19:27:24,936 __main__     INFO     batch size: 32, dense units 128, dropout: 0.2
+2020-01-12 19:27:24,937 __main__     INFO     learning rate: 0.0001, l2 penalty: 0.0001, freeze 85
+2020-01-12 19:27:24,957 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1630: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
 Instructions for updating:
 If using Keras pass *_constraint arguments to layers.
-WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling GlorotUniform.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+2020-01-12 19:27:40,606 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling GlorotUniform.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
 Instructions for updating:
 Call initializer instance with the dtype argument instead of passing it to the constructor
-WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Zeros.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+2020-01-12 19:27:40,610 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Zeros.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
 Instructions for updating:
 Call initializer instance with the dtype argument instead of passing it to the constructor
-WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Ones.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
+2020-01-12 19:27:40,614 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Ones.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
 Instructions for updating:
 Call initializer instance with the dtype argument instead of passing it to the constructor
-INFO:root:Getting dataframe.
-INFO:root:Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
-INFO:root:Number of training samples: 5144
-INFO:root:Number of validation samples: 1286
-INFO:root:Class weights: {4: 2.536340852130326, 1: 3.734317343173432, 2: 1.8585858585858586, 3: 2.9290882778581766, 0: 1.0}
-INFO:root:Steps per epoch: 160
-INFO:root:Validation steps: 40
-INFO:root:Starting pass 1.
-INFO:root:Finished pass 1.
-INFO:root:Starting pass 2 with learning rate: 1e-05
-INFO:root:Starting pass 2 with final pass 1 model.
-INFO:root:Finished pass 2.
-INFO:root:Starting coversion of keras model to frozen TF model.
-INFO:root:Input node name(s) are: ['resnet50_input']
-INFO:root:Output node name(s) are: ['dense_1/Softmax']
-WARNING:tensorflow:From ./train.py:129: The name tf.keras.backend.get_session is deprecated. Please use tf.compat.v1.keras.backend.get_session instead.
+2020-01-12 19:27:48,522 __main__     INFO     Getting dataframe.
+2020-01-12 19:27:48,679 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+2020-01-12 19:27:48,680 __main__     INFO     Number of training samples: 5474
+2020-01-12 19:27:48,680 __main__     INFO     Number of validation samples: 1368
+2020-01-12 19:27:48,680 __main__     INFO     Class weights: {0: 1.0, 1: 3.971014492753623, 3: 2.895640686922061, 4: 2.760705289672544, 2: 1.8592027141645462}
+2020-01-12 19:27:48,680 __main__     INFO     Steps per epoch: 171
+2020-01-12 19:27:48,680 __main__     INFO     Validation steps: 42
+2020-01-12 19:27:48,680 __main__     INFO     Starting pass 1.
+2020-01-12 19:36:57,913 __main__     INFO     Finished pass 1.
+2020-01-12 19:36:57,913 __main__     INFO     Starting pass 2 with learning rate: 1e-05
+2020-01-12 19:37:05,267 __main__     INFO     Initiating pass 2 with final pass 1 model.
+2020-01-12 20:54:05,337 __main__     INFO     Finished pass 2.
+2020-01-12 20:54:24,207 __main__     INFO     Classification report:
+                precision    recall  f1-score   support
 
-WARNING:tensorflow:From ./train.py:133: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+       Unknown       0.90      0.88      0.89       509
+  eva_st_angel       0.92      0.76      0.83       133
+lindo_st_angel       0.96      0.91      0.93       327
+ nico_st_angel       0.91      0.89      0.90       195
+nikki_st_angel       0.74      0.91      0.82       204
+
+      accuracy                           0.88      1368
+     macro avg       0.88      0.87      0.87      1368
+  weighted avg       0.89      0.88      0.89      1368
+
+2020-01-12 20:54:24,216 keras_to_frozen_tf INFO     Starting conversion of keras model to frozen TF model.
+2020-01-12 20:54:28,729 keras_to_frozen_tf INFO     Input node name(s) are: ['resnet50_input']
+2020-01-12 20:54:28,729 keras_to_frozen_tf INFO     Output node name(s) are: ['dense_1/Softmax']
+2020-01-12 20:54:28,729 tensorflow   WARNING  From /home/lindo/develop/smart-zoneminder/person-class/keras_to_frozen_tf.py:35: The name tf.keras.backend.get_session is deprecated. Please use tf.compat.v1.keras.backend.get_session instead.
+
+2020-01-12 20:54:28,769 tensorflow   WARNING  From /home/lindo/develop/smart-zoneminder/person-class/keras_to_frozen_tf.py:39: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
 Instructions for updating:
 Use `tf.compat.v1.graph_util.convert_variables_to_constants`
-WARNING:tensorflow:From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/framework/graph_util_impl.py:277: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+2020-01-12 20:54:28,769 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/framework/graph_util_impl.py:277: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
 Instructions for updating:
 Use `tf.compat.v1.graph_util.extract_sub_graph`
-INFO:tensorflow:Froze 322 variables.
-INFO:tensorflow:Converted 322 variables to const ops.
-INFO:root:Saved the frozen graph at /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier.pb
+2020-01-12 20:54:29,154 tensorflow   INFO     Froze 322 variables.
+2020-01-12 20:54:29,234 tensorflow   INFO     Converted 322 variables to const ops.
+2020-01-12 20:54:29,436 keras_to_frozen_tf INFO     Saved the frozen graph at /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier.pb
+2020-01-12 20:54:40,288 tensorflow   INFO     Froze 322 variables.
+2020-01-12 20:54:40,368 tensorflow   INFO     Converted 322 variables to const ops.
+2020-01-12 20:55:05,000 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant.tflite
+2020-01-12 20:55:06,500 __main__     INFO     Compiled model for edge tpu:
+Edge TPU Compiler version 2.0.267685300
+
+Model compiled successfully in 911 ms.
+
+Input model: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant.tflite
+Input size: 23.36MiB
+Output model: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant_edgetpu.tflite
+Output size: 23.11MiB
+On-chip memory available for caching model parameters: 6.26MiB
+On-chip memory used for caching model parameters: 6.26MiB
+Off-chip memory used for streaming uncached model parameters: 16.67MiB
+Number of Edge TPU subgraphs: 1
+Total number of operations: 78
+Operation log: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant_edgetpu.log
+See the operation log file for individual operation details.
+
