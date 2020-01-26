@@ -267,12 +267,23 @@ $ ssh-copy-id -i $HOME/.ssh/id_rsa.pub lindo@192.168.1.4
 # Edit /etc/fstab so that the store is automounted. Here's mine.
 $ more /etc/fstab
 ...
-lindo@192.168.1.4:/nvr /mnt/nvr fuse.sshfs auto,user,_netdev,reconnect,uid=1000,gid=1000,IdentityFile=/home/mendel/.ssh/id_rsa,idmap=user,allow_other 0 2
+lindo@192.168.1.4:/nvr /mnt/nvr fuse.sshfs auto,user,_netdev,reconnect,uid=1000,gid=1000,IdentityFile=/home/mendel/.ssh/id_rsa,idmap=user,allow_other 0 0
 
-# Test mount the zm store. This will happen at boot from now on. 
+# Test mount the zm store. This should happen at boot from now on. 
 $ sudo mount -a
 $ ls /mnt/nvr
 camera-share  lost+found  zoneminder
+```
+Note that I have seen cases where fstab fails to mount a network drive at boot when only WLAN is used (LAN is robust). As a failsafe you can force a mount when ever a network interface is started by adding a script to /etc/network/if-up.d as shown below.
+
+```bash
+mendel@tpu:/etc/network/if-up.d$ ls
+avahi-daemon  ethtool  mount_command  openssh-server  upstart  wpasupplicant
+mendel@tpu:/etc/network/if-up.d$ more mount_command 
+#!/bin/bash
+# Force mount of network drives when an interface comes up.
+# Failsafe in case fstab fails to mount a drive becase of network issues.
+mount -a
 ```
 
 18. Edit the [config.json](./config.json) to suit your installation. The configuration parameters are documented in the [detect_servers_tpu.py](./detect_servers_tpu.py) code. Since the TPU detection servers and ZoneMinder are running on different machines make sure both are using the same TCP socket. The parameter *recognizeMode* must be set to either *face* to use the face recognizer or *person* to use the person classifier. 
