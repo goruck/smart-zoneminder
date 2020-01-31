@@ -395,24 +395,23 @@ def main():
         # Define some useful callbacks. 
         early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
             mode='min',
-            verbose=2,
+            verbose=1,
             patience=10)
         csv_logger = tf.keras.callbacks.CSVLogger(save_path+'-pass1.csv', append=False)
         model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-pass1.h5',
             monitor='val_loss',
-            verbose=2,
+            verbose=1,
             save_best_only=True)
 
         # Actual training. 
-        history = model.fit_generator(
-            train_generator,
+        history = model.fit(
+            x=train_generator,
             steps_per_epoch=steps_per_epoch,
             epochs=fit_epochs,
             validation_data=validation_generator,
             validation_steps=validation_steps,
             class_weight=class_weights,
             verbose=1,
-            max_queue_size=20,
             workers=4,
             callbacks=[early_stop, model_ckpt, csv_logger])
 
@@ -475,17 +474,17 @@ def main():
     # Callbacks.
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
         mode='min',
-        verbose=2,
+        verbose=1,
         patience=10)
     csv_logger = tf.keras.callbacks.CSVLogger(save_path+'-person-classifier.csv', append=False)
     model_ckpt = tf.keras.callbacks.ModelCheckpoint(filepath=save_path+'-person-classifier.h5',
         monitor='val_loss',
-        verbose=2,
+        verbose=1,
         save_best_only=True)
 
     # Fit.
-    history = model.fit_generator(
-        train_generator,
+    history = model.fit(
+        x=train_generator,
         steps_per_epoch=steps_per_epoch,
         epochs=fit_epochs,
         validation_data=validation_generator,
@@ -512,7 +511,7 @@ def main():
     validation_steps = np.math.ceil(
         validation_generator.samples / validation_generator.batch_size)
 
-    predictions = model.predict_generator(
+    predictions = model.predict(
         validation_generator,
         steps=validation_steps,
         verbose=1,
@@ -559,6 +558,10 @@ def main():
     # Save quantized tflite model.
     # Model is quantized to 8-bits (uint8) for use on edge tpu. 
     if save_tflite:
+        # Force a garbage collection to avoid OOM.
+        #unreachable_objects = collect()
+        #logger.info('Garbage collection ran. Found {} unreachable objects.'
+            #.format(unreachable_objects))
         # Reference dataset for quantization calibration.
         ref_dataset = data_dir + '/Unknown/'
         # Number of calibration images to use from ref dataset.
