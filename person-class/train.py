@@ -75,7 +75,7 @@ def add_regularization(model, regularizer=tf.keras.regularizers.l2(0.0001)):
 
     return model
 
-def get_dataframe(dataset, shuffle=True):
+def get_dataframe(dataset, seed=None, shuffle=True):
     # Generate dataframe from dataset.
     # Using dataframes to enable easy shuffling of dataset. 
     logger.info('Getting dataframe.')
@@ -93,7 +93,7 @@ def get_dataframe(dataset, shuffle=True):
     df = pd.DataFrame(data=d)
 
     if shuffle:
-        df = df.sample(frac=1).reset_index(drop=True)
+        df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
 
     return df
 
@@ -328,6 +328,8 @@ def main():
     fit_epochs = args['epochs']
     save_path = args['output']+'/'+cnn_base
 
+    SEED = 1
+
     logging.basicConfig(filename=save_path+'.log',
         filemode='w',
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
@@ -337,7 +339,7 @@ def main():
 
     input_size = model.input_shape[1:3]
 
-    df = get_dataframe(dataset=data_dir)
+    df = get_dataframe(dataset=data_dir, seed=SEED)
 
     test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         validation_split=.20,
@@ -348,7 +350,8 @@ def main():
         subset='validation',
         shuffle=False,
         target_size=input_size,
-        batch_size=batch_size)
+        batch_size=batch_size,
+        seed=SEED)
 
     if data_augment:
         train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
@@ -369,7 +372,8 @@ def main():
         subset='training',
         shuffle=True,
         target_size=input_size,
-        batch_size=batch_size)
+        batch_size=batch_size,
+        seed=SEED)
 
     logger.info('Class dict: {}'.format(train_generator.class_indices))
     logger.info('Number of training samples: {}'.format(train_generator.samples))
@@ -536,7 +540,8 @@ def main():
             test_dir,
             target_size=input_size,
             batch_size=batch_size,
-            shuffle=False)
+            shuffle=False,
+            seed=SEED)
 
         # Load the best model from disk that was the last saved checkpoint.
         best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
