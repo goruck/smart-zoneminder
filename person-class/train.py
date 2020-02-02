@@ -190,7 +190,7 @@ def create_model(base='VGG16'):
         DROPOUT = 0.2
         LEARNING_RATE = 1e-4
         L2_PENALTY = 1e-4
-        FREEZE = 85 # Freeze all layers less than this (ResNet50 has 175 layers).
+        FREEZE = 40 # Freeze all layers less than this (ResNet50 has 175 layers).
 
         logger.info('batch size: {}, dense units {}, dropout: {}'
             .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
