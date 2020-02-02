@@ -13,7 +13,7 @@ google-auth==1.10.0
 google-auth-oauthlib==0.4.1
 google-pasta==0.1.8
 greenlet==0.4.15
-grpcio==1.17.1
+grpcio==1.26.0
 h5py==2.10.0
 html5lib==0.9999999
 idna==2.8
@@ -49,7 +49,7 @@ scikit-learn==0.22.1
 scipy==1.4.1
 six==1.12.0
 tensorboard==1.15.0
-tensorflow==1.15.0
+tensorflow==1.15.2
 tensorflow-estimator==1.15.1
 tensorflow-hub==0.7.0
 termcolor==1.1.0
