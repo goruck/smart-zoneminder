@@ -5,13 +5,10 @@ This needs to be called from a zerorpc client with an array of zm alarm image pa
 Image paths must be in the form of:
 '/nvr/zoneminder/events/BackPorch/18/06/20/19/20/04/00224-capture.jpg'.
 
-This program should be run in the 'od' virtual python environment, i.e.,
-$ /home/lindo/.virtualenvs/od/bin/python ./obj_detect_server.py
-
 This is part of the smart-zoneminder project.
 See https://github.com/goruck/smart-zoneminder
 
-Copyright (c) 2018, 2019 Lindo St. Angel
+Copyright (c) 2018 ~ 2020 Lindo St. Angel
 """
 
 import numpy as np
@@ -27,7 +24,11 @@ from object_detection.utils import label_map_util
 # For tensorrt optimized models...
 #import tensorflow.contrib.tensorrt as trt
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(
+    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+    level=logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 # Get configuration.
 with open('./config.json') as fp:
@@ -61,14 +62,14 @@ ZRPC_PIPE = config['zerorpcPipe']
 
 # Only grow the gpu memory tf usage as required.
 # See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth=True
 
 # Load frozen tf model into memory.
 detection_graph = tf.Graph()
 with detection_graph.as_default():
-    od_graph_def = tf.GraphDef()
-    with tf.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
+    od_graph_def = tf.compat.v1.GraphDef()
+    with tf.io.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
         serialized_graph = fid.read()
         od_graph_def.ParseFromString(serialized_graph)
         tf.import_graph_def(od_graph_def, name='')
@@ -97,7 +98,7 @@ def skip_inference(frame_num, monitor, labels, image_path, objects_in_image):
         frame_num = int((image_path.split('/')[-1]).split('-')[0])
         monitor = image_path.split('/')[4]
     except (ValueError, IndexError):
-        logging.error('Could not derive information from image path.')
+        logger.error('Could not derive information from image path.')
         objects_in_image.append({'image': image_path, 'labels': []})
         skip = True
         return skip, frame_num, monitor
@@ -111,9 +112,9 @@ def skip_inference(frame_num, monitor, labels, image_path, objects_in_image):
             # Skip CON_IMG_SKIP frames after the first one. 
             if frame_diff <= CON_IMG_SKIP:
                 objects_in_image.append({'image': image_path, 'labels': labels})
-                logging.debug('monitor {} old_monitor {} frame_num {} old_frame_num {}'
+                logger.debug('monitor {} old_monitor {} frame_num {} old_frame_num {}'
                     .format(monitor,old_monitor,frame_num,old_frame_num))
-                logging.debug('Consecutive frame {}, skipping detect and copying previous labels.'
+                logger.debug('Consecutive frame {}, skipping detect and copying previous labels.'
                     .format(frame_num))
                 skip = True
                         
@@ -122,11 +123,11 @@ def skip_inference(frame_num, monitor, labels, image_path, objects_in_image):
 # zerorpc class.
 class DetectRPC(object):
     def __init__(self):
-        logging.debug('Starting tf sess.')
-        self.sess = tf.Session(config=config, graph=detection_graph)
+        logger.debug('Starting tf sess.')
+        self.sess = tf.compat.v1.Session(config=config, graph=detection_graph)
 
     def close_sess(self):
-        logging.debug('Closing tf sess.')
+        logger.debug('Closing tf sess.')
         self.sess.close()
 
     def detect_objects(self, test_image_paths):
@@ -137,7 +138,7 @@ class DetectRPC(object):
         (img_width, img_height) = (CROP_IMAGE_WIDTH, CROP_IMAGE_HEIGHT)
 
         for image_path in test_image_paths:
-            logging.debug('**********Find object(s) for {}'.format(image_path))
+            logger.debug('**********Find object(s) for {}'.format(image_path))
 
             # If consecutive frames then repeat last label and skip inference.
             # This behavior controlled by CON_IMG_SKIP.
@@ -151,7 +152,7 @@ class DetectRPC(object):
             #cv2.imwrite('./img.jpg', img)
             if img is None:
                 # Bad image was read.
-                logging.error('Bad image was read.')
+                logger.error('Bad image was read.')
                 objects_in_image.append({'image': image_path, 'labels': []})
                 continue
 
