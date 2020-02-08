@@ -2,8 +2,6 @@
 Post-training quantization of keras h5 model and conversion to TFlite model.
 The resulting model can be compiled for inference on the Google Coral edge TPU.
 
-NB: This meeds to be run in the "od" Python virtenv.
-
 This is part of the smart-zoneminder project.
 See https://github.com/goruck/smart-zoneminder
 
@@ -66,9 +64,9 @@ def representative_dataset_gen(path, num_cal, input_size, preprocessor):
         img = preprocessor(img.astype('float32'))
         yield [img]
 
-def convert(keras_model_path, ref_dataset, num_cal, input_size, preprocessor):
-    converter = tf.lite.TFLiteConverter.from_keras_model_file(
-        model_file=keras_model_path)
+def convert(keras_model, ref_dataset, num_cal, input_size, preprocessor):
+    converter = tf.lite.TFLiteConverter.from_keras_model(
+        model=keras_model)
 
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     # ref_gen must be a callable so use partial to set parameters. 
@@ -180,7 +178,7 @@ def main():
     tf.keras.backend.clear_session()
 
     # Actual conversion.
-    tflite_quant_model = convert(args['input'],
+    tflite_quant_model = convert(model,
         args['dataset'] + '/Unknown/', # Use Unknown images for calibration
         args['num_cal'],
         input_size,
