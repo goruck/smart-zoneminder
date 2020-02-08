@@ -1,8 +1,9 @@
 {
     "personClassifierServer": {
         "comment": "Configuration for person_classifier_server.py.",
-        "modelPath": "./train-results/InceptionResNetV2-person-classifier.pb",
-        "modelArch": "InceptionResNetV2",
+        "savedModel": "./train-results/ResNet50/1",
+        "modelInputSize": [224, 224],
+        "preprocessor": "tf.keras.applications.resnet50.preprocess_input",
         "labelMap": [
             "Unknown",
             "eva_st_angel",
@@ -10,7 +11,7 @@
             "nico_st_angel",
             "nikki_st_angel"
         ],
-        "minProba": 0.9,
+        "minProba": 0.8,
         "zerorpcHeartBeat": 60000,
         "zerorpcPipe": "ipc:///tmp/face_detect_zmq.pipe"
     }

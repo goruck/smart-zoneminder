@@ -4,9 +4,6 @@ Classify persons using tensorflow-gpu served by zerorpc
 Should be called from a zerorpc client with ZoneMinder
 alarm image metadata from zm-s3-upload.js.
 
-This program should be run in the 'od' virtual python environment, i.e.,
-$ /home/lindo/.virtualenvs/od/bin/python ./person_classifier_server.py
-
 This is part of the smart-zoneminder project.
 See https://github.com/goruck/smart-zoneminder
 
@@ -22,14 +19,24 @@ import logging
 import gevent
 import signal
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(
+    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+    level=logging.ERROR)
+
+logger = logging.getLogger(__name__)
 
 # Get configuration.
 with open('./config.json') as fp:
     config = json.load(fp)['personClassifierServer']
 
-# Tensorflow object detection file system paths.
-PATH_TO_MODEL = config['modelPath']
+# Path to TensorFlow Saved Model.
+PATH_TO_MODEL = config['savedModel']
+
+# Model input size.
+MODEL_INPUT_SIZE = tuple(config['modelInputSize'])
+
+# Model preprocessor function.
+PREPROCESSOR = eval(config['preprocessor'])
 
 # Minimum score for valid TF person detection. 
 MIN_PROBA = config['minProba']
@@ -45,49 +52,40 @@ ZRPC_PIPE = config['zerorpcPipe']
 # Get tf label map. 
 LABEL_MAP = config['labelMap']
 
-# Get model architecture type.
-MODEL_ARCH = config['modelArch']
-assert MODEL_ARCH in {'VGG16','InceptionResNetV2'},'Must be "VGG16" or "InceptionResNetV2"'
-if MODEL_ARCH == 'VGG16':
-    input_size = (224, 224)
-    preprocessor = tf.keras.applications.vgg16.preprocess_input
-    model_input_name = 'vgg16_input:0'
-    model_output_name = 'dense_1/Softmax:0'
-else:
-    input_size = (299, 299)
-    preprocessor = tf.keras.applications.inception_resnet_v2.preprocess_input
-    model_input_name = 'inception_resnet_v2_input:0'
-    model_output_name = 'dense_1/Softmax:0'
+# Limit GPU memory growth.
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        logger.debug(f'{len(gpus)} Physical GPUs, {len(logical_gpus)} Logical GPUs')
+    except RuntimeError as e:
+        # Memory growth must be set before GPUs have been initialized
+        logger.debug(e)
 
-# Only grow the gpu memory tf usage as required.
-# See https://www.tensorflow.org/guide/using_gpu#allowing-gpu-memory-growth
-tf_config = tf.compat.v1.ConfigProto()
-tf_config.gpu_options.allow_growth=True
-
-# Load frozen tf model into memory.
-detection_graph = tf.Graph()
-with detection_graph.as_default():
-    od_graph_def = tf.compat.v1.GraphDef()
-    with tf.io.gfile.GFile(PATH_TO_MODEL, 'rb') as fid:
-        serialized_graph = fid.read()
-        od_graph_def.ParseFromString(serialized_graph)
-        tf.import_graph_def(od_graph_def, name='')
+# Load model and prepare for inference.
+# See: https://www.tensorflow.org/guide/saved_model
+loaded = tf.saved_model.load(PATH_TO_MODEL)
+infer = loaded.signatures['serving_default']
+logger.debug('Model output info {}:'.format(infer.structured_outputs))
+output = list(infer.structured_outputs.keys())[0]
 
 # zerorpc class.
 class DetectRPC(object):
     def __init__(self):
-        logging.debug('Starting tf sess for person classification.')
-        self.sess = tf.compat.v1.Session(config=tf_config, graph=detection_graph)
+        logger.debug('Starting server for person classification.')
+        # add optional init statements
 
-    def close_sess(self):
-        logging.debug('Closing tf sess for person classification.')
-        self.sess.close()
+    def close_server(self):
+        logger.debug('Closing server for person classification.')
+        # add optional close statements
 
     def detect_faces(self, test_image_paths):
         # List that will hold all images with any person classifications. 
         objects_classified_persons = []
         for obj in test_image_paths:
-            logging.debug('**********Classify person for {}'.format(obj['image']))
+            logger.debug('**********Classify person for {}'.format(obj['image']))
             for label in obj['labels']:
                 # If the object detected is a person then try to identify face. 
                 if label['name'] == 'person':
@@ -111,38 +109,35 @@ class DetectRPC(object):
                     #cv2.imwrite('./roi.jpg', roi)
                     if roi.size == 0:
                         # Bad object roi...move on to next image.
-                        logging.error('Bad object roi.')
+                        logger.error('Bad object roi.')
                         label['face'] = None
                         continue
 
                     # Format image to what the model expects for input.
                     # Resize.
-                    roi = cv2.resize(roi, dsize=input_size, interpolation=cv2.INTER_AREA)
+                    roi = cv2.resize(roi, dsize=MODEL_INPUT_SIZE,
+                        interpolation=cv2.INTER_AREA)
                     # Expand dimensions.
                     roi = np.expand_dims(roi, axis=0)
                     # Preprocess.
-                    roi = preprocessor(roi.astype('float32'))
-
-                    # Define input tensor.
-                    input_tensor = detection_graph.get_tensor_by_name(model_input_name)
-
-                    # Define output tensor.
-                    output_tensor = detection_graph.get_tensor_by_name(model_output_name)
+                    roi = PREPROCESSOR(roi.astype('float32'))
 
                     # Actual predictions per class.
-                    predictions = self.sess.run(output_tensor, {input_tensor: roi})[0]
+                    predictions = infer(tf.constant(roi))[output]
 
                     # Find most likely prediction.
+                    proba = np.amax(predictions)
                     j = np.argmax(predictions)
-                    proba = predictions[j]
                     person = LABEL_MAP[j]
-                    logging.debug('person classifier proba {} name {}'.format(proba, person))
+                    logger.debug('person classifier proba {} name {}'
+                        .format(proba, person))
                     if proba >= MIN_PROBA:
                         name = person
-                        logging.debug('person classifier says this is {}'.format(name))
+                        logger.debug('person classifier says this is {}'
+                            .format(name))
                     else:
                         name = None # prob too low to recog face
-                        logging.debug('person classifier cannot recognize person')
+                        logger.debug('person classifier cannot recognize person')
 
                     # Add face name to label metadata.
                     label['face'] = name
@@ -167,5 +162,5 @@ gevent.signal(signal.SIGTERM, s.stop) # termination
 # Start server.
 # This will block until a gevent signal is caught
 s.run()
-# After server is stopped then close the tf session. 
-zerorpc_obj.close_sess()
+# After server is stopped then close it. 
+zerorpc_obj.close_server()
