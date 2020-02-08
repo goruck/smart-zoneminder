@@ -1,8 +1,6 @@
 """
 Fine-tune a CNN to classify persons in my family.
 
-Needs to be run in the "od" Python virtenv.
-
 This is part of the smart-zoneminder project.
 See https://github.com/goruck/smart-zoneminder
 
@@ -287,14 +285,14 @@ def main():
     ap.add_argument('--test_dir',
         default='./test',
         help='location of test data')
-    ap.add_argument('--no_save_TF',
+    ap.add_argument('--save_tf',
         action='store_true',
         default=False,
-        help='do not save inference-optimized TF model to output folder')
-    ap.add_argument('--export_model',
+        help='save frozen TF model to output folder')
+    ap.add_argument('--no_saved_model',
         action='store_true',
         default=False,
-        help='export best pass 2 model to SavedModel format')
+        help='do not export best pass 2 model to SavedModel format')
     ap.add_argument('--no_data_augment',
         action='store_true',
         default=False,
@@ -320,8 +318,8 @@ def main():
     data_dir = args['dataset']
     test_dir = args['test_dir']
     run_test = args['test']
-    save_tf = not args['no_save_TF']
-    saved_model = args['export_model']
+    save_tf = args['save_tf']
+    saved_model = not args['no_saved_model']
     data_augment = not args['no_data_augment']
     save_tflite = not args['no_save_tflite']
     save_edge_tpu = not args['no_save_edge_tpu']
@@ -420,8 +418,8 @@ def main():
             callbacks=[early_stop, model_ckpt, csv_logger])
 
         # Plot and save pass 1 results.
-        acc = history.history['acc']
-        val_acc = history.history['val_acc']
+        acc = history.history['accuracy']
+        val_acc = history.history['val_accuracy']
         loss = history.history['loss']
         val_loss = history.history['val_loss']
         epochs = range(len(acc))
@@ -499,8 +497,8 @@ def main():
         callbacks=[early_stop, model_ckpt, csv_logger])
 
     # Plot and save pass 2 (final) results.
-    acc = history.history['acc']
-    val_acc = history.history['val_acc']
+    acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
     loss = history.history['loss']
     val_loss = history.history['val_loss']
     epochs = range(len(acc))
@@ -553,7 +551,7 @@ def main():
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
 
-    # Save inference-optimized TF model.
+    # Save frozen TF model.
     if save_tf:
         keras_to_frozen_tf.convert(save_path+'-person-classifier.h5',
             save_path+'-person-classifier.pb')
@@ -563,17 +561,15 @@ def main():
     # Save quantized tflite model.
     # Model is quantized to 8-bits (uint8) for use on edge tpu. 
     if save_tflite:
-        # Force a garbage collection to avoid OOM.
-        #unreachable_objects = collect()
-        #logger.info('Garbage collection ran. Found {} unreachable objects.'
-            #.format(unreachable_objects))
+        # Load best keras model from disk.
+        model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
         # Reference dataset for quantization calibration.
         ref_dataset = data_dir + '/Unknown/'
         # Number of calibration images to use from ref dataset.
         num_cal=100
 
         tflite_quant_model = keras_to_tflite_quant.convert(
-            keras_model_path=save_path+'-person-classifier.h5',
+            keras_model=model,
             ref_dataset=ref_dataset, num_cal=num_cal,
             input_size=input_size, preprocessor=preprocessor)
 
@@ -602,9 +598,10 @@ def main():
 
     # Export best pass 2 model to SavedModel.
     if saved_model:
-        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
-            compile=False)
-        best_model.save(save_path, save_format='tf')
+        VERSION = 1
+        export_path = os.path.join(save_path, str(VERSION))
+        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
+        best_model.save(export_path, save_format='tf')
         logger.info('Exported SavedModel to {}'.format(save_path))
 
 if __name__ == "__main__":
