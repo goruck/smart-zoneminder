@@ -5,17 +5,18 @@ After=network.target
 StartLimitIntervalSec=0
 
 [Service]
-# NVidia CUDA and TensorRT paths
-Environment="PATH=$PATH:/usr/local/cuda/bin"
-Environment="LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/home/lindo/develop/TensorRT-4.0.1.6/lib"
-# Tensorflow paths
-Environment="PYTHONPATH=$PYTHONPATH:/home/lindo/develop/tensorflow/models/research:/home/lindo/develop/tensorflow/models/research/slim:/home/lindo/develop/t$
+# NVidia CUDA and TensorRT paths.
+Environment="PATH=/usr/local/cuda/bin"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda/lib64:/home/lindo/develop/TensorRT-4.0.1.6/lib"
+# Tensorflow path to object detection utilities (and others).
+Environment="PYTHONPATH=/home/lindo/develop/tensorflow/models/research"
+# Main directives.
 Type=simple
 Restart=always
 RestartSec=1
 User=lindo
 WorkingDirectory=/home/lindo/develop/smart-zoneminder/obj-detect
-ExecStart=/home/lindo/.virtualenvs/od/bin/python3 obj_detect_server.py
+ExecStart=/home/lindo/.virtualenvs/szm/bin/python3 obj_detect_server.py
 
 [Install]
 WantedBy=multi-user.target

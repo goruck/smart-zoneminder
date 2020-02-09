@@ -10,7 +10,7 @@ Restart=always
 RestartSec=1
 User=lindo
 WorkingDirectory=/home/lindo/develop/smart-zoneminder/face-det-rec
-ExecStart=/home/lindo/.virtualenvs/cv/bin/python3 face_detect_server.py
+ExecStart=/home/lindo/.virtualenvs/szm/bin/python3 face_detect_server.py
 
 [Install]
 WantedBy=multi-user.target
