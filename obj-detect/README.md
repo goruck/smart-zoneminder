@@ -14,20 +14,11 @@ $ rm -i ssd_mobilenet_v1_coco_2018_01_28.tar.gz # optional
 
 3. Edit the [config.json](https://github.com/goruck/smart-zoneminder/blob/master/obj-detect/config.json) to suit your installation. The configuration parameters are documented in obj_detect_server.py.
 
-4. Create the file '/tmp/obj_det_zmq.pipe' for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket.
+4. Create the file ```/tmp/obj_det_zmq.pipe``` for an IPC socket that the zerorpc client and server will communicate over. This assumes that the object detection server and ZoneMinder are running on the same machine. If not, then use a TCP socket.
 
-5. Install the OpenCV libraries using this [guide](https://www.pyimagesearch.com/2018/06/18/face-recognition-with-opencv-python-and-deep-learning/).
+5. Install the machine learning platform on the Linux server per the steps described [here](../README.md). The required Python packages used by the installation are listed in [ml_requirements.txt](../ml-requirements.txt).
 
-6. Install the other required python3.6 packages. Its highly recommended that you do so in a python virtualenv.
-
-7. Use systemd to run the Object Detection Server as a Linux service. Edit [obj-detect.service](./obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable and start the service:
+6. Use ```systemd``` to run the Object Detection Server as a Linux service. Edit [obj-detect.service](./obj-detect.service) to suit your configuration and copy the file to /etc/systemd/system. Then enable and start the service:
 ```bash
 $ sudo systemctl enable obj-detect.service && sudo systemctl start obj-detect.service
-```
-
-Note1: the requirements.txt file in this repo is for reference only as it reflects the virtualenv configuration. Do not use it to install dependencies in the local directory via pip. Use the guide above instead to install dependencies in your own virtualenv. 
-
-Note2: obj_detect_server.py must be run in the python virtual environment that was setup above. Here's a command line example of how to do this w/o explicitly activating the virtualenv (adjust path for your installation):
-```bash
-$ /home/lindo/.virtualenvs/od/bin/python3.6 obj_detect_server.py
 ```
