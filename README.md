@@ -9,16 +9,20 @@ The local processing of the machine learning workloads employed by this project 
 smart-zoneminder in its default configuration stores about three weeks of continuous video at the edge and one year of alarm images in the cloud. It costs as little as $8 per year per camera to operate.
 
 # Table of Contents
-1. [Usage Examples](https://github.com/goruck/smart-zoneminder/blob/master/README.md#usage-examples)
-2. [Project Requirements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#project-requirements)
-3. [System Architecture](https://github.com/goruck/smart-zoneminder/blob/master/README.md#system-architecture)
-4. [Edge Setup and Configuration](https://github.com/goruck/smart-zoneminder/blob/master/README.md#edge-setup-and-configuration)
-5. [Cloud Setup and Configuration](https://github.com/goruck/smart-zoneminder/blob/master/README.md#cloud-setup-and-configuration)
-6. [Results](https://github.com/goruck/smart-zoneminder/blob/master/README.md#results)
-7. [License](https://github.com/goruck/smart-zoneminder/blob/master/README.md#license)
-8. [Contact](https://github.com/goruck/smart-zoneminder/blob/master/README.md#contact)
-9. [Acknowledgements](https://github.com/goruck/smart-zoneminder/blob/master/README.md#acknowledgements)
-10. [Appendix](https://github.com/goruck/smart-zoneminder/blob/master/README.md#appendix)
+1. [Usage Examples](#usage-examples)
+2. [Project Requirements](#project-requirements)
+3. [System Architecture](#system-architecture)
+4. [Edge Setup and Configuration](#edge-setup-and-configuration)
+5. [Cloud Setup and Configuration](#cloud-setup-and-configuration)
+6. [Results](#results)
+7. [License](#license)
+8. [Contact](#contact)
+9. [Acknowledgements](#acknowledgements)
+10. [Appendix](#appendix)
+    - [Machine Learning Platform Installation](#machine-learning-platform-installation-on-linux-server)
+    - [Object Detection Performance and Model Selection](#object-detection-performance-and-model-selection)
+    - [Face Detection and Recognition Tuning](#face-detection-and-recognition-tuning)
+    - [Sample console output from alarm uploader](#sample-console-output-from-zm-s3-upload)
 
 # Usage Examples
 Here are a few of the things you can do with smart-zoneminder.
@@ -475,6 +479,291 @@ Thank you Brian and Mark!
 
 # Appendix
 
+## Machine Learning Platform Installation on Linux Server
+
+The instructions to install the Nvidia drivers and CUDA libraries, TensorFlow-GPU, OpenCV, dlib, face_recognition, scikit-learn, XGBoost, zerorpc and a Python virtual environment are shown below. This is required to run all machine learning-related code in this project on  the Linux server. See [tpu-servers](./tpu-servers) for installation instructions to install the same on the edge tpu.
+
+Tested on Ubuntu 18.04 with CUDA 10.1.
+
+### Install CUDA with apt
+
+See [this](https://www.tensorflow.org/install/gpu#install_cuda_with_apt) for complete installation details.
+
+### Install opencv 4.2.0 w/CUDA support
+
+#### Make and cd to installation directory
+```bash
+$ INSTALL_DIR=/tmp/opencv_compile
+$ mkdir $INSTALL_DIR
+$ cd $INSTALL_DIR
+```
+
+#### Update repo
+```bash
+$ sudo apt update
+```
+
+#### Install basic dependencies
+```bash
+$ sudo apt install python3-dev python3-pip python3-numpy \
+build-essential cmake git libgtk2.0-dev pkg-config \
+libavcodec-dev libavformat-dev libswscale-dev libtbb2 libtbb-dev \
+libjpeg-dev libpng-dev libtiff-dev libdc1394-22-dev protobuf-compiler \
+libgflags-dev libgoogle-glog-dev libblas-dev libhdf5-serial-dev \
+liblmdb-dev libleveldb-dev liblapack-dev libsnappy-dev libprotobuf-dev \
+libopenblas-dev libgtk2.0-dev libboost-dev libboost-all-dev \
+libeigen3-dev libatlas-base-dev libne10-10 libne10-dev liblapacke-dev
+```
+
+#### Download source
+```bash
+$ sudo apt update
+$ wget -O opencv.zip https://github.com/opencv/opencv/archive/4.2.0.zip
+$ unzip opencv.zip
+$ wget -O opencv_contrib.zip https://github.com/opencv/opencv_contrib/archive/4.2.0.zip
+$ unzip opencv_contrib.zip
+$ rm -i *.zip
+```
+
+#### Configure OpenCV using cmake
+```bash
+$ cd opencv-4.2.0
+$ mkdir build
+$ cd build
+$ cmake -D CMAKE_BUILD_TYPE=RELEASE \
+    -D CMAKE_INSTALL_PREFIX=/usr/local \
+    -D WITH_CUDA=ON \
+    -D ENABLE_FAST_MATH=1 \
+    -D CUDA_FAST_MATH=1 \
+    -D CUDA_ARCH_BIN=6.1 \
+    -D WITH_CUBLAS=1 \
+    -D INSTALL_PYTHON_EXAMPLES=OFF \
+    -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.2.0/modules \
+    -D BUILD_EXAMPLES=OFF ..
+```
+
+#### Compile and install
+```bash
+$ make -j 4
+$ sudo make install
+$ sudo ldconfig
+```
+
+#### Move and rename binding (for Python3 only)
+```bash
+$ sudo cp /usr/local/lib/python3.6/dist-packages/cv2/python-3.6/cv2.cpython-36m-x86_64-linux-gnu.so \
+/usr/local/lib/python3.6/site-packages/cv2.so
+```
+
+#### Test
+```bash
+$ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import cv2
+>>> cv2.__version__
+'4.2.0'
+>>>
+```
+
+#### Remove install directory (optional)
+```bash
+$ cd ~
+$ sudo rm -rf $INSTALL_DIR
+```
+
+### Install dlib w/CUDA support
+
+#### Make and cd to installation directory
+```bash
+$ INSTALL_DIR=/tmp/dlib_compile
+$ mkdir $INSTALL_DIR
+$ cd $INSTALL_DIR
+```
+
+#### Update repo
+```bash
+$ sudo apt update
+```
+
+#### Install dependencies if needed
+```bash
+$ sudo apt-get install build-essential cmake
+```
+
+#### Clone dlib repo.
+```bash
+$ git clone https://github.com/davisking/dlib.git
+```
+
+#### Build and install. 
+``` bash
+$ cd dlib
+$ python3 setup.py install \
+--set DLIB_NO_GUI_SUPPORT=YES \
+--set DLIB_USE_CUDA=YES
+```
+
+#### Test...
+```bash
+$ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import dlib
+>>> dlib.__version__
+'19.19.99'
+>>>
+```
+
+#### Remove install directory (optional)
+```bash
+$ cd ~
+$ sudo rm -rf $INSTALL_DIR
+```
+
+### Python virtual environment setup
+
+#### Install virtualenvwrapper
+
+See https://virtualenvwrapper.readthedocs.io/en/latest/index.html#.
+
+```bash
+$ pip3 install virtualenvwrapper
+```
+
+#### Pin to Python3 and set defaults (add to ~/.bashrc)
+```bash
+$ export WORKON_HOME=$HOME/.virtualenvs
+$ export VIRTUALENV_PYTHON=/usr/bin/python3
+$ export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+$ source /usr/local/bin/virtualenvwrapper.sh
+```
+
+#### Create Python virtual environment called "szm"
+```bash
+$ mkvirtualenv szm
+(szm) $ deactivate
+$
+```
+
+#### Link ```cv2.so``` to szm Python3 virtual environment
+```bash
+$ cd ~/.virtualenvs/szm/lib/python3.6/site-packages/
+$ ln -s /usr/local/lib/python3.6/site-packages/cv2.so cv2.so
+```
+
+#### Switch to szm Python virtual environment
+```bash
+$ workon szm
+(szm) $
+```
+Now install required Python packages below...
+
+### Install face_recognition
+
+```bash
+# Install
+(szm) $ pip3 install face_recognition
+
+# Test...
+(szm) $ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import face_recognition
+>>> face_recognition.__version__
+'1.2.3'
+>>> exit()
+```
+
+### Install zerorpc
+```bash
+# Install
+$ pip3 install zerorpc
+
+# Test...
+(szm) $ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import zerorpc
+>>> exit()
+```
+
+### Install scikit-learn
+```bash
+# Install
+(szm) $ pip3 install scikit-learn
+
+# Test...
+(szm) $ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sklearn
+>>> sklearn.__version__
+'0.22.1'
+>>> exit()
+```
+
+### Install XGBoost
+```bash
+# Install - see https://xgboost.readthedocs.io/en/latest/build.html
+$ pip3 install xgboost
+
+# Test...
+(szm) $ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import xgboost
+>>> xgboost.__version__
+'0.90'
+>>> exit()
+```
+
+### Install TensorFlow
+```bash
+# Install
+(szm) $ pip3 install tensorflow
+
+# Test...
+(szm) $ python3
+Python 3.6.9 (default, Nov  7 2019, 10:44:02) 
+[GCC 8.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import tensorflow
+>>> tensorflow.__version__
+'2.1.0'
+>>> gpus = tensorflow.config.experimental.list_physical_devices('GPU') # test that GPU is being used
+2020-02-08 18:42:47.687771: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcuda.so.1
+2020-02-08 18:42:48.007147: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-02-08 18:42:48.007443: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1555] Found device 0 with properties: 
+pciBusID: 0000:01:00.0 name: GeForce GTX 1080 Ti computeCapability: 6.1
+coreClock: 1.683GHz coreCount: 28 deviceMemorySize: 10.92GiB deviceMemoryBandwidth: 451.17GiB/s
+2020-02-08 18:42:48.009844: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudart.so.10.1
+2020-02-08 18:42:48.009979: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcublas.so.10
+2020-02-08 18:42:48.011510: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcufft.so.10
+2020-02-08 18:42:48.024092: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcurand.so.10
+2020-02-08 18:42:48.075393: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusolver.so.10
+2020-02-08 18:42:48.082163: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcusparse.so.10
+2020-02-08 18:42:48.082272: I tensorflow/stream_executor/platform/default/dso_loader.cc:44] Successfully opened dynamic library libcudnn.so.7
+2020-02-08 18:42:48.082413: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-02-08 18:42:48.082798: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:981] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2020-02-08 18:42:48.083054: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1697] Adding visible gpu devices: 0
+>>> gpus
+[PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+>>> exit()
+```
+
+### Deactivate virtual environment
+```bash
+(szm) $ deactivate
+$
+```
+
 ## Object Detection Performance and Model Selection
 I benchmarked Tensorflow object detection model performance on the machine running smart-zoneminder. The benchmarking configuration and results are shown below. For a good overview of the Tensorflow object detection models see [Deep Learning for Object Detection: A Comprehensive Review](https://towardsdatascience.com/deep-learning-for-object-detection-a-comprehensive-review-73930816d8d9).
 
@@ -520,7 +809,7 @@ Based on these results the *ssd_inception_v2_coco* model seems to be a good trad
 
 The performance using the Google Coral dev board can be found [here](https://coral.withgoogle.com/docs/edgetpu/faq/) which shows that for MobileNet v1 an inference takes 2.2 ms using the TPU (image size of 224x224).
 
-## Face Detection / Recognition Tuning
+## Face Detection and Recognition Tuning
 
 The face detection and recognition accuracy vs compute can be adjusted by a few parameters found in [config.json](./face-det-rec/config.json). These are:
 
