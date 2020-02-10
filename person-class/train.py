@@ -373,6 +373,20 @@ def main():
         batch_size=batch_size,
         seed=SEED)
 
+    logger.info('Generating validation dataset.')
+    validation_dataset = tf.data.Dataset.from_generator(
+        generator=lambda: validation_generator,
+        output_types=(tf.float32, tf.float32),
+        output_shapes=(tf.TensorShape([None, input_size[0], input_size[1], 3]),
+            tf.TensorShape([None, len(train_generator.class_indices)])))
+
+    logger.info('Generating train dataset.')
+    train_dataset = tf.data.Dataset.from_generator(
+        generator=lambda: train_generator,
+        output_types=(tf.float32, tf.float32),
+        output_shapes=(tf.TensorShape([None, input_size[0], input_size[1], 3]),
+            tf.TensorShape([None, len(train_generator.class_indices)])))
+
     logger.info('Class dict: {}'.format(train_generator.class_indices))
     logger.info('Number of training samples: {}'.format(train_generator.samples))
     logger.info('Number of validation samples: {}'.format(validation_generator.samples))
@@ -407,14 +421,15 @@ def main():
 
         # Actual training. 
         history = model.fit(
-            x=train_generator,
+            x=train_dataset,
             steps_per_epoch=steps_per_epoch,
             epochs=fit_epochs,
-            validation_data=validation_generator,
+            validation_data=validation_dataset,
             validation_steps=validation_steps,
             class_weight=class_weights,
             verbose=1,
             workers=4,
+            use_multiprocessing=True,
             callbacks=[early_stop, model_ckpt, csv_logger])
 
         # Plot and save pass 1 results.
@@ -486,14 +501,15 @@ def main():
 
     # Fit.
     history = model.fit(
-        x=train_generator,
+        x=train_dataset,
         steps_per_epoch=steps_per_epoch,
         epochs=fit_epochs,
-        validation_data=validation_generator,
+        validation_data=validation_dataset,
         validation_steps=validation_steps,
         class_weight=class_weights,
         verbose=1,
         workers=4,
+        use_multiprocessing=True,
         callbacks=[early_stop, model_ckpt, csv_logger])
 
     # Plot and save pass 2 (final) results.
