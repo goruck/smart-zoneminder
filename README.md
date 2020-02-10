@@ -758,13 +758,18 @@ coreClock: 1.683GHz coreCount: 28 deviceMemorySize: 10.92GiB deviceMemoryBandwid
 >>> exit()
 ```
 
+### Install misc packages
+```bash
+(szm) $ pip3 install pandas matplotlib
+```
+
 ### Deactivate virtual environment
 ```bash
 (szm) $ deactivate
 $
 ```
 
-Note that the Python packages used by the installation are listed in the file [ml_requirements.txt](ml-requirements.txt).
+Note that the Python packages used by the installation are listed in the file [ml_requirements.txt](ml-requirements.txt) and can be used to install all packages by ```pip3 install -r /path/to/ml-requirements.txt```.
 
 ## Object Detection Performance and Model Selection
 I benchmarked Tensorflow object detection model performance on the machine running smart-zoneminder. The benchmarking configuration and results are shown below. For a good overview of the Tensorflow object detection models see [Deep Learning for Object Detection: A Comprehensive Review](https://towardsdatascience.com/deep-learning-for-object-detection-a-comprehensive-review-73930816d8d9).
