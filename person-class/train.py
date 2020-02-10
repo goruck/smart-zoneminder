@@ -110,7 +110,7 @@ def create_model(base='VGG16'):
         DROPOUT = 0.2
         LEARNING_RATE = 1e-4
         L2_PENALTY = 1e-4
-        FREEZE = 350 # Freeze all layers less than this (InceptionResNetV2 has 780 layers).
+        FREEZE = 200 # Freeze all layers less than this (InceptionResNetV2 has 780 layers).
 
         logger.info('batch size: {}, dense units {}, dropout: {}'
             .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
