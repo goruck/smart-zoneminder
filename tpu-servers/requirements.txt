@@ -15,7 +15,7 @@ msgpack-python==0.5.6
 netifaces==0.10.4
 numpy==1.17.0
 pbr==5.2.0
-Pillow==6.0.0
+Pillow==6.2.0
 protobuf==3.0.0
 pycurl==7.43.0
 pygobject==3.22.0
