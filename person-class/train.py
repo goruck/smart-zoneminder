@@ -307,7 +307,7 @@ def main():
         help='do not save edge tpu model')
     ap.add_argument('--epochs',
         type=int,
-        default=100,
+        default=500,
         help='max number of fit epochs')
     args = vars(ap.parse_args())
 
