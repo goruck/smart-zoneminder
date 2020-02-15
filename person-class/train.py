@@ -73,11 +73,26 @@ def add_regularization(model, regularizer=tf.keras.regularizers.l2(0.0001)):
 
     return model
 
-def get_dataframe(dataset, seed=None, shuffle=True):
-    # Generate dataframe from dataset.
-    # Using dataframes to enable easy shuffling of dataset. 
-    logger.info('Getting dataframe.')
-    imagePaths = glob(dataset + '/**/*.*', recursive=True)
+def get_dataframe(dataset, seed=None, shuffle=True,
+    alt_subfolder='no_faces', alt_label='Unknown', use_alt=False):
+    """
+    Generate a dataframe containing labeled image paths.
+    Labels are extracted from folder names in dataset.
+    Images in subfolders can be labled differently from parent.
+    
+    Parameters:
+    dataset - (str) path to dataset contains images in named folders.
+    seed - (int) seed for random operations.
+    shuffle - (boolean) to randomly shuffle rows of dataframe.
+    alt_subfolder - (str) subfolder with images that can have alternate labels.
+    alt_label - (str) alternate label.
+    use_alt - (boolean) to use alt images with an alt label.
+
+    Returns:
+    df - dataframe containing labeled image paths as rows.
+    """
+    logger.info(f'Getting dataframe with alt_label: {use_alt}.')
+    imagePaths = glob(dataset + '**/*.*', recursive=True)
     filenames = []
     labels = []
 
@@ -85,6 +100,12 @@ def get_dataframe(dataset, seed=None, shuffle=True):
         filename = os.path.abspath(imagePath)
         filenames.append(filename)
         label = imagePath.split(os.path.sep)[-2]
+        # if alt subfolder name is found...
+        if label == alt_subfolder:
+            if use_alt: # ...label as alt
+                label = alt_label
+            else: # ...label as parent folder name
+                label = imagePath.split(os.path.sep)[-3]
         labels.append(label)
 
     d = {'filename': filenames, 'class': labels}
@@ -273,10 +294,10 @@ def main():
         default=False,
         help='do not run pass 1 training')
     ap.add_argument('--dataset',
-        default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset',
+        default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset/',
         help='location of input dataset')
     ap.add_argument('--output',
-        default='/home/lindo/develop/smart-zoneminder/person-class/train-results',
+        default='/home/lindo/develop/smart-zoneminder/person-class/train-results/',
         help='location of output folder')
     ap.add_argument('--test',
         action='store_true',
@@ -315,8 +336,8 @@ def main():
     assert cnn_base in {'VGG16','InceptionResNetV2', 'MobileNetV2', 'ResNet50'},'Unknown base'
 
     run_pass1 = not args['no_pass1']
-    data_dir = args['dataset']
-    test_dir = args['test_dir']
+    data_dir = os.path.join(args['dataset'], '')
+    test_dir = os.path.join(args['test_dir'], '')
     run_test = args['test']
     save_tf = args['save_tf']
     saved_model = not args['no_saved_model']
@@ -324,7 +345,7 @@ def main():
     save_tflite = not args['no_save_tflite']
     save_edge_tpu = not args['no_save_edge_tpu']
     fit_epochs = args['epochs']
-    save_path = args['output']+'/'+cnn_base
+    save_path = args['output']+cnn_base
 
     SEED = 1
 
@@ -333,11 +354,11 @@ def main():
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
         level=logging.INFO)
 
+    df = get_dataframe(dataset=data_dir, seed=SEED)
+
     (model, pass2_lr, preprocessor, batch_size, freeze_layers) = create_model(cnn_base)
 
     input_size = model.input_shape[1:3]
-
-    df = get_dataframe(dataset=data_dir, seed=SEED)
 
     test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
         validation_split=.20,
@@ -580,7 +601,8 @@ def main():
         # Load best keras model from disk.
         model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
         # Reference dataset for quantization calibration.
-        ref_dataset = data_dir + '/Unknown/'
+        REF_FOLDER = 'Unknown/'
+        ref_dataset = os.path.join(data_dir, REF_FOLDER)
         # Number of calibration images to use from ref dataset.
         num_cal=100
 
