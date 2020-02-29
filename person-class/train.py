@@ -354,6 +354,7 @@ def main():
     # Get dataframe of samples, split into train (and val) and (if enabled) test sets.
     df = get_dataframe(dataset=data_dir, seed=SEED)
     if run_test:
+        logger.info('Running with test enabled.')
         train_df, test_df = train_test_split(df, test_size=.20, random_state=SEED)
     else:
         train_df = df
