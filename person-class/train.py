@@ -583,8 +583,8 @@ def main():
 
         # Generate classification report.
         predicted_classes = np.argmax(predictions, axis=1)
-        true_classes = validation_generator.classes
-        class_labels = list(validation_generator.class_indices.keys())
+        true_classes = test_generator.classes
+        class_labels = list(test_generator.class_indices.keys())
 
         class_report = classification_report(true_classes,
             predicted_classes, target_names=class_labels)
