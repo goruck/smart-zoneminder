@@ -604,19 +604,20 @@ def main():
         REF_FOLDER = 'Unknown/'
         ref_dataset = os.path.join(data_dir, REF_FOLDER)
         # Number of calibration images to use from ref dataset.
-        num_cal=100
+        NUM_CAL = 100
 
-        tflite_quant_model = keras_to_tflite_quant.convert(
-            keras_model=model,
-            ref_dataset=ref_dataset, num_cal=num_cal,
-            input_size=input_size, preprocessor=preprocessor)
-
-        output = save_path+'-person-classifier-quant.tflite'
-
-        with open(output, 'wb') as file:
-            file.write(tflite_quant_model)
-
-        logger.info('Quantized tflite model saved to: {}'.format(output))
+        try:
+            tflite_quant_model = keras_to_tflite_quant.convert(
+                keras_model=model,
+                ref_dataset=ref_dataset, num_cal=NUM_CAL,
+                input_size=input_size, preprocessor=preprocessor)
+        except RuntimeError as err:
+            logger.error(f'Error quantizing model:\n{err}')
+        else:
+            output = save_path+'-person-classifier-quant.tflite'
+            with open(output, 'wb') as file:
+                file.write(tflite_quant_model)
+            logger.info(f'Quantized tflite model saved to: {output}')
 
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
