@@ -618,6 +618,7 @@ def main():
                 ref_dataset=ref_dataset, num_cal=NUM_CAL,
                 input_size=input_size, preprocessor=preprocessor)
         except RuntimeError as err:
+            save_edge_tpu = False # inhibit edge tpu model compilation
             logger.error(f'Error quantizing model:\n{err}')
         else:
             output = save_path+'-person-classifier-quant.tflite'
