@@ -19,6 +19,7 @@ import keras_to_tflite_quant
 import subprocess
 import numpy as np
 from sklearn.metrics import classification_report
+from sklearn.model_selection import train_test_split
 from collections import Counter
 from sys import exit
 from glob import glob
@@ -299,13 +300,10 @@ def main():
     ap.add_argument('--output',
         default='/home/lindo/develop/smart-zoneminder/person-class/train-results/',
         help='location of output folder')
-    ap.add_argument('--test',
+    ap.add_argument('--no_test',
         action='store_true',
         default=False,
-        help='make predictions on final model from test set')
-    ap.add_argument('--test_dir',
-        default='./test',
-        help='location of test data')
+        help='do not make predictions on final model from test set')
     ap.add_argument('--save_tf',
         action='store_true',
         default=False,
@@ -337,8 +335,7 @@ def main():
 
     run_pass1 = not args['no_pass1']
     data_dir = os.path.join(args['dataset'], '')
-    test_dir = os.path.join(args['test_dir'], '')
-    run_test = args['test']
+    run_test = not args['no_test']
     save_tf = args['save_tf']
     saved_model = not args['no_saved_model']
     data_augment = not args['no_data_augment']
@@ -354,7 +351,12 @@ def main():
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
         level=logging.INFO)
 
+    # Get dataframe of samples, split into train (and val) and (if enabled) test sets.
     df = get_dataframe(dataset=data_dir, seed=SEED)
+    if run_test:
+        train_df, test_df = train_test_split(df, test_size=.20, random_state=SEED)
+    else:
+        train_df = df
 
     (model, pass2_lr, preprocessor, batch_size, freeze_layers) = create_model(cnn_base)
 
@@ -365,7 +367,7 @@ def main():
         preprocessing_function=preprocessor)
 
     validation_generator = test_datagen.flow_from_dataframe(
-        df,
+        train_df,
         subset='validation',
         shuffle=False,
         target_size=input_size,
@@ -387,7 +389,7 @@ def main():
         train_datagen = test_datagen
 
     train_generator = train_datagen.flow_from_dataframe(
-        df,
+        train_df,
         subset='training',
         shuffle=True,
         target_size=input_size,
@@ -546,44 +548,47 @@ def main():
 
     logger.info('Finished pass 2.')
 
-    # Generate classification report.
-    validation_steps = np.math.ceil(
-        validation_generator.samples / validation_generator.batch_size)
-
-    predictions = model.predict(
-        validation_generator,
-        steps=validation_steps,
-        verbose=1,
-        workers=4)
-
-    predicted_classes = np.argmax(predictions, axis=1)
-    true_classes = validation_generator.classes
-    class_labels = list(validation_generator.class_indices.keys())
-
-    class_report = classification_report(true_classes,
-        predicted_classes, target_names=class_labels)
-
-    logger.info('Classification report:\n{}'.format(class_report))
-
-    tf.keras.backend.clear_session()
+    # Export best pass 2 model to SavedModel.
+    if saved_model:
+        VERSION = 1
+        export_path = os.path.join(save_path, str(VERSION))
+        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
+        best_model.save(export_path, save_format='tf')
+        logger.info('Exported SavedModel to {}'.format(save_path))
 
     # Evaluate best model on test data.
     if run_test:
-        logger.info('Running test.')
-
-        test_generator = test_datagen.flow_from_directory(
-            test_dir,
-            target_size=input_size,
-            batch_size=batch_size,
-            shuffle=False,
-            seed=SEED)
+        logger.info(f'Evaluating model on {len(test_df.index)} test samples.')
 
         # Load the best model from disk that was the last saved checkpoint.
         best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
             compile=False)
 
-        test_loss, test_acc = best_model.evaluate_generator(test_generator, steps=len(test_generator))
-        logger.info('Test acc: {} test loss {}'.format(test_acc, test_loss))
+        test_generator = test_datagen.flow_from_dataframe(
+            test_df,
+            target_size=input_size,
+            batch_size=batch_size,
+            shuffle=False,
+            seed=SEED)
+
+        test_steps = np.math.ceil(
+            test_generator.samples / test_generator.batch_size)
+
+        predictions = model.predict(
+            test_generator,
+            steps=test_steps,
+            verbose=1,
+            workers=4)
+
+        # Generate classification report.
+        predicted_classes = np.argmax(predictions, axis=1)
+        true_classes = validation_generator.classes
+        class_labels = list(validation_generator.class_indices.keys())
+
+        class_report = classification_report(true_classes,
+            predicted_classes, target_names=class_labels)
+
+        logger.info('Classification report:\n{}'.format(class_report))
 
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
@@ -634,14 +639,6 @@ def main():
             exit()
 
         logger.info('Compiled model for edge tpu:\n{}'.format(res.stdout.decode('utf-8')))
-
-    # Export best pass 2 model to SavedModel.
-    if saved_model:
-        VERSION = 1
-        export_path = os.path.join(save_path, str(VERSION))
-        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
-        best_model.save(export_path, save_format='tf')
-        logger.info('Exported SavedModel to {}'.format(save_path))
 
 if __name__ == "__main__":
     main()
