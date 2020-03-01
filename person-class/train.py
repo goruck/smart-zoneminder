@@ -117,13 +117,12 @@ def get_dataframe(dataset, seed=None, shuffle=True,
 
     return df
 
-def create_model(base='VGG16'):
+def create_model(base, num_classes):
     """
     NB: Do not use "max" pooling in any model. It has an op (REDUCE_MAX) than cannot be quantized.
 
     dropout ref: # http://jmlr.org/papers/volume15/srivastava14a/srivastava14a.pdf
     """
-    NUM_CLASSES = 5
     logger.info('Creating model with cnn base: {}'.format(base))
     if base == 'InceptionResNetV2': 
         # Setup hyperparamters.
@@ -155,7 +154,7 @@ def create_model(base='VGG16'):
         model.add(tf.keras.layers.Dense(DENSE_UNITS, activation='relu',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
         model.add(tf.keras.layers.Dropout(rate=DROPOUT))
-        model.add(tf.keras.layers.Dense(NUM_CLASSES, activation='softmax',
+        model.add(tf.keras.layers.Dense(num_classes, activation='softmax',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
@@ -195,7 +194,7 @@ def create_model(base='VGG16'):
         model.add(tf.keras.layers.Dense(DENSE_UNITS, activation='relu',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
         model.add(tf.keras.layers.Dropout(rate=DROPOUT))
-        model.add(tf.keras.layers.Dense(NUM_CLASSES, activation='softmax',
+        model.add(tf.keras.layers.Dense(num_classes, activation='softmax',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
@@ -235,7 +234,7 @@ def create_model(base='VGG16'):
         model.add(tf.keras.layers.Dense(DENSE_UNITS, activation='relu',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
         model.add(tf.keras.layers.Dropout(rate=DROPOUT))
-        model.add(tf.keras.layers.Dense(NUM_CLASSES, activation='softmax',
+        model.add(tf.keras.layers.Dense(num_classes, activation='softmax',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
@@ -275,7 +274,7 @@ def create_model(base='VGG16'):
         model.add(tf.keras.layers.Dense(DENSE_UNITS, activation='relu',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
         model.add(tf.keras.layers.Dropout(rate=DROPOUT))
-        model.add(tf.keras.layers.Dense(NUM_CLASSES, activation='softmax',
+        model.add(tf.keras.layers.Dense(num_classes, activation='softmax',
             kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
 
         model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
@@ -363,7 +362,11 @@ def main():
     else:
         train_df = df
 
-    (model, pass2_lr, preprocessor, batch_size, freeze_layers) = create_model(cnn_base)
+    # Get number of classes from data set.
+    num_classes = train_df['class'].nunique()
+    logger.info(f'Found {num_classes} classes in data set.')
+
+    (model, pass2_lr, preprocessor, batch_size, freeze_layers) = create_model(cnn_base, num_classes)
 
     input_size = model.input_shape[1:3]
 
