@@ -18,13 +18,45 @@ import keras_to_frozen_tf
 import keras_to_tflite_quant
 import subprocess
 import numpy as np
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from collections import Counter
 from sys import exit
 from glob import glob
+from itertools import product
 
 logger = logging.getLogger(__name__)
+
+def plot_confusion_matrix(cm, class_names):
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+
+    Parameters:
+    cm (array, shape = [n, n]): a confusion matrix of integer classes
+    class_names (array, shape = [n]): String names of the integer classes
+    """
+    figure = plt.figure(figsize=(8, 8))
+    ax = plt.gca()
+    im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title("Confusion matrix")
+    plt.colorbar(im, fraction=0.046, pad=0.04)
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    # Normalize the confusion matrix.
+    cm = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+
+    # Use white text if squares are dark; otherwise black.
+    threshold = cm.max() / 2.
+    for i, j in product(range(cm.shape[0]), range(cm.shape[1])):
+        color = "white" if cm[i, j] > threshold else "black"
+        plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    return figure
 
 def smooth_curve(points, factor=0.8):
     smoothed_points = []
@@ -588,15 +620,21 @@ def main():
             verbose=1,
             workers=4)
 
-        # Generate classification report.
         predicted_classes = np.argmax(predictions, axis=1)
         true_classes = test_generator.classes
         class_labels = list(test_generator.class_indices.keys())
 
+        # Generate classification report.
         class_report = classification_report(true_classes,
             predicted_classes, target_names=class_labels)
-
         logger.info('Classification report:\n{}'.format(class_report))
+
+        # Generate confusion matrix.
+        cm = confusion_matrix(true_classes, predicted_classes)
+        logger.info(f'Confusion matrix:\n{cm}')
+        cm_figure = plot_confusion_matrix(cm, class_names=class_labels)
+        cm_figure.savefig(save_path+'-person-classifier-cm.png')
+        cm_figure.clf()
 
         # Clear graph in prep for next step.
         tf.keras.backend.clear_session()
