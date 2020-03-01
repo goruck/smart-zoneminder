@@ -144,8 +144,9 @@ def create_model(base='VGG16'):
             pooling='avg',
             input_shape=(299,299,3))
 
-        # Modify base model kernel regularizers for fine-tuning.
-        add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
+        # Uncomment below to modify base model kernel regularizers for fine-tuning.
+        # This may improve accuracy in some cases at expense of training time. 
+        #add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
 
         base_model.trainable = False
 
@@ -183,8 +184,9 @@ def create_model(base='VGG16'):
             pooling='avg',
             input_shape=(224,224,3))
 
-        # Modify base model kernel regularizers for fine-tuning.
-        add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
+        # Uncomment below to modify base model kernel regularizers for fine-tuning.
+        # This may improve accuracy in some cases at expense of training time. 
+        #add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
 
         base_model.trainable = False
 
@@ -222,8 +224,9 @@ def create_model(base='VGG16'):
             pooling='avg',
             input_shape=(224,224,3))
 
-        # Modify base model kernel regularizers for fine-tuning.
-        add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
+        # Uncomment below to modify base model kernel regularizers for fine-tuning.
+        # This may improve accuracy in some cases at expense of training time. 
+        #add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
 
         base_model.trainable = False
 
@@ -261,8 +264,9 @@ def create_model(base='VGG16'):
             pooling='avg',
             input_shape=(224,224,3))
 
-        # Modify base model kernel regularizers for fine-tuning.
-        add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
+        # Uncomment below to modify base model kernel regularizers for fine-tuning.
+        # This may improve accuracy in some cases at expense of training time. 
+        #add_regularization(base_model, tf.keras.regularizers.l2(L2_PENALTY))
 
         base_model.trainable = False
 
