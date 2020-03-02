@@ -1,9 +1,9 @@
 {
     "personClassifierServer": {
         "comment": "Configuration for person_classifier_server.py.",
-        "savedModel": "./train-results/ResNet50/1",
-        "modelInputSize": [224, 224],
-        "preprocessor": "tf.keras.applications.resnet50.preprocess_input",
+        "savedModel": "./train-results/InceptionResNetV2/1",
+        "modelInputSize": [299, 299],
+        "preprocessor": "tf.keras.applications.inception_resnet_v2.preprocess_input",
         "labelMap": [
             "Unknown",
             "eva_st_angel",
