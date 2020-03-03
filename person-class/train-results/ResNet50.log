@@ -1,74 +1,66 @@
-2020-01-12 19:27:24,936 __main__     INFO     Creating model with cnn base: ResNet50
-2020-01-12 19:27:24,936 __main__     INFO     batch size: 32, dense units 128, dropout: 0.2
-2020-01-12 19:27:24,937 __main__     INFO     learning rate: 0.0001, l2 penalty: 0.0001, freeze 85
-2020-01-12 19:27:24,957 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1630: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+2020-03-01 10:50:34,799 __main__     INFO     Getting dataframe with alt_label: False.
+2020-03-01 10:50:34,864 __main__     INFO     Running with test enabled.
+2020-03-01 10:50:34,867 __main__     INFO     Found 5 classes in data set.
+2020-03-01 10:50:34,867 __main__     INFO     Creating model with cnn base: ResNet50
+2020-03-01 10:50:34,867 __main__     INFO     batch size: 32, dense units 128, dropout: 0.2
+2020-03-01 10:50:34,867 __main__     INFO     learning rate: 0.0001, l2 penalty: 0.0001, freeze 40
+2020-03-01 10:50:39,127 __main__     INFO     Generating validation dataset.
+2020-03-01 10:50:39,142 __main__     INFO     Generating train dataset.
+2020-03-01 10:50:39,152 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+2020-03-01 10:50:39,152 __main__     INFO     Number of training samples: 5839
+2020-03-01 10:50:39,152 __main__     INFO     Number of validation samples: 1459
+2020-03-01 10:50:39,152 __main__     INFO     Class weights: {4: 1.9443207126948776, 0: 1.0186697782963827, 2: 1.0, 1: 2.954314720812183, 3: 1.9617977528089887}
+2020-03-01 10:50:39,152 __main__     INFO     Steps per epoch: 182
+2020-03-01 10:50:39,152 __main__     INFO     Validation steps: 45
+2020-03-01 10:50:39,152 __main__     INFO     Starting pass 1.
+2020-03-01 11:03:34,249 __main__     INFO     Finished pass 1.
+2020-03-01 11:03:34,249 __main__     INFO     Starting pass 2 with learning rate: 1e-05
+2020-03-01 11:03:37,379 __main__     INFO     Initiating pass 2 with final pass 1 model.
+2020-03-01 11:38:25,554 __main__     INFO     Finished pass 2.
+2020-03-01 11:38:51,721 tensorflow   WARNING  From /home/lindo/.virtualenvs/szm/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1786: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
 Instructions for updating:
 If using Keras pass *_constraint arguments to layers.
-2020-01-12 19:27:40,606 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling GlorotUniform.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
-Instructions for updating:
-Call initializer instance with the dtype argument instead of passing it to the constructor
-2020-01-12 19:27:40,610 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Zeros.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
-Instructions for updating:
-Call initializer instance with the dtype argument instead of passing it to the constructor
-2020-01-12 19:27:40,614 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/ops/init_ops.py:97: calling Ones.__init__ (from tensorflow.python.ops.init_ops) with dtype is deprecated and will be removed in a future version.
-Instructions for updating:
-Call initializer instance with the dtype argument instead of passing it to the constructor
-2020-01-12 19:27:48,522 __main__     INFO     Getting dataframe.
-2020-01-12 19:27:48,679 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
-2020-01-12 19:27:48,680 __main__     INFO     Number of training samples: 5474
-2020-01-12 19:27:48,680 __main__     INFO     Number of validation samples: 1368
-2020-01-12 19:27:48,680 __main__     INFO     Class weights: {0: 1.0, 1: 3.971014492753623, 3: 2.895640686922061, 4: 2.760705289672544, 2: 1.8592027141645462}
-2020-01-12 19:27:48,680 __main__     INFO     Steps per epoch: 171
-2020-01-12 19:27:48,680 __main__     INFO     Validation steps: 42
-2020-01-12 19:27:48,680 __main__     INFO     Starting pass 1.
-2020-01-12 19:36:57,913 __main__     INFO     Finished pass 1.
-2020-01-12 19:36:57,913 __main__     INFO     Starting pass 2 with learning rate: 1e-05
-2020-01-12 19:37:05,267 __main__     INFO     Initiating pass 2 with final pass 1 model.
-2020-01-12 20:54:05,337 __main__     INFO     Finished pass 2.
-2020-01-12 20:54:24,207 __main__     INFO     Classification report:
+2020-03-01 11:38:56,162 tensorflow   INFO     Assets written to: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50/1/assets
+2020-03-01 11:38:58,000 __main__     INFO     Exported SavedModel to /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50
+2020-03-01 11:38:58,001 __main__     INFO     Evaluating model on 1825 test samples.
+2020-03-01 11:39:06,105 __main__     INFO     Classification report:
                 precision    recall  f1-score   support
 
-       Unknown       0.90      0.88      0.89       509
-  eva_st_angel       0.92      0.76      0.83       133
-lindo_st_angel       0.96      0.91      0.93       327
- nico_st_angel       0.91      0.89      0.90       195
-nikki_st_angel       0.74      0.91      0.82       204
+       Unknown       0.86      0.83      0.84       534
+  eva_st_angel       0.90      0.72      0.80       166
+lindo_st_angel       0.94      0.94      0.94       516
+ nico_st_angel       0.90      0.88      0.89       299
+nikki_st_angel       0.80      0.94      0.86       310
 
-      accuracy                           0.88      1368
-     macro avg       0.88      0.87      0.87      1368
-  weighted avg       0.89      0.88      0.89      1368
+      accuracy                           0.88      1825
+     macro avg       0.88      0.86      0.87      1825
+  weighted avg       0.88      0.88      0.88      1825
 
-2020-01-12 20:54:24,216 keras_to_frozen_tf INFO     Starting conversion of keras model to frozen TF model.
-2020-01-12 20:54:28,729 keras_to_frozen_tf INFO     Input node name(s) are: ['resnet50_input']
-2020-01-12 20:54:28,729 keras_to_frozen_tf INFO     Output node name(s) are: ['dense_1/Softmax']
-2020-01-12 20:54:28,729 tensorflow   WARNING  From /home/lindo/develop/smart-zoneminder/person-class/keras_to_frozen_tf.py:35: The name tf.keras.backend.get_session is deprecated. Please use tf.compat.v1.keras.backend.get_session instead.
+2020-03-01 11:39:06,111 __main__     INFO     Confusion matrix:
+[[444   8  21  22  39]
+ [ 17 120   3   4  22]
+ [ 22   0 487   4   3]
+ [ 18   3   6 263   9]
+ [ 16   3   0   0 291]]
+2020-03-01 11:39:41,014 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant.tflite
+2020-03-01 11:39:42,207 __main__     INFO     Compiled model for edge tpu:
+Edge TPU Compiler version 2.0.291256449
 
-2020-01-12 20:54:28,769 tensorflow   WARNING  From /home/lindo/develop/smart-zoneminder/person-class/keras_to_frozen_tf.py:39: convert_variables_to_constants (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
-Instructions for updating:
-Use `tf.compat.v1.graph_util.convert_variables_to_constants`
-2020-01-12 20:54:28,769 tensorflow   WARNING  From /home/lindo/.virtualenvs/od/local/lib/python3.6/site-packages/tensorflow_core/python/framework/graph_util_impl.py:277: extract_sub_graph (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
-Instructions for updating:
-Use `tf.compat.v1.graph_util.extract_sub_graph`
-2020-01-12 20:54:29,154 tensorflow   INFO     Froze 322 variables.
-2020-01-12 20:54:29,234 tensorflow   INFO     Converted 322 variables to const ops.
-2020-01-12 20:54:29,436 keras_to_frozen_tf INFO     Saved the frozen graph at /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier.pb
-2020-01-12 20:54:40,288 tensorflow   INFO     Froze 322 variables.
-2020-01-12 20:54:40,368 tensorflow   INFO     Converted 322 variables to const ops.
-2020-01-12 20:55:05,000 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant.tflite
-2020-01-12 20:55:06,500 __main__     INFO     Compiled model for edge tpu:
-Edge TPU Compiler version 2.0.267685300
-
-Model compiled successfully in 911 ms.
+Model compiled successfully in 988 ms.
 
 Input model: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant.tflite
-Input size: 23.36MiB
+Input size: 23.56MiB
 Output model: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant_edgetpu.tflite
 Output size: 23.11MiB
-On-chip memory available for caching model parameters: 6.26MiB
-On-chip memory used for caching model parameters: 6.26MiB
-Off-chip memory used for streaming uncached model parameters: 16.67MiB
+On-chip memory available for caching model parameters: 6.25MiB
+On-chip memory used for caching model parameters: 6.25MiB
+Off-chip memory used for streaming uncached model parameters: 16.69MiB
 Number of Edge TPU subgraphs: 1
 Total number of operations: 78
 Operation log: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant_edgetpu.log
+
+Model successfully compiled but not all operations are supported by the Edge TPU. A percentage of the model will instead run on the CPU, which is slower. If possible, consider updating your model to use only operations supported by the Edge TPU. For details, visit g.co/coral/model-reqs.
+Number of operations that will run on Edge TPU: 76
+Number of operations that will run on CPU: 2
 See the operation log file for individual operation details.
 

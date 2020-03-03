@@ -1,14 +1,15 @@
-Edge TPU Compiler version 2.0.267685300
+Edge TPU Compiler version 2.0.291256449
 Input: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant.tflite
 Output: /home/lindo/develop/smart-zoneminder/person-class/train-results/ResNet50-person-classifier-quant_edgetpu.tflite
 
 Operator                       Count      Status
 
-QUANTIZE                       2          Mapped to Edge TPU
-PAD                            2          Mapped to Edge TPU
-CONV_2D                        53         Mapped to Edge TPU
-MEAN                           1          Mapped to Edge TPU
-SOFTMAX                        1          Mapped to Edge TPU
-FULLY_CONNECTED                2          Mapped to Edge TPU
 ADD                            16         Mapped to Edge TPU
 MAX_POOL_2D                    1          Mapped to Edge TPU
+PAD                            2          Mapped to Edge TPU
+QUANTIZE                       1          Operation is otherwise supported, but not mapped due to some unspecified limitation
+CONV_2D                        53         Mapped to Edge TPU
+DEQUANTIZE                     1          Operation is working on an unsupported data type
+MEAN                           1          Mapped to Edge TPU
+FULLY_CONNECTED                2          Mapped to Edge TPU
+SOFTMAX                        1          Mapped to Edge TPU
