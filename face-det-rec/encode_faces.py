@@ -7,7 +7,7 @@ $ python3 encode_faces.py --dataset dataset --encodings encodings.pickle
 Part of the smart-zoneminder project:
 See https://github.com/goruck/smart-zoneminder.
 
-Copyright (c) 2018, 2019 Lindo St. Angel
+Copyright (c) 2018~2020 Lindo St. Angel
 '''
 
 import face_recognition
@@ -22,6 +22,10 @@ FACE_HEIGHT = None
 FACE_WIDTH = None
 # Jitters for dlib. 
 NUM_JITTERS = 500
+# Alternative labling of images.
+USE_ALT = False
+ALT_SUBFOLDER = 'no_faces'
+ALT_LABEL = 'Unknown'
 
 print('\n quantifying faces...')
 
@@ -80,9 +84,16 @@ knownNames = []
 not_encoded = 0
 encoded = 0
 for (i, imagePath) in enumerate(imagePaths):
-    # Extract the person name from the image path.
     print('processing image {}/{}'.format(i + 1, len(imagePaths)))
+
+    # Extract the person name from the image path.
     name = imagePath.split(sep)[-2]
+     # if alt subfolder name is found...
+    if name == ALT_SUBFOLDER:
+        if USE_ALT: # ...label as alt
+            name = ALT_LABEL
+        else: # ...label as parent folder name
+            name = imagePath.split(sep)[-3]
 
     # Load the input image.
     image = cv2.imread(imagePath)
