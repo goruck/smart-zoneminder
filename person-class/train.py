@@ -401,6 +401,10 @@ def main():
         action='store_true',
         default=False,
         help='do not run pass 1 training')
+    ap.add_argument('--do_not_use_pass1_model',
+        action='store_true',
+        default=False,
+        help='do not init pass2 with last pass1 model')
     ap.add_argument('--dataset',
         default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset/',
         help='location of input dataset')
@@ -442,6 +446,7 @@ def main():
         'ResNet50', 'NASNetLarge', 'NASNetMobile'},'Unknown base'
 
     run_pass1 = not args['no_pass1']
+    use_pass1_model = not args['do_not_use_pass1_model']
     data_dir = os.path.join(args['dataset'], '')
     run_test = not args['no_test']
     save_tf = args['save_tf']
@@ -583,22 +588,20 @@ def main():
         tf.keras.backend.clear_session()
 
         logger.info('Finished pass 1.')
-
-    #Pass 2: fine-tune.
-    logger.info('Starting pass 2 with learning rate: {}'.format(pass2_lr))
-
-    # Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
-    if run_pass1:
-        model = tf.keras.models.load_model(save_path+'-pass1.h5', compile=False)
-        logger.info('Initiating pass 2 with final pass 1 model.')
-    elif os.path.isfile(save_path+'-person-classifier.h5'):
-        # Clear graph in case another TF session was active. 
-        tf.keras.backend.clear_session()
-        model = tf.keras.models.load_model(save_path+'-person-classifier.h5', compile=False)
-        logger.info('Initiating pass 2 with last pass 2 checkpoint.')
     else:
-        logger.error('Cannot init pass 2 without a pass 1 or 2 checkpoint.')
-        exit()
+        # Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
+        path = save_path+'-pass1.h5' if use_pass1_model else save_path+'-person-classifier.h5'
+
+        try:
+            model = tf.keras.models.load_model(path, compile=False)
+        except IOError as err:
+            logger.error(f'Error loading model {err}')
+            exit()
+        else:
+            logger.info(f'Initiating pass 2 with {path}.')
+
+    # Pass 2: fine-tune.
+    logger.info('Starting pass 2 with learning rate: {}'.format(pass2_lr))
 
     # Freeze layers of base model to mitigate overfitting during fine-tuning.
     # Ref: https://ai.googleblog.com/2016/08/improving-inception-and-image.html
