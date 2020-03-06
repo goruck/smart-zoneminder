@@ -761,7 +761,7 @@ def main():
             logger.error('The edge tpu complier is not installed:\n{}.'.format(err))
             exit()
 
-        logger.info('Compiled model for edge tpu:\n{}'.format(res.stdout.decode('utf-8')))
+        logger.info('Edge TPU model compilation results:\n{}'.format(res.stdout.decode('utf-8')))
 
 if __name__ == "__main__":
     main()
