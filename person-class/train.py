@@ -404,7 +404,7 @@ def main():
     ap.add_argument('--do_not_use_pass1_model',
         action='store_true',
         default=False,
-        help='do not init pass2 with last pass1 model')
+        help='do not init pass2 with last pass1 model (ignored unless no_pass1 set)')
     ap.add_argument('--dataset',
         default='/home/lindo/develop/smart-zoneminder/face-det-rec/dataset/',
         help='location of input dataset')
@@ -588,8 +588,11 @@ def main():
         tf.keras.backend.clear_session()
 
         logger.info('Finished pass 1.')
+
+        # Load best pass 1 model to start pass 2. 
+        model = tf.keras.models.load_model(save_path+'-pass1.h5', compile=False)
     else:
-        # Initiate pass 2 training with existing pass 1 or pass 2 checkpoint.
+        # Initiate pass 2 training with existing pass 1 (default) or pass 2 checkpoint.
         path = save_path+'-pass1.h5' if use_pass1_model else save_path+'-person-classifier.h5'
 
         try:
@@ -598,7 +601,7 @@ def main():
             logger.error(f'Error loading model {err}')
             exit()
         else:
-            logger.info(f'Initiating pass 2 with {path}.')
+            logger.info(f'Skipping pass 1 and initiating pass 2 with {path}.')
 
     # Pass 2: fine-tune.
     logger.info('Starting pass 2 with learning rate: {}'.format(pass2_lr))
