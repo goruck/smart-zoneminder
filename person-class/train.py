@@ -196,6 +196,78 @@ def create_model(base, num_classes):
 
         pass2_lr = LEARNING_RATE/10
         preprocessor = tf.keras.applications.inception_resnet_v2.preprocess_input
+    elif base == 'NASNetLarge': 
+        # Setup hyperparamters.
+        BATCH_SIZE = 16 # use caution increasing as this will cause OOM
+        DENSE_UNITS = 128
+        DROPOUT = 0.2
+        LEARNING_RATE = 1e-4
+        L2_PENALTY = 1e-4
+        FREEZE = 266 # Freeze all layers less than this (NASNetLarge has 1039 layers).
+
+        logger.info('batch size: {}, dense units {}, dropout: {}'
+            .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
+        logger.info('learning rate: {}, l2 penalty: {}, freeze {}'
+            .format(LEARNING_RATE, L2_PENALTY, FREEZE))
+
+        base_model = tf.keras.applications.nasnet.NASNetLarge(weights='imagenet',
+            include_top=False,
+            pooling='max', # won't complie on the edge tpu anyhow...
+            input_shape=(331,331,3))
+
+        base_model.trainable = False
+
+        model = tf.keras.models.Sequential()
+        model.add(base_model)
+        model.add(tf.keras.layers.Dense(DENSE_UNITS, activation='relu',
+            kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
+        model.add(tf.keras.layers.Dropout(rate=DROPOUT))
+        model.add(tf.keras.layers.Dense(num_classes, activation='softmax',
+            kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
+
+        model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+            optimizer=tf.keras.optimizers.Adam(lr=LEARNING_RATE),
+            metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
+
+        pass2_lr = LEARNING_RATE/10
+        preprocessor = tf.keras.applications.nasnet.preprocess_input
+    elif base == 'NASNetMobile': 
+        # Setup hyperparamters.
+        BATCH_SIZE = 32
+        DENSE_UNITS = 128
+        DROPOUT = 0.2
+        LEARNING_RATE = 1e-4
+        L2_PENALTY = 1e-4
+        FREEZE = 200 # Freeze all layers less than this (NASNetMobile has 769 layers).
+
+        logger.info('batch size: {}, dense units {}, dropout: {}'
+            .format(BATCH_SIZE, DENSE_UNITS, DROPOUT))
+        logger.info('learning rate: {}, l2 penalty: {}, freeze {}'
+            .format(LEARNING_RATE, L2_PENALTY, FREEZE))
+
+        base_model = tf.keras.applications.nasnet.NASNetMobile(weights='imagenet',
+            include_top=False,
+            pooling='avg',
+            input_shape=(224,224,3))
+
+        base_model.trainable = False
+
+        model = tf.keras.models.Sequential()
+        model.add(base_model)
+        model.add(tf.keras.layers.Dense(DENSE_UNITS, activation='relu',
+            kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
+        model.add(tf.keras.layers.Dropout(rate=DROPOUT))
+        model.add(tf.keras.layers.Dense(num_classes, activation='softmax',
+            kernel_regularizer=tf.keras.regularizers.l2(L2_PENALTY)))
+
+        model.compile(loss=tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1),
+            optimizer=tf.keras.optimizers.Adam(lr=LEARNING_RATE),
+            metrics=['accuracy', tf.keras.metrics.Precision(),
+                tf.keras.metrics.Recall()])
+
+        pass2_lr = LEARNING_RATE/10
+        preprocessor = tf.keras.applications.nasnet.preprocess_input
     elif base == 'MobileNetV2': 
         # Setup hyperparamters.
         BATCH_SIZE = 32
@@ -366,7 +438,8 @@ def main():
     args = vars(ap.parse_args())
 
     cnn_base = args['cnn_base']
-    assert cnn_base in {'VGG16','InceptionResNetV2', 'MobileNetV2', 'ResNet50'},'Unknown base'
+    assert cnn_base in {'VGG16','InceptionResNetV2', 'MobileNetV2',
+        'ResNet50', 'NASNetLarge', 'NASNetMobile'},'Unknown base'
 
     run_pass1 = not args['no_pass1']
     data_dir = os.path.join(args['dataset'], '')
