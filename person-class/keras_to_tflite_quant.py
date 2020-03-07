@@ -47,6 +47,8 @@ def get_preprocessor(model):
         preprocessor = tf.keras.applications.resnet50.preprocess_input
     elif base_model_name == 'vgg16':
         preprocessor = tf.keras.applications.vgg16.preprocess_input
+    elif base_model_name == 'NASNet':
+        preprocessor = tf.keras.applications.nasnet.preprocess_input
     else:
         raise ValueError('Unknown base model name')
 
