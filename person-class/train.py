@@ -671,7 +671,8 @@ def main():
     if saved_model:
         VERSION = 1
         export_path = os.path.join(save_path, str(VERSION))
-        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
+        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
+            compile=False)
         best_model.save(export_path, save_format='tf')
         logger.info('Exported SavedModel to {}'.format(save_path))
 
@@ -693,7 +694,7 @@ def main():
         test_steps = np.math.ceil(
             test_generator.samples / test_generator.batch_size)
 
-        predictions = model.predict(
+        predictions = best_model.predict(
             test_generator,
             steps=test_steps,
             verbose=1,
@@ -729,7 +730,8 @@ def main():
     # Model is quantized to 8-bits (uint8) for use on edge tpu. 
     if save_tflite:
         # Load best keras model from disk.
-        model = tf.keras.models.load_model(save_path+'-person-classifier.h5')
+        best_model = tf.keras.models.load_model(save_path+'-person-classifier.h5',
+            compile=False)
         # Reference dataset for quantization calibration.
         REF_FOLDER = 'Unknown/'
         ref_dataset = os.path.join(data_dir, REF_FOLDER)
@@ -738,7 +740,7 @@ def main():
 
         try:
             tflite_quant_model = keras_to_tflite_quant.convert(
-                keras_model=model,
+                keras_model=best_model,
                 ref_dataset=ref_dataset, num_cal=NUM_CAL,
                 input_size=input_size, preprocessor=preprocessor)
         except RuntimeError as err:
