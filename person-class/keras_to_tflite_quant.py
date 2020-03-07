@@ -59,6 +59,8 @@ def representative_dataset_gen(path, num_cal, input_size, preprocessor):
 
     for image in calibration_images:
         img = cv2.imread(path + image)
+        if img is None:
+            continue
         img = cv2.resize(img, dsize=input_size, interpolation=cv2.INTER_AREA)
         img = np.expand_dims(img, axis=0)
         img = preprocessor(img.astype('float32'))
