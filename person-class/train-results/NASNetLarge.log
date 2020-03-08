@@ -1,48 +1,45 @@
-2020-03-05 04:26:35,118 __main__     INFO     Getting dataframe with alt_label: False.
-2020-03-05 04:26:35,184 __main__     INFO     Running with test enabled.
-2020-03-05 04:26:35,186 __main__     INFO     Found 5 classes in data set.
-2020-03-05 04:26:35,187 __main__     INFO     Creating model with cnn base: NASNetLarge
-2020-03-05 04:26:35,187 __main__     INFO     batch size: 16, dense units 128, dropout: 0.2
-2020-03-05 04:26:35,187 __main__     INFO     learning rate: 0.0001, l2 penalty: 0.0001, freeze 266
-2020-03-05 04:26:53,162 __main__     INFO     Generating validation dataset.
-2020-03-05 04:26:53,177 __main__     INFO     Generating train dataset.
-2020-03-05 04:26:53,187 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
-2020-03-05 04:26:53,187 __main__     INFO     Number of training samples: 5839
-2020-03-05 04:26:53,187 __main__     INFO     Number of validation samples: 1459
-2020-03-05 04:26:53,187 __main__     INFO     Class weights: {4: 1.9443207126948776, 0: 1.0186697782963827, 2: 1.0, 1: 2.954314720812183, 3: 1.9617977528089887}
-2020-03-05 04:26:53,187 __main__     INFO     Steps per epoch: 364
-2020-03-05 04:26:53,187 __main__     INFO     Validation steps: 91
-2020-03-05 04:26:53,188 __main__     INFO     Starting pass 2 with learning rate: 1e-05
-2020-03-05 04:27:11,976 __main__     INFO     Initiating pass 2 with last pass 1 checkpoint.
-2020-03-05 07:49:10,118 __main__     INFO     Finished pass 2.
-2020-03-05 07:51:32,296 tensorflow   WARNING  From /home/lindo/.virtualenvs/szm/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1786: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+2020-03-07 20:13:44,538 __main__     INFO     Getting dataframe with alt_label: False.
+2020-03-07 20:13:44,606 __main__     INFO     Running with test enabled.
+2020-03-07 20:13:44,608 __main__     INFO     Found 5 classes in data set.
+2020-03-07 20:13:44,608 __main__     INFO     Creating model with cnn base: NASNetLarge
+2020-03-07 20:13:44,608 __main__     INFO     batch size: 16, dense units 128, dropout: 0.2
+2020-03-07 20:13:44,609 __main__     INFO     learning rate: 0.0001, l2 penalty: 0.0001, freeze 266
+2020-03-07 20:14:04,468 __main__     INFO     Generating validation dataset.
+2020-03-07 20:14:04,483 __main__     INFO     Generating train dataset.
+2020-03-07 20:14:04,493 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+2020-03-07 20:14:04,493 __main__     INFO     Number of training samples: 5839
+2020-03-07 20:14:04,493 __main__     INFO     Number of validation samples: 1459
+2020-03-07 20:14:04,494 __main__     INFO     Class weights: {4: 1.9443207126948776, 0: 1.0186697782963827, 2: 1.0, 1: 2.954314720812183, 3: 1.9617977528089887}
+2020-03-07 20:14:04,494 __main__     INFO     Steps per epoch: 364
+2020-03-07 20:14:04,494 __main__     INFO     Validation steps: 91
+2020-03-07 20:14:04,494 __main__     INFO     Starting pass 1.
+2020-03-07 22:18:15,836 __main__     INFO     Finished pass 1.
+2020-03-07 22:18:34,989 __main__     INFO     Starting pass 2 with learning rate: 1e-05
+2020-03-08 01:27:46,810 __main__     INFO     Finished pass 2.
+2020-03-08 01:29:35,375 tensorflow   WARNING  From /home/lindo/.virtualenvs/szm/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1786: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
 Instructions for updating:
 If using Keras pass *_constraint arguments to layers.
-2020-03-05 07:51:53,412 tensorflow   INFO     Assets written to: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetLarge/1/assets
-2020-03-05 07:52:03,602 __main__     INFO     Exported SavedModel to /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetLarge
-2020-03-05 07:52:03,603 __main__     INFO     Evaluating model on 1825 test samples.
-2020-03-05 07:53:06,987 __main__     INFO     Classification report:
+2020-03-08 01:29:50,646 tensorflow   INFO     Assets written to: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetLarge/1/assets
+2020-03-08 01:30:00,121 __main__     INFO     Exported SavedModel to /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetLarge
+2020-03-08 01:30:00,121 __main__     INFO     Evaluating model on 1825 test samples.
+2020-03-08 01:30:57,367 __main__     INFO     Classification report:
                 precision    recall  f1-score   support
 
-       Unknown       0.88      0.90      0.89       534
-  eva_st_angel       0.90      0.83      0.87       166
-lindo_st_angel       0.96      0.95      0.95       516
- nico_st_angel       0.91      0.92      0.92       299
-nikki_st_angel       0.89      0.91      0.90       310
+       Unknown       0.90      0.86      0.88       534
+  eva_st_angel       0.91      0.87      0.89       166
+lindo_st_angel       0.91      0.96      0.93       516
+ nico_st_angel       0.90      0.92      0.91       299
+nikki_st_angel       0.91      0.91      0.91       310
 
       accuracy                           0.91      1825
      macro avg       0.91      0.90      0.90      1825
   weighted avg       0.91      0.91      0.91      1825
 
-2020-03-05 07:53:06,990 __main__     INFO     Confusion matrix:
-[[478   8  16  14  18]
- [ 15 138   1   5   7]
- [ 21   0 488   3   4]
- [ 12   2   5 276   4]
- [ 19   5   0   5 281]]
-2020-03-05 07:58:00,369 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetLarge-person-classifier-quant.tflite
-2020-03-05 07:58:53,853 __main__     INFO     Compiled model for edge tpu:
-Edge TPU Compiler version 2.0.291256449
-
-Internal compiler error. Aborting! 
-
+2020-03-08 01:30:57,369 __main__     INFO     Confusion matrix:
+[[458   7  35  15  19]
+ [ 10 145   2   5   4]
+ [ 15   0 495   5   1]
+ [  8   3  11 274   3]
+ [ 18   5   1   5 281]]
+2020-03-08 01:35:27,053 __main__     ERROR    Error quantizing model:
+Quantization not yet supported for op: REDUCE_MAX
