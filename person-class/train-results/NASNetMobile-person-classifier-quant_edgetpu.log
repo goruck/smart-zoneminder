@@ -1,0 +1,22 @@
+Edge TPU Compiler version 2.0.291256449
+Input: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile-person-classifier-quant.tflite
+Output: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile-person-classifier-quant_edgetpu.tflite
+
+Operator                       Count      Status
+
+SOFTMAX                        1          Mapped to Edge TPU
+ADD                            84         Mapped to Edge TPU
+AVERAGE_POOL_2D                52         Mapped to Edge TPU
+PAD                            24         Mapped to Edge TPU
+CONCATENATION                  20         Mapped to Edge TPU
+CONV_2D                        196        Mapped to Edge TPU
+DEPTHWISE_CONV_2D              160        Mapped to Edge TPU
+DEQUANTIZE                     1          Operation is working on an unsupported data type
+MEAN                           1          Mapped to Edge TPU
+FULLY_CONNECTED                2          Mapped to Edge TPU
+STRIDED_SLICE                  4          Mapped to Edge TPU
+MAX_POOL_2D                    8          Mapped to Edge TPU
+QUANTIZE                       86         Mapped to Edge TPU
+QUANTIZE                       1          Operation is otherwise supported, but not mapped due to some unspecified limitation
+MUL                            4          Mapped to Edge TPU
+RELU                           112        Mapped to Edge TPU

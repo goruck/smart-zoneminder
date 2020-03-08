@@ -5,13 +5,13 @@ Output: /home/lindo/develop/smart-zoneminder/person-class/train-results/Inceptio
 Operator                       Count      Status
 
 ADD                            40         Mapped to Edge TPU
-MAX_POOL_2D                    4          Mapped to Edge TPU
 AVERAGE_POOL_2D                1          Mapped to Edge TPU
+MAX_POOL_2D                    4          Mapped to Edge TPU
+CONCATENATION                  43         Mapped to Edge TPU
 QUANTIZE                       1          Operation is otherwise supported, but not mapped due to some unspecified limitation
 QUANTIZE                       58         Mapped to Edge TPU
-CONCATENATION                  43         Mapped to Edge TPU
 CONV_2D                        244        Mapped to Edge TPU
 DEQUANTIZE                     1          Operation is working on an unsupported data type
 MEAN                           1          Mapped to Edge TPU
-SOFTMAX                        1          Mapped to Edge TPU
 FULLY_CONNECTED                2          Mapped to Edge TPU
+SOFTMAX                        1          Mapped to Edge TPU

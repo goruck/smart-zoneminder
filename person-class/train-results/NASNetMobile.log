@@ -1,0 +1,65 @@
+2020-03-06 19:51:48,020 __main__     INFO     Getting dataframe with alt_label: False.
+2020-03-06 19:51:48,087 __main__     INFO     Running with test enabled.
+2020-03-06 19:51:48,092 __main__     INFO     Found 5 classes in data set.
+2020-03-06 19:51:48,092 __main__     INFO     Creating model with cnn base: NASNetMobile
+2020-03-06 19:51:48,092 __main__     INFO     batch size: 32, dense units 128, dropout: 0.2
+2020-03-06 19:51:48,092 __main__     INFO     learning rate: 0.0001, l2 penalty: 0.0001, freeze 200
+2020-03-06 19:52:01,664 __main__     INFO     Generating validation dataset.
+2020-03-06 19:52:01,681 __main__     INFO     Generating train dataset.
+2020-03-06 19:52:01,691 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+2020-03-06 19:52:01,691 __main__     INFO     Number of training samples: 5839
+2020-03-06 19:52:01,692 __main__     INFO     Number of validation samples: 1459
+2020-03-06 19:52:01,692 __main__     INFO     Class weights: {4: 1.9443207126948776, 0: 1.0186697782963827, 2: 1.0, 1: 2.954314720812183, 3: 1.9617977528089887}
+2020-03-06 19:52:01,692 __main__     INFO     Steps per epoch: 182
+2020-03-06 19:52:01,692 __main__     INFO     Validation steps: 45
+2020-03-06 19:52:01,692 __main__     INFO     Starting pass 1.
+2020-03-06 20:28:02,736 __main__     INFO     Finished pass 1.
+2020-03-06 20:28:15,957 __main__     INFO     Starting pass 2 with learning rate: 1e-05
+2020-03-06 22:04:52,825 __main__     INFO     Finished pass 2.
+2020-03-06 22:06:12,040 tensorflow   WARNING  From /home/lindo/.virtualenvs/szm/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1786: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+Instructions for updating:
+If using Keras pass *_constraint arguments to layers.
+2020-03-06 22:06:21,741 tensorflow   INFO     Assets written to: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile/1/assets
+2020-03-06 22:06:28,802 __main__     INFO     Exported SavedModel to /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile
+2020-03-06 22:06:28,802 __main__     INFO     Evaluating model on 1825 test samples.
+2020-03-06 22:06:50,890 __main__     INFO     Classification report:
+                precision    recall  f1-score   support
+
+       Unknown       0.86      0.80      0.83       534
+  eva_st_angel       0.85      0.80      0.82       166
+lindo_st_angel       0.91      0.95      0.93       516
+ nico_st_angel       0.90      0.88      0.89       299
+nikki_st_angel       0.85      0.93      0.88       310
+
+      accuracy                           0.88      1825
+     macro avg       0.87      0.87      0.87      1825
+  weighted avg       0.88      0.88      0.88      1825
+
+2020-03-06 22:06:50,897 __main__     INFO     Confusion matrix:
+[[427  17  39  19  32]
+ [ 17 132   2   4  11]
+ [ 19   0 491   4   2]
+ [ 16   3   9 264   7]
+ [ 16   4   0   3 287]]
+2020-03-06 22:07:36,866 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile-person-classifier-quant.tflite
+2020-03-06 22:07:40,498 __main__     INFO     Edge TPU model compilation results:
+Edge TPU Compiler version 2.0.291256449
+
+Model compiled successfully in 3414 ms.
+
+Input model: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile-person-classifier-quant.tflite
+Input size: 5.32MiB
+Output model: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile-person-classifier-quant_edgetpu.tflite
+Output size: 7.45MiB
+On-chip memory available for caching model parameters: 6.31MiB
+On-chip memory used for caching model parameters: 6.14MiB
+Off-chip memory used for streaming uncached model parameters: 10.38KiB
+Number of Edge TPU subgraphs: 1
+Total number of operations: 756
+Operation log: /home/lindo/develop/smart-zoneminder/person-class/train-results/NASNetMobile-person-classifier-quant_edgetpu.log
+
+Model successfully compiled but not all operations are supported by the Edge TPU. A percentage of the model will instead run on the CPU, which is slower. If possible, consider updating your model to use only operations supported by the Edge TPU. For details, visit g.co/coral/model-reqs.
+Number of operations that will run on Edge TPU: 754
+Number of operations that will run on CPU: 2
+See the operation log file for individual operation details.
+

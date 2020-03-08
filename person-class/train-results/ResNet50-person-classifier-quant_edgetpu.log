@@ -6,10 +6,10 @@ Operator                       Count      Status
 
 ADD                            16         Mapped to Edge TPU
 MAX_POOL_2D                    1          Mapped to Edge TPU
-PAD                            2          Mapped to Edge TPU
 QUANTIZE                       1          Operation is otherwise supported, but not mapped due to some unspecified limitation
+PAD                            2          Mapped to Edge TPU
 CONV_2D                        53         Mapped to Edge TPU
 DEQUANTIZE                     1          Operation is working on an unsupported data type
 MEAN                           1          Mapped to Edge TPU
-FULLY_CONNECTED                2          Mapped to Edge TPU
 SOFTMAX                        1          Mapped to Edge TPU
+FULLY_CONNECTED                2          Mapped to Edge TPU

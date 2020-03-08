@@ -1,52 +1,51 @@
-2020-03-01 16:13:51,416 __main__     INFO     Getting dataframe with alt_label: False.
-2020-03-01 16:13:51,481 __main__     INFO     Running with test enabled.
-2020-03-01 16:13:51,483 __main__     INFO     Found 5 classes in data set.
-2020-03-01 16:13:51,483 __main__     INFO     Creating model with cnn base: MobileNetV2
-2020-03-01 16:13:51,484 __main__     INFO     batch size: 32, dense units 128, dropout: 0.2
-2020-03-01 16:13:51,484 __main__     INFO     learning rate: 0.0005, l2 penalty: 0.0001, freeze 75
-2020-03-01 16:13:55,173 __main__     INFO     Generating validation dataset.
-2020-03-01 16:13:55,188 __main__     INFO     Generating train dataset.
-2020-03-01 16:13:55,198 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
-2020-03-01 16:13:55,198 __main__     INFO     Number of training samples: 5839
-2020-03-01 16:13:55,198 __main__     INFO     Number of validation samples: 1459
-2020-03-01 16:13:55,199 __main__     INFO     Class weights: {4: 1.9443207126948776, 0: 1.0186697782963827, 2: 1.0, 1: 2.954314720812183, 3: 1.9617977528089887}
-2020-03-01 16:13:55,199 __main__     INFO     Steps per epoch: 182
-2020-03-01 16:13:55,199 __main__     INFO     Validation steps: 45
-2020-03-01 16:13:55,199 __main__     INFO     Starting pass 1.
-2020-03-01 16:43:12,918 __main__     INFO     Finished pass 1.
-2020-03-01 16:43:12,918 __main__     INFO     Starting pass 2 with learning rate: 5e-05
-2020-03-01 16:43:15,937 __main__     INFO     Initiating pass 2 with final pass 1 model.
-2020-03-01 17:02:34,874 __main__     INFO     Finished pass 2.
-2020-03-01 17:02:55,451 tensorflow   WARNING  From /home/lindo/.virtualenvs/szm/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1786: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
+2020-03-07 10:04:34,218 __main__     INFO     Getting dataframe with alt_label: False.
+2020-03-07 10:04:34,286 __main__     INFO     Running with test enabled.
+2020-03-07 10:04:34,289 __main__     INFO     Found 5 classes in data set.
+2020-03-07 10:04:34,289 __main__     INFO     Creating model with cnn base: MobileNetV2
+2020-03-07 10:04:34,289 __main__     INFO     batch size: 32, dense units 128, dropout: 0.2
+2020-03-07 10:04:34,289 __main__     INFO     learning rate: 0.0005, l2 penalty: 0.0001, freeze 75
+2020-03-07 10:04:38,095 __main__     INFO     Generating validation dataset.
+2020-03-07 10:04:38,111 __main__     INFO     Generating train dataset.
+2020-03-07 10:04:38,123 __main__     INFO     Class dict: {'Unknown': 0, 'eva_st_angel': 1, 'lindo_st_angel': 2, 'nico_st_angel': 3, 'nikki_st_angel': 4}
+2020-03-07 10:04:38,123 __main__     INFO     Number of training samples: 5839
+2020-03-07 10:04:38,123 __main__     INFO     Number of validation samples: 1459
+2020-03-07 10:04:38,123 __main__     INFO     Class weights: {4: 1.9443207126948776, 0: 1.0186697782963827, 2: 1.0, 1: 2.954314720812183, 3: 1.9617977528089887}
+2020-03-07 10:04:38,123 __main__     INFO     Steps per epoch: 182
+2020-03-07 10:04:38,123 __main__     INFO     Validation steps: 45
+2020-03-07 10:04:38,124 __main__     INFO     Starting pass 1.
+2020-03-07 10:30:33,955 __main__     INFO     Finished pass 1.
+2020-03-07 10:30:36,823 __main__     INFO     Starting pass 2 with learning rate: 5e-05
+2020-03-07 11:09:54,941 __main__     INFO     Finished pass 2.
+2020-03-07 11:10:12,953 tensorflow   WARNING  From /home/lindo/.virtualenvs/szm/lib/python3.6/site-packages/tensorflow_core/python/ops/resource_variable_ops.py:1786: calling BaseResourceVariable.__init__ (from tensorflow.python.ops.resource_variable_ops) with constraint is deprecated and will be removed in a future version.
 Instructions for updating:
 If using Keras pass *_constraint arguments to layers.
-2020-03-01 17:02:58,445 tensorflow   INFO     Assets written to: /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2/1/assets
-2020-03-01 17:03:00,041 __main__     INFO     Exported SavedModel to /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2
-2020-03-01 17:03:00,042 __main__     INFO     Evaluating model on 1825 test samples.
-2020-03-01 17:03:05,830 __main__     INFO     Classification report:
+2020-03-07 11:10:15,095 tensorflow   INFO     Assets written to: /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2/1/assets
+2020-03-07 11:10:16,638 __main__     INFO     Exported SavedModel to /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2
+2020-03-07 11:10:16,638 __main__     INFO     Evaluating model on 1825 test samples.
+2020-03-07 11:10:22,646 __main__     INFO     Classification report:
                 precision    recall  f1-score   support
 
-       Unknown       0.66      0.87      0.75       534
-  eva_st_angel       0.85      0.44      0.58       166
-lindo_st_angel       0.96      0.72      0.82       516
- nico_st_angel       0.88      0.75      0.81       299
-nikki_st_angel       0.67      0.87      0.76       310
+       Unknown       0.84      0.78      0.81       534
+  eva_st_angel       0.78      0.81      0.80       166
+lindo_st_angel       0.92      0.86      0.89       516
+ nico_st_angel       0.87      0.84      0.85       299
+nikki_st_angel       0.74      0.92      0.82       310
 
-      accuracy                           0.77      1825
-     macro avg       0.80      0.73      0.74      1825
-  weighted avg       0.80      0.77      0.77      1825
+      accuracy                           0.84      1825
+     macro avg       0.83      0.84      0.83      1825
+  weighted avg       0.84      0.84      0.84      1825
 
-2020-03-01 17:03:05,845 __main__     INFO     Confusion matrix:
-[[464   6   6  12  46]
- [ 53  73   1   4  35]
- [106   2 369  11  28]
- [ 42   4   6 223  24]
- [ 36   1   1   3 269]]
-2020-03-01 17:03:23,100 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2-person-classifier-quant.tflite
-2020-03-01 17:03:23,571 __main__     INFO     Compiled model for edge tpu:
+2020-03-07 11:10:22,665 __main__     INFO     Confusion matrix:
+[[414  19  30  22  49]
+ [ 12 135   1   2  16]
+ [ 37   7 445  13  14]
+ [ 13   6   5 252  23]
+ [ 17   6   1   2 284]]
+2020-03-07 11:10:36,899 __main__     INFO     Quantized tflite model saved to: /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2-person-classifier-quant.tflite
+2020-03-07 11:10:37,371 __main__     INFO     Edge TPU model compilation results:
 Edge TPU Compiler version 2.0.291256449
 
-Model compiled successfully in 340 ms.
+Model compiled successfully in 341 ms.
 
 Input model: /home/lindo/develop/smart-zoneminder/person-class/train-results/MobileNetV2-person-classifier-quant.tflite
 Input size: 2.87MiB
