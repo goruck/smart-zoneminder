@@ -5,6 +5,7 @@ After=network.target
 StartLimitIntervalSec=0
 
 [Service]
+Environment="LD_LIBRARY_PATH=/usr/local/cuda-10.2/lib64"
 Type=simple
 Restart=always
 RestartSec=1
