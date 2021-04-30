@@ -33,7 +33,7 @@ six==1.10.0
 stevedore==1.30.1
 tflite-runtime==1.14.0
 unattended-upgrades==0.1
-urllib3==1.25.3
+urllib3==1.25.8
 virtualenv==16.5.0
 virtualenv-clone==0.5.3
 virtualenvwrapper==4.8.4
