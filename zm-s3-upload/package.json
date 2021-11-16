@@ -8,7 +8,7 @@
         "node": ">=8.11.3"
     },
     "dependencies": {
-        "aws-sdk": "^2.503.0",
+        "aws-sdk": "^2.814.0",
         "mongodb": "^3.7.0",
         "mysql": ">=2.15.0",
         "winston": ">=3.0.0",
