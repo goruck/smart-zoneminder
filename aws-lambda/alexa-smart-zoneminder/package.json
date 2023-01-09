@@ -11,7 +11,7 @@
         "alexa-sdk": ">=1.0.25",
         "ask-sdk": "^2.5.1",
         "ask-sdk-v1adapter": "^2.5.1",
-        "luxon": "^1.12.1"
+        "luxon": "^1.28.1"
     },
     "repository": {
         "type": "git",
